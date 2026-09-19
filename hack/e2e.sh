@@ -22,7 +22,7 @@ created=false
 hk() { kubectl --kubeconfig "$work_dir/host.kubeconfig" --context "kind-$cluster" "$@"; }
 
 inventory() {
-  hk -n "$namespace" get pods,configmaps,secrets,services,serviceaccounts,persistentvolumeclaims,deployments,statefulsets,replicasets,jobs,roles,rolebindings,leases,networkpolicies,ingresses,resourcequotas,limitranges,clusterreplicas -o json \
+  hk -n "$namespace" get pods,configmaps,secrets,services,serviceaccounts,persistentvolumeclaims,deployments,statefulsets,replicasets,jobs,roles,rolebindings,leases,networkpolicies,ingresses,resourcequotas,limitranges,poddisruptionbudgets,clusterreplicas -o json \
     | python3 test/e2e/inventory.py > "$E2E_RESULTS/$1.json"
 }
 cleanup() {
@@ -51,6 +51,10 @@ created=true
 kind create cluster --name "$cluster" --image "$node_image" --kubeconfig "$KUBECONFIG" --wait 180s
 kind load docker-image cluster-replica:e2e --name "$cluster"
 hk version --output=json > "$E2E_RESULTS/host-version.json"
+python3 - "$E2E_RESULTS/host-version.json" <<'PY'
+import json,sys
+assert json.load(open(sys.argv[1]))['serverVersion']['gitVersion'] == 'v1.36.4'
+PY
 hk api-resources -o wide > "$E2E_RESULTS/host-apis.txt"
 hk apply -f config/crd/replica.nimeshbuilds.dev_clusterreplicas.yaml
 hk wait --for=condition=Established crd/clusterreplicas.replica.nimeshbuilds.dev --timeout=60s
@@ -85,7 +89,7 @@ assert_release_absent() {
   [[ -z "$(hk -n "$namespace" get secret -l "owner=helm,name=$release" -o name)" ]]
   # All chart manifest resources bear Helm's release annotation. Dynamic guest
   # resources may remain and are reported separately, never silently discarded.
-  hk -n "$namespace" get services,secrets,serviceaccounts,roles,rolebindings,deployments -o json \
+  hk -n "$namespace" get services,secrets,configmaps,serviceaccounts,roles,rolebindings,deployments,limitranges,resourcequotas,poddisruptionbudgets,networkpolicies -o json \
     | python3 -c 'import json,sys; release=sys.argv[1]; found=[(x["kind"],x["metadata"]["name"]) for x in json.load(sys.stdin)["items"] if x["metadata"].get("annotations",{}).get("meta.helm.sh/release-name")==release]; assert not found, found' "$release"
   hk -n "$namespace" get configmap unrelated-sentinel >/dev/null
   hk get namespace "$namespace" >/dev/null
@@ -158,7 +162,10 @@ import json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 baseline={x['uid'] for x in json.loads((p/'baseline.json').read_text())}
 remaining=[x for x in json.loads((p/'after-expiry.json').read_text()) if x['uid'] not in baseline]
-report={'result':'passed', 'scope':'kind host v1.36.4 / vCluster 0.37.1 / guest v1.36.0 / HelmReleaseOnly', 'checks':['real image build and service-account deployment','runtime readiness','guest API connection','guest Deployment and HTTP/DNS probe','operator restart preserves runtime and TTL','real TTL expiry and no resurrection','explicit deletion','failed installation and partial cleanup','unrelated host resource preservation'], 'resourcesNotInBaselineAfterTTL':remaining, 'inventoryNote':'Includes the retained ClusterReplica record and replacement operator pods as well as any guest leftovers; this is not yet an ownership classification.', 'fullDataCleanupVerified':False}
+host=json.loads((p/'host-version.json').read_text())['serverVersion']['gitVersion']
+guest=json.loads((p/'guest-version.json').read_text())['serverVersion']['gitVersion']
+runtime=json.loads((p/'ttl-before.json').read_text())['status']['runtime']
+report={'result':'passed', 'hostKubernetesVersion':host, 'guestKubernetesVersion':guest, 'runtime':runtime, 'cleanupPolicy':'HelmReleaseOnly', 'checks':['real image build and service-account deployment','runtime readiness','guest API connection','guest Deployment and HTTP/DNS probe','operator restart preserves runtime and TTL','real TTL expiry and no resurrection','explicit deletion','failed installation and partial cleanup','unrelated host resource preservation'], 'resourcesNotInBaselineAfterTTL':remaining, 'inventoryNote':'Includes the retained ClusterReplica record and replacement operator pods as well as any guest leftovers; this is not yet an ownership classification.', 'fullDataCleanupVerified':False}
 (p/'report.json').write_text(json.dumps(report,indent=2)+'\n')
 print(json.dumps(report,indent=2))
 PY

@@ -18,10 +18,17 @@ for obj in json.load(sys.stdin).get("items", []):
         "release": meta.get("annotations", {}).get("meta.helm.sh/release-name"),
         "replicaUID": meta.get("labels", {}).get("replica.nimeshbuilds.dev/uid"),
         "phase": status.get("phase"),
+        "conditions": [
+            {k: c.get(k) for k in ("type", "status", "reason")}
+            for c in status.get("conditions", [])
+        ],
         "containers": [
             {"name": c["name"], "ready": c.get("ready"),
              "imageID": c.get("imageID"),
-             "waitingReason": c.get("state", {}).get("waiting", {}).get("reason")}
+             "restartCount": c.get("restartCount"),
+             "waitingReason": c.get("state", {}).get("waiting", {}).get("reason"),
+             "terminatedReason": c.get("state", {}).get("terminated", {}).get("reason"),
+             "exitCode": c.get("state", {}).get("terminated", {}).get("exitCode")}
             for c in status.get("containerStatuses", []) + status.get("initContainerStatuses", [])
         ],
     })

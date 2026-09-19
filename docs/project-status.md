@@ -10,6 +10,8 @@ Source discovery, guest replication, complete owned-resource cleanup, and scoped
 
 ## Portable alpha under development
 
+Follow the [first replica quickstart](../QUICKSTART.md) for a complete local walkthrough at the tested revision.
+
 [PR #7](https://github.com/nimeshbuilds/replicove/pull/7) adds a real vCluster lifecycle suite. [PR #8](https://github.com/nimeshbuilds/replicove/pull/8), stacked on that work, adds source grants, capture and planning, selected Helm and resource replication, overrides, secrets, refresh, scoped guest access, and owned cleanup.
 
 At tested revision [`5ffeb42`](https://github.com/nimeshbuilds/replicove/commit/5ffeb4243f7e6588fb5a04afe906f1cc40c47624), **all eight jobs passed** in [this disposable-cluster CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35467194302):

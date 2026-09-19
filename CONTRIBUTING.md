@@ -4,7 +4,7 @@ Replicove welcomes documentation, reproducible testing problems, design feedback
 
 ## Find a useful first contribution
 
-- Try the [runtime quickstart](docs/runtime-quickstart.md) and clarify a step that was difficult to follow.
+- Try the [first replica quickstart](QUICKSTART.md) or [runtime quickstart](docs/runtime-quickstart.md) and clarify a step that was difficult to follow.
 - Reproduce an [open issue](https://github.com/nimeshbuilds/replicove/issues) with sanitized manifests and exact versions.
 - Share a real operator/configuration workflow in [Discussions](https://github.com/nimeshbuilds/replicove/discussions).
 

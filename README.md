@@ -11,7 +11,7 @@
 
 **Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** Its goal is to recreate the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-[Get started](docs/runtime-quickstart.md) · [Documentation](docs/README.md) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
+[Quick start](QUICKSTART.md) · [Documentation](docs/README.md) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
 > **Experimental, under active development.** `main` contains the runtime prototype: provision a vCluster, observe readiness, and remove its Helm release on deletion or TTL expiry. The broader replica workflow has passed disposable-cluster CI in [PR #8](https://github.com/nimeshbuilds/replicove/pull/8) and is still under development there. No packaged public release or production support is available yet.
 
@@ -35,40 +35,13 @@ Useful scenarios include testing operator upgrades, reproducing configuration bu
 
 The alpha’s [eight-job CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35467194302) passed on commit `5ffeb42`, including host Kubernetes 1.35.8 and 1.36.4, vCluster 0.37.1, and small cert-manager, Spark, Trino, and admission-policy scenarios. These are **functional test results**, not production-scale or cloud-platform certification. See [project status and evidence](docs/project-status.md).
 
-## Try the runtime prototype
+## Quick start
 
-Use a disposable cluster or namespace administered by someone you trust. You need Go 1.27.1+, `kubectl`, and a Kubernetes cluster.
+**[Create your first replica →](QUICKSTART.md)**
 
-```sh
-git clone https://github.com/nimeshbuilds/replicove.git
-cd replicove
-make build
+The walkthrough takes you through building the tested alpha, creating a disposable kind cluster, installing Replicove, approving a replication plan, connecting to the guest, verifying copied configuration, and cleaning up. It uses complete sample files and an isolated kubeconfig; no cloud account or registry push is needed.
 
-kubectl apply -f config/crd/replica.nimeshbuilds.dev_clusterreplicas.yaml
-kubectl apply -f config/rbac/lab.yaml
-./bin/cluster-replica --watch-namespace replica-lab
-```
-
-In another terminal, create your first request:
-
-```yaml
-apiVersion: replica.nimeshbuilds.dev/v1alpha1
-kind: ClusterReplica
-metadata:
-  name: integration
-  namespace: replica-lab
-spec:
-  profile: vcluster-0.37.1-lab
-  ttl: 2h
-  cleanupPolicy: HelmReleaseOnly
-```
-
-```sh
-kubectl apply -f config/samples/replica.yaml
-kubectl get clusterreplicas -n replica-lab -w
-```
-
-The operator installs vCluster itself; a preinstalled vCluster binary is unnecessary for provisioning. Follow the [runtime quickstart](docs/runtime-quickstart.md) to connect, delete, and understand permissions and cleanup. Contributors trying the replica workflow should use the [alpha quickstart at the tested revision](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/replicove-quickstart.md).
+The guide pins the tested developer-preview revision because the full workflow is still in PR #8. To try only the runtime implementation currently on `main`, follow the [runtime quickstart](docs/runtime-quickstart.md).
 
 The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 

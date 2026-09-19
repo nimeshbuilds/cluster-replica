@@ -2,7 +2,7 @@
 
 Create a disposable Kubernetes cluster, install Replicove, and recreate a small application’s configuration and Helm component inside a vCluster. You will inspect the plan, connect to the replica, verify the copied resources, and remove the environment.
 
-> **Developer preview:** this guide pins alpha revision `286829a`, including explicit runtime permissions and the full replication workflow. The [CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) runs it in disposable clusters. There is no published release image yet, so you build one locally.
+> **Developer preview:** this guide pins alpha revision `0a52183`, including explicit runtime permissions and the full replication workflow. The [CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) runs it in disposable clusters. There is no published release image yet, so you build one locally.
 
 ## Before you start
 
@@ -20,7 +20,7 @@ In **Terminal A**:
 ```bash
 git clone https://github.com/nimeshbuilds/replicove.git replicove-demo
 cd replicove-demo
-git checkout --detach 286829a2256866be035581c5f862f921cd3c36b0
+git checkout --detach 0a5218350e95eaf1fc3f5f4573f37ac9c727ef56
 
 ./hack/fetch-e2e-tools.sh
 export PATH="$PWD/.cache/e2e-tools:$PATH"
@@ -182,8 +182,8 @@ For a scripted verification instead of the interactive walkthrough, install Pyth
 
 ## Next steps
 
-- [Selection, secrets, access, existing targets, and cleanup details](https://github.com/nimeshbuilds/replicove/blob/286829a2256866be035581c5f862f921cd3c36b0/docs/replicove-quickstart.md).
-- [cert-manager, Spark, Trino, and admission-policy examples](https://github.com/nimeshbuilds/replicove/blob/286829a2256866be035581c5f862f921cd3c36b0/docs/workload-adapters.md).
+- [Selection, secrets, access, existing targets, and cleanup details](https://github.com/nimeshbuilds/replicove/blob/0a5218350e95eaf1fc3f5f4573f37ac9c727ef56/docs/replicove-quickstart.md).
+- [cert-manager, Spark, Trino, and admission-policy examples](https://github.com/nimeshbuilds/replicove/blob/0a5218350e95eaf1fc3f5f4573f37ac9c727ef56/docs/workload-adapters.md).
 - [Project status](docs/project-status.md), [support](SUPPORT.md), and [contributing](CONTRIBUTING.md).
 
 This walkthrough uses the existing tested source and fixtures. Cloud identity, source volume contents, and arbitrary external resources are outside its scope. See the upstream [kind guide](https://kind.sigs.k8s.io/docs/user/quick-start/) for the local host-cluster tooling.

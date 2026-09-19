@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/nimeshbuilds/replicove/discussions
+    about: Ask for help or discuss an integration-testing workflow.
+  - name: Report a security vulnerability privately
+    url: https://github.com/nimeshbuilds/replicove/security/advisories/new
+    about: Keep vulnerability details and sensitive information out of public issues.
+  - name: Project status and documentation
+    url: https://github.com/nimeshbuilds/replicove/blob/main/docs/README.md
+    about: Find the correct quickstart and see what has actually been tested.

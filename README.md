@@ -1,17 +1,55 @@
-# ClusterReplica
+# Replicove
 
-**Your Kubernetes toolset. A fresh vCluster. One request.**
+<p align="center">
+  <img src="assets/brand/replicove-social.png" alt="Replicove — Your cluster’s tools. A fresh place to test. Kubernetes replica environments, powered by vCluster." width="100%">
+</p>
 
-[![CI](https://github.com/nimeshbuilds/cluster-replica/actions/workflows/ci.yaml/badge.svg)](https://github.com/nimeshbuilds/cluster-replica/actions/workflows/ci.yaml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-293FC9)](LICENSE)
+[![Status: experimental](https://img.shields.io/badge/status-experimental-00A58E)](docs/project-status.md)
+[![GitHub Discussions](https://img.shields.io/badge/discuss-on_GitHub-293FC9)](https://github.com/nimeshbuilds/replicove/discussions)
 
-Integration tests need more than an empty cluster. They need the operators and configuration your application depends on. ClusterReplica is an experimental Kubernetes operator building toward recreating that selected environment on top of [vCluster](https://www.vcluster.com/).
+**Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** Its goal is to recreate the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-**Current status: early runtime prototype.** The code provisions a standalone vCluster through Helm, reports control-plane readiness, and removes its Helm release on deletion or TTL expiry. Automatic host discovery and toolset replication are the next milestones. No Kubernetes/vCluster pair is behaviorally certified yet.
+[Get started](docs/runtime-quickstart.md) · [Documentation](docs/README.md) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-[Roadmap](ROADMAP.md) · [Architecture](docs/architecture.md) · [Full implementation plan](docs/design/cluster-replica-implementation-plan.md) · [Contribute](CONTRIBUTING.md) · [Discuss](https://github.com/orgs/nimeshbuilds/discussions)
+> **Experimental, under active development.** `main` contains the runtime prototype: provision a vCluster, observe readiness, and remove its Helm release on deletion or TTL expiry. The broader replica workflow has passed disposable-cluster CI in [PR #8](https://github.com/nimeshbuilds/replicove/pull/8) and is still under development there. No packaged public release or production support is available yet.
 
-## The first working surface
+## Why Replicove?
+
+An empty test cluster does not reproduce an application’s environment. Operators, admission rules, configuration, and credentials all influence whether an integration test tells you something useful.
+
+Replicove builds toward a repeatable workflow: select what matters from an authorized source, inspect a plan, create a virtual environment, run your test, then expire the environment. vCluster supplies the virtual Kubernetes control plane; Replicove adds the selection, replication, access, and lifecycle workflow around it.
+
+Useful scenarios include testing operator upgrades, reproducing configuration bugs, creating preview environments, and giving CI or coding agents a temporary Kubernetes workspace.
+
+## What can I use today?
+
+| Available on `main` | Portable alpha in [PR #8](https://github.com/nimeshbuilds/replicove/pull/8) |
+| --- | --- |
+| Namespaced `ClusterReplica` CRD | Administrator-controlled source and destination grants |
+| Pinned vCluster installation through the Helm SDK | Selected Helm components, resources, and secrets |
+| Readiness and ownership checks | Inspectable plans, approval, overrides, and refresh |
+| Deletion and TTL of the owned Helm release | Scoped guest access for people, CI, and agents |
+| Source build and lab setup | Owned-resource cleanup and persistent control-plane tests |
+
+The alpha’s [eight-job CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35467194302) passed on commit `5ffeb42`, including host Kubernetes 1.35.8 and 1.36.4, vCluster 0.37.1, and small cert-manager, Spark, Trino, and admission-policy scenarios. These are **functional test results**, not production-scale or cloud-platform certification. See [project status and evidence](docs/project-status.md).
+
+## Try the runtime prototype
+
+Use a disposable cluster or namespace administered by someone you trust. You need Go 1.27.1+, `kubectl`, and a Kubernetes cluster.
+
+```sh
+git clone https://github.com/nimeshbuilds/replicove.git
+cd replicove
+make build
+
+kubectl apply -f config/crd/replica.nimeshbuilds.dev_clusterreplicas.yaml
+kubectl apply -f config/rbac/lab.yaml
+./bin/cluster-replica --watch-namespace replica-lab
+```
+
+In another terminal, create your first request:
 
 ```yaml
 apiVersion: replica.nimeshbuilds.dev/v1alpha1
@@ -25,92 +63,26 @@ spec:
   cleanupPolicy: HelmReleaseOnly
 ```
 
-The namespace must already exist and be granted to the operator. A request creates its own vCluster; it does not adopt an existing release or require a preinstalled vCluster binary. Helm runs through the Go SDK.
-
-| Available in this prototype | Planned |
-| --- | --- |
-| Namespaced `ClusterReplica` CRD with immutable spec | Source discovery and inspectable replication plans |
-| Pinned vCluster chart and SHA-256 verification | Selectors, dependencies, and per-component overrides |
-| Standalone Helm provisioning and readiness status | Existing vCluster and Platform providers |
-| UID-bound release ownership; no name-based adoption | Secret, identity, and data adapters |
-| TTL measured from request creation, durable finalizer | Complete inventory and deletion of owned guest resources |
-| Namespace administrator access using `vcluster connect` | Short-lived credentials for humans, CI, and agents |
-
-## Run the prototype
-
-Use a **disposable, trusted lab namespace**. Prerequisites: Go 1.27.1+, `kubectl`, and an existing Kubernetes cluster/context. A host administrator must install the CRD and grant the namespaced permissions once. The operator does not install Kubernetes itself.
-
 ```sh
-git clone https://github.com/nimeshbuilds/cluster-replica.git
-cd cluster-replica
-make build
-
-kubectl apply -f config/crd/replica.nimeshbuilds.dev_clusterreplicas.yaml
-kubectl apply -f config/rbac/lab.yaml
-
-# Terminal 1: uses your current kubeconfig. Limit that identity to the lab namespace.
-./bin/cluster-replica --watch-namespace replica-lab
-
-# Terminal 2:
 kubectl apply -f config/samples/replica.yaml
 kubectl get clusterreplicas -n replica-lab -w
-kubectl wait -n replica-lab clusterreplica/integration \
-  --for=condition=RuntimeReady --timeout=5m
 ```
 
-`RuntimeReady` means the managed Deployment reports current, ready replicas. It does **not** certify source parity, guest workload behavior, or a cloud identity mapping.
+The operator installs vCluster itself; a preinstalled vCluster binary is unnecessary for provisioning. Follow the [runtime quickstart](docs/runtime-quickstart.md) to connect, delete, and understand permissions and cleanup. Contributors trying the replica workflow should use the [alpha quickstart at the tested revision](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/replicove-quickstart.md).
 
-To run in the cluster, build and push your own operator image, then set it in [config/manager/deployment.yaml](config/manager/deployment.yaml). The example image is deliberately a placeholder; no release image is published yet. Apply the deployment after replacing it. Its service account is bound only inside `replica-lab`.
+The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 
-The example Role has broad permissions **within that namespace**, including secrets and workload creation, to install the upstream chart and its Role. It is intended for administrator-operated labs. Namespace grants, quotas, admission policy, and narrower production RBAC are still required before multi-tenant use. The local command uses your kubeconfig's privileges, not the example service account.
+## Boundaries that matter
 
-## Connect and expire
+- Replication is **selected and authorized**. A virtual cluster cannot reproduce every host, cloud, storage, or operator behavior automatically.
+- `main` uses an `emptyDir` lab control plane. Rescheduling can lose its state. `HelmReleaseOnly` does not promise deletion of guest workloads, PVCs, snapshots, or external resources.
+- IRSA and other cloud identity adapters, data restoration, vCluster Platform integration, and distribution-specific qualification remain future work.
+- Compatibility depends on Kubernetes versions, APIs, and capabilities. EKS, AKS, GKE, OpenShift, and RKE2 are not currently certified.
 
-Install the [vCluster CLI](https://www.vcluster.com/docs/vcluster/manage/cli) and connect as the namespace administrator:
+Read [Security](SECURITY.md), [compatibility policy](docs/design/vcluster-compatibility-policy.md), and [the implementation plan](docs/design/cluster-replica-implementation-plan.md) before extending the project.
 
-```sh
-RELEASE_NAME=$(kubectl get clusterreplica integration -n replica-lab \
-  -o jsonpath='{.status.runtime.releaseName}')
-vcluster connect "$RELEASE_NAME" --namespace replica-lab
-```
+## Build with us
 
-This delegates the connection flow to upstream vCluster. The CR's status never contains a kubeconfig or token. Scoped agent access and revocation are not implemented yet.
+Built in public by [Nimesh Builds](https://github.com/nimeshbuilds). Share a reproducible cluster-testing problem in [Discussions](https://github.com/nimeshbuilds/replicove/discussions), [report a bug](https://github.com/nimeshbuilds/replicove/issues/new/choose), or improve a guide you tried. The [contribution guide](CONTRIBUTING.md) explains local checks and how to propose an adapter. If this solves a problem you care about, a star helps others discover it.
 
-TTL starts at CR creation, including provisioning time. After expiry, the CR remains as an `Expired` record and will not reinstall its runtime. Deleting the CR also triggers release cleanup:
-
-```sh
-kubectl delete clusterreplica integration -n replica-lab
-```
-
-**`HelmReleaseOnly` is a limited cleanup contract.** The operator checks ownership, retains Helm history during partial cleanup, and purges it only when the chart's manifest objects are absent. It never deletes the namespace. Guest-synced workloads, generated access secrets, PVCs, snapshots, and external cloud resources are not inventoried by this prototype and may remain. Removing the release is not proof of access revocation or complete data deletion. Do not strip a stuck finalizer without examining the remaining resources.
-
-The lab control plane uses `emptyDir` so no host StorageClass is required to start it. **Rescheduling its pod can lose the virtual cluster's control-plane data.** This profile is for disposable experiments; durable backing stores and their cleanup contracts are future profiles.
-
-## Compatibility and maintenance
-
-The initial **candidate** profile pins vCluster `0.37.1`, the OSS control-plane image tag, and guest Kubernetes `v1.36.0`. The chart archive hash is checked before parsing. The host version is not automatically matched in this prototype. Image tags are not yet locked to digests.
-
-All upstream values live in [internal/catalog](internal/catalog); the reconciler uses a small [runtime interface](internal/runtime/runtime.go). New chart versions must enter through a new tested profile. Existing requests persist their resolved version and never silently upgrade. Old catalog adapters must remain available while their requests exist; cleanup uses stored Helm manifests and does not fetch charts.
-
-Chart rendering against host API versions 1.35–1.37 is a schema/template check, **not a support matrix**. EKS, AKS, GKE, OpenShift, RKE2, Spark, Trino, IRSA, and complete toolset replication still need live validation. Kubernetes versions, APIs, and required capabilities will determine support; distribution names provide adapter context.
-
-See the [compatibility policy](docs/design/vcluster-compatibility-policy.md) and [upstream profile provenance](docs/upstream.md).
-
-## Develop and verify
-
-```sh
-make generate         # regenerate DeepCopy code and the CRD
-make test             # unit tests with the race detector
-make test-contract    # download/hash-check and render the real pinned chart
-make test-integration # real local API server: CRD validation and lifecycle tests
-make vet
-make build
-```
-
-The integration suite uses envtest's local API server and etcd. It exercises CR lifecycle with a fake provider and installs the actual chart through the Helm SDK to verify resource creation, repeated observation, and cleanup recovery. It requires no Docker and does not run vCluster pods or guest workloads. A real host + guest end-to-end suite is the next validation milestone. See [testing](docs/testing.md) for the exact boundaries.
-
-## Build in public
-
-Built by [Nimesh Builds](https://github.com/nimeshbuilds). Useful contributions include reproducible cluster-testing problems, design reviews, and tests for the first real host/guest workflow. Start with the [roadmap](ROADMAP.md) and [contribution guide](CONTRIBUTING.md).
-
-ClusterReplica is an independent project. It is not affiliated with or endorsed by the vCluster maintainers. This repository is Apache-2.0 licensed; upstream vCluster artifacts retain their own licenses.
+Replicove is an independent project, unaffiliated with the vCluster maintainers. Licensed under [Apache-2.0](LICENSE); upstream components retain their own licenses. [Brand assets and usage](docs/brand/README.md).

@@ -1,21 +1,25 @@
 # Replicove roadmap
 
-This is a build sequence, not a release promise. The [implementation ledger](docs/IMPLEMENTATION_STATUS.md) and [validation record](docs/validation.md) distinguish code from proven behavior. The [full design plan](docs/design/cluster-replica-implementation-plan.md) retains longer-term acceptance criteria.
+The goal is a declarative workflow for disposable Kubernetes environments that reproduce selected tools and configuration. This is a development sequence, not a release-date promise. See [project status](docs/project-status.md) for the tested revision and [the full implementation plan](docs/design/cluster-replica-implementation-plan.md) for acceptance criteria.
 
-| Phase | Outcome | Current status |
+| Area | On `main` | Portable alpha / remaining work |
 | --- | --- | --- |
-| 0. Evidence and compatibility | Pinned upstream contract and real host/guest tests | Chart contracts and real runtime/workload evidence recorded; full 1.35/1.36 matrix passed at 8123f9a |
-| 1. Foundation | CRDs, immutable requests, grants, protected state | Implemented with real API and policy tests; namespace delegation is the authorization model |
-| 2. Runtime | Standalone and existing vCluster lifecycle | Helm and pinned existing-target paths implemented; Platform provisioning remains gated |
-| 3. Discovery and plan | Source capture, dependencies, selectors, overrides, approval | Implemented for supported desired state and stored Helm revisions |
-| 4. Replication | Owned apply, readiness, Secrets, refresh and drift | Implemented; arbitrary operator semantics/hooks and External Secrets backends remain incomplete |
-| 5. Workloads and identity | Spark/Trino and cloud identity | Small real Spark/Trino workloads pass; cloud identity adapters and labs remain deferred/incomplete |
-| 6. Cleanup and data | Guest/host inventory and data lifecycle | Owned runtime/fresh-volume cleanup implemented; content copying, snapshots and external data are incomplete |
-| 7. Access and agents | Expiring credentials, local connection, revocation | CLI, guest roles/tokens, tunnel recovery and exact-Secret reader RBAC implemented; per-user gateway is future work |
-| 8. Distribution qualification | EKS/AKS/GKE/OpenShift/RKE2 evidence | Cloud labs deferred; vendor claims require additional evidence |
-| 9. Maintenance | Release profiles and upgrade/recovery tests | Pinned adapter boundary, chart contracts, key-preserving upgrade test and update checker implemented |
-| 10. Public release and operations | Published artifacts, support and scale | Local four-platform CLI/chart packaging passes; publication, signing, scale and GA qualification remain |
+| Runtime | Pinned Helm provisioning, readiness, ownership, release deletion and TTL | Real lifecycle evidence in [#7](https://github.com/nimeshbuilds/replicove/pull/7); persistent runtime and existing-target workflow in [#8](https://github.com/nimeshbuilds/replicove/pull/8) |
+| Discovery and plan | Design | Grants, source capture, selection, dependency planning and approval in #8 |
+| Replication | Design | Selected Helm components, resources, overrides and refresh in #8 |
+| Secrets and access | Namespace administrator access | Selected secrets and scoped guest credentials/revocation in #8; cloud identity remains future work |
+| Cleanup | `HelmReleaseOnly` | Owned guest/runtime inventory and TTL scenarios in #8; external data and cloud resources remain future work |
+| Workloads | No live workload qualification | Small cert-manager, Spark, Trino and native admission-policy scenarios passed in #8 |
+| Compatibility | Pinned chart contract | Two live host Kubernetes minors in #8; wider capability/distribution and cloud qualification pending |
+| Public releases | Source builds | Packaging in #8; public binaries/images, signing and release qualification pending |
 
-The next release gate is green CI for the complete portable workflow and its access controls, accurate installation/recovery documentation, and review of the stacked implementation PRs. The brand is Replicove; module names and API groups remain stable to preserve existing manifests and links.
+## Next milestones
 
-Kubernetes versions, served APIs and verified capabilities drive compatibility. Distribution names add adapter context; the generic controller has no AWS dependency.
+1. Review and land the tested portable alpha with reproducible installation, scoped grants, and honest cleanup boundaries.
+2. Publish a usable alpha release and a verified operator image with the matching quickstart and evidence.
+3. Strengthen version maintenance, retained compatibility profiles, image provenance, and upgrade/recovery coverage.
+4. Add cloud identity and data adapters with explicit permissions and disposable cloud-lab evidence.
+
+Kubernetes versions, available APIs, and required capabilities are the core compatibility axes. Distribution names add adapter context. Cloud labs are deferred; current validation uses disposable CI clusters.
+
+Have a concrete test-environment problem? [Describe it in Discussions](https://github.com/nimeshbuilds/replicove/discussions) or [propose a feature](https://github.com/nimeshbuilds/replicove/issues/new/choose).

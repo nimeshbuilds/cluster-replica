@@ -26,4 +26,4 @@ The `.com` RDAP endpoint returned 404 for both Replicove and KubeMorrow. This re
 - [Verisign .com RDAP lookup](https://rdap.verisign.com/com/v1/domain/replicove.com) (404).
 - Web queries: `"Replicove" Kubernetes OR software OR cloud OR company`; `"Replicove" site:artifacthub.io OR site:npmjs.com OR site:pypi.org`; `"Replicove" trademark`.
 
-Retain the existing Kubernetes API group and repository/module identity during the alpha to preserve current manifests and links. Replicove is the product brand; `ClusterReplica` remains the Kubernetes resource kind.
+The public repository is now `nimeshbuilds/replicove`. Retain the existing Kubernetes API group and Go module identity during the alpha to preserve current manifests and imports. Replicove is the product brand; `ClusterReplica` remains the Kubernetes resource kind.

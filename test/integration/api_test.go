@@ -273,7 +273,11 @@ func TestOperatorInstallationChart(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	ch, err := chartloader.Load(filepath.Join("..", "..", "charts", "replicove"))
+	chartSource := os.Getenv("REPLICOVE_OPERATOR_CHART")
+	if chartSource == "" {
+		chartSource = filepath.Join("..", "..", "charts", "replicove")
+	}
+	ch, err := chartloader.Load(chartSource)
 	if err != nil {
 		t.Fatal(err)
 	}

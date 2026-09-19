@@ -4,6 +4,7 @@ Replicove creates Kubernetes replica environments with vCluster. Start with the 
 
 | I want to… | Start here |
 | --- | --- |
+| Create my first replica in a disposable local cluster | [First replica quickstart (tested alpha)](../QUICKSTART.md) |
 | Run the prototype on `main` | [Runtime quickstart](runtime-quickstart.md) |
 | Understand what is implemented and tested | [Project status](project-status.md) |
 | Try the portable alpha under development | [PR #8](https://github.com/nimeshbuilds/replicove/pull/8) and its [tested quickstart](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/replicove-quickstart.md) |

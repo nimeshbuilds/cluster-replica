@@ -315,6 +315,7 @@ func TestOperatorInstallationChart(t *testing.T) {
 	if key.UID != originalKeyUID || !bytes.Equal(key.Data["key"], originalKey) {
 		t.Fatal("operator upgrade replaced the encryption key")
 	}
+	assertOperatorAuthorization(t, config)
 	// Real Helm storage often has nil Config when users accepted chart defaults.
 	// An override must still work and must never mutate the source release.
 	sourceChart, err := chartloader.Load(filepath.Join("..", "e2e", "chart"))

@@ -37,6 +37,20 @@ hk create namespace source-dev
 make build
 bin/replicove install --image cluster-replica:e2e --values test/e2e/replicove-values.yaml
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
+# Verify the installed operator identity's host authorization in a real cluster.
+operator_identity=system:serviceaccount:replicove-system:replicove
+[[ "$(hk --as="$operator_identity" -n source-dev auth can-i list configmaps)" == yes ]]
+expect_forbidden(){
+ if "$@" > "$work/denial.txt" 2>&1; then
+  echo 'Expected Kubernetes to reject the unauthorized operation' >&2; exit 1
+ fi
+ grep -q 'Forbidden' "$work/denial.txt"
+}
+expect_forbidden hk --as="$operator_identity" -n source-dev create configmap forbidden --from-literal=x=y
+expect_forbidden hk --as="$operator_identity" -n kube-system get secrets
+expect_forbidden hk --as="$operator_identity" create namespace forbidden
+expect_forbidden hk --as="$operator_identity" -n replica-lab create role forbidden --verb='*' --resource='*'
+expect_forbidden hk --as="$operator_identity" -n replica-lab create rolebinding forbidden --clusterrole=cluster-admin --user=fixture-reader
 hk apply -f test/e2e/source.yaml
 hk -n source-dev rollout status deployment/echo --timeout=180s
 go run ./test/e2e/seed test/e2e/chart source-dev fixture
@@ -194,5 +208,5 @@ sleep 15
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
+{"result":"passed","scenarios":["embedded-installer","operator-namespace-rbac","escalation-bind-denied","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
 JSON

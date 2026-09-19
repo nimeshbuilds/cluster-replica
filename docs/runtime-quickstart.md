@@ -1,6 +1,8 @@
-# Runtime quickstart: the code on main
+# Legacy runtime-only quickstart
 
-This guide runs the smaller runtime prototype on `main`: create a vCluster, connect to its API, and delete its Helm release. For a working example of **source configuration replication**, use the [first replica quickstart](../QUICKSTART.md), which checks out the tested portable alpha.
+> For a new installation, use the [first replica quickstart](../QUICKSTART.md). It installs the full alpha with a protected state namespace, explicit runtime permissions, and owned-resource cleanup. This older guide uses broad lab permissions and `HelmReleaseOnly` for runtime-adapter development only.
+
+This guide runs the legacy runtime-only mode: create a vCluster, connect to its API, and delete its Helm release. For a working example of **source configuration replication**, use the [first replica quickstart](../QUICKSTART.md), which checks out the tested portable alpha.
 
 ## Before you start
 

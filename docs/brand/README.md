@@ -29,7 +29,7 @@ Short description:
 
 Long description:
 
-> Replicove is building a declarative workflow to recreate selected Kubernetes operators and configuration in disposable virtual clusters. It adds source selection, replication plans, access, and lifecycle management around vCluster. The default branch contains a runtime prototype, with the broader portable alpha under development and tested in disposable CI clusters.
+> Replicove provides a declarative workflow to recreate selected Kubernetes operators and configuration in disposable virtual clusters. It adds source selection, replication plans, access, and lifecycle management around vCluster. The default branch contains an experimental portable alpha, tested in disposable Kubernetes clusters. Cloud identity, data restoration, and production qualification remain roadmap work.
 
 Link to [project status](../project-status.md) whenever describing compatibility or availability. Avoid “exact clone of any cluster,” production-readiness claims, unverified cloud support, or claims that TTL guarantees deletion of all external data.
 

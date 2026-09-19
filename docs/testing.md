@@ -3,7 +3,7 @@
 | Suite | Runs against | Evidence | Does not prove |
 | --- | --- | --- | --- |
 | `make test` | Fake Kubernetes client / provider; actual lifecycle code | Ordering, UID ownership, expiry, recovery, error redaction, cleanup boundaries | API admission or real vCluster behavior |
-| `make test-contract` | Actual pinned upstream chart and Helm SDK | Hash, JSON schema, rendered resource scope, labels, storage profile, exact image tags | Scheduling, guest connectivity, workload execution |
+| `make test-contract` | Actual pinned upstream chart and Helm SDK | Hash, JSON schema, rendered resource scope, labels, storage profile, exact image tags, runtime RBAC coverage without wildcards or escalation verbs | Scheduling, guest connectivity, workload execution |
 | `make test-integration` | Two local API servers/etcd plus real Helm SDK | CRD/CEL, immutable spec, lifecycle, installer and key-preserving upgrade, source capture, existing-target identity/apply/drift, exact-Secret RBAC and revocation | Running vCluster pods, a host scheduler, cloud or storage-controller behavior |
 
 The upstream render suite uses host capability versions 1.35, 1.36 and 1.37. Those versions are render inputs, not a certified support range. The API integration suite uses envtest 1.37.0.
@@ -26,7 +26,7 @@ Use a disposable cluster with explicit capacity and credentials. Record the exac
 
 The repository now has separate full-workflow and workload suites:
 
-- `hack/e2e-replication.sh`: embedded installer; manual plan/approval; real source Helm capture; Secret snapshot/follow; namespace maps and overrides; guest Deployment/Service/HTTP; operator restart; persistent control-plane replacement and tunnel recovery; refresh; viewer authorization; existing-target conflict and preservation; owned deletion; five-minute TTL and control-plane PVC cleanup. CI targets pinned 1.35.8 and 1.36.4 hosts.
+- `hack/e2e-replication.sh`: embedded installer; operator namespace isolation and rejected Role escalation/cluster-admin binding; manual plan/approval; real source Helm capture; Secret snapshot/follow; namespace maps and overrides; guest Deployment/Service/HTTP; operator restart; persistent control-plane replacement and tunnel recovery; refresh; viewer authorization; existing-target conflict and preservation; owned deletion; five-minute TTL and control-plane PVC cleanup. CI targets pinned 1.35.8 and 1.36.4 hosts.
 - `hack/e2e-workload.sh cert-manager|spark|trino|policy`: independently install the source toolset, capture it, reconstruct it in a persistent vCluster, execute a real functional probe, and verify cleanup. Pinned chart archives are vendored with upstream licenses and hashes.
 - `hack/release-artifacts.sh VERSION`: package Linux/macOS amd64/arm64 CLI binaries, operator chart and checksums. This does not publish a release.
 

@@ -1,25 +1,41 @@
 # Replicove roadmap
 
-The goal is a declarative workflow for disposable Kubernetes environments that reproduce selected tools and configuration. This is a development sequence, not a release-date promise. See [project status](docs/project-status.md) for the tested revision and [the full implementation plan](docs/design/cluster-replica-implementation-plan.md) for acceptance criteria.
+The portable alpha implements a declarative workflow for disposable Kubernetes environments that reproduce selected tools and configuration. See [project status](docs/project-status.md) for evidence and [the full design](docs/design/cluster-replica-implementation-plan.md) for longer-term acceptance criteria. This roadmap is not a release-date promise.
 
-| Area | On `main` | Portable alpha / remaining work |
-| --- | --- | --- |
-| Runtime | Pinned Helm provisioning, readiness, ownership, release deletion and TTL | Real lifecycle evidence in [#7](https://github.com/nimeshbuilds/replicove/pull/7); persistent runtime and existing-target workflow in [#8](https://github.com/nimeshbuilds/replicove/pull/8) |
-| Discovery and plan | Design | Grants, source capture, selection, dependency planning and approval in #8 |
-| Replication | Design | Selected Helm components, resources, overrides and refresh in #8 |
-| Secrets and access | Namespace administrator access | Selected secrets and scoped guest credentials/revocation in #8; cloud identity remains future work |
-| Cleanup | `HelmReleaseOnly` | Owned guest/runtime inventory and TTL scenarios in #8; external data and cloud resources remain future work |
-| Workloads | No live workload qualification | Small cert-manager, Spark, Trino and native admission-policy scenarios passed in #8 |
-| Compatibility | Pinned chart contract | Two live host Kubernetes minors in #8; wider capability/distribution and cloud qualification pending |
-| Public releases | Source builds | Packaging in #8; public binaries/images, signing and release qualification pending |
+## Implemented portable alpha
 
-## Next milestones
+| Area | Available implementation |
+| --- | --- |
+| Runtime | Pinned standalone Helm provisioning, persistent or lab control plane, existing-target registration, readiness and UID ownership |
+| Discovery and plan | Administrator grants, bounded read-only capture, selected Helm provenance/resources, dependency order, mappings, overrides and manual approval |
+| Replication | Guest resource reconstruction, explicit refresh, drift reporting, preserved experiments and refusal to adopt foreign resources |
+| Secrets and access | Explicit snapshot/follow grants, expiring guest roles, exact-Secret reader permissions, revocation and reconnecting CLI tunnel |
+| Cleanup | Guest and host ownership inventory, finalizer-aware deletion, bound-volume checks and real TTL/PVC cleanup tests |
+| Workloads | Functional cert-manager, Spark Pi, Trino TPCH and native admission-policy scenarios |
+| Compatibility | Kubernetes 1.35.8/1.36.4 hosts with a 1.36.0 guest; chart rendering separately checks 1.35–1.37 |
+| Packaging and docs | Embedded operator chart, four CLI build targets, checksums, branding and a complete first-replica quickstart |
 
-1. Review and land the tested portable alpha with reproducible installation, scoped grants, and honest cleanup boundaries.
-2. Publish a usable alpha release and a verified operator image with the matching quickstart and evidence.
-3. Strengthen version maintenance, retained compatibility profiles, image provenance, and upgrade/recovery coverage.
-4. Add cloud identity and data adapters with explicit permissions and disposable cloud-lab evidence.
+The original implementation checklists (#1–#5) are resolved with merged code and test evidence. The unfinished version-maintenance pipeline remains tracked in [#6](https://github.com/nimeshbuilds/replicove/issues/6).
 
-Kubernetes versions, available APIs, and required capabilities are the core compatibility axes. Distribution names add adapter context. Cloud labs are deferred; current validation uses disposable CI clusters.
+## Runtime version maintenance
+
+Before treating a profile as certified, finish immutable image-digest pins and provenance review, automated candidate schema/resource/RBAC comparison, and retained-profile upgrade/recovery tests. Existing live replicas must keep their resolved identity, guest version, TTL and desired values. Cleanup must remain possible without fetching a chart. The current chart checksum, contract tests, read-only upstream checker and live matrix are the foundation; [the maintenance guide](docs/maintaining-replicove.md) records the current manual process.
+
+## Public alpha release
+
+Publish installable binaries and a verified operator image with checksums, signed provenance and matching installation instructions. Source builds work today. Chart defaults are not evidence that a public container tag exists. Exercise installation and upgrade from the published artifacts before announcing a release.
+
+## Additional adapters
+
+- Cloud identities: IRSA, EKS Pod Identity, Azure/GCP workload identity with authenticated exchange and revocation tests.
+- Data: source content copying, CSI snapshot/restore and explicit external-resource cleanup contracts.
+- vCluster Platform: qualified provisioning and lifecycle integration; current requests block without falling back to Helm.
+- Operators: External Secrets backend recreation, lifecycle hooks, bootstrap cycles and additional behavior tests.
+
+## Production qualification
+
+Add stronger host admission/network isolation guidance and tests, per-user gateway delegation, larger encrypted capture storage, scale and recovery/chaos coverage, distribution-specific admission/storage adapters, and external design-partner validation.
+
+Kubernetes versions, served APIs and required capabilities are the core compatibility axes. EKS, AKS, GKE, OpenShift and RKE2 require separate evidence for their identity, storage, admission and networking behavior. Cloud labs are deferred; current validation uses disposable CI clusters.
 
 Have a concrete test-environment problem? [Describe it in Discussions](https://github.com/nimeshbuilds/replicove/discussions) or [propose a feature](https://github.com/nimeshbuilds/replicove/issues/new/choose).

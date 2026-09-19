@@ -26,7 +26,9 @@ subjects:
     name: {{ .Release.Name }}
     namespace: {{ .Release.Namespace }}
 ---
-# vCluster needs to manage workloads and RBAC inside this explicitly delegated lab.
+# The pinned vCluster Role plus installation, inventory, and controller rights.
+# No bind/escalate bypass: Kubernetes checks each Role/RoleBinding we create.
+# TestPinnedChartContractRBAC checks this against both upstream profiles.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -35,9 +37,48 @@ metadata:
   name: {{ .Release.Name }}-runtime
   namespace: {{ .Values.destinationNamespace }}
 rules:
-  - apiGroups: ["*"]
-    resources: ["*"]
-    verbs: ["*"]
+  - apiGroups: [""]
+    resources: [configmaps, secrets, services, endpoints, pods, pods/attach, pods/portforward, pods/exec, persistentvolumeclaims]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [pods/status, pods/ephemeralcontainers, pods/resize]
+    verbs: [update, patch]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [serviceaccounts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["", events.k8s.io]
+    resources: [events]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [daemonsets]
+    verbs: [get, list, delete]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, delete]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [clusterreplicas, replicaaccesses]
+    verbs: [get, list, watch, update, patch]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
+    verbs: [get, update, patch]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

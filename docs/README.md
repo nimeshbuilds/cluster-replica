@@ -1,13 +1,13 @@
 # Replicove documentation
 
-Replicove creates Kubernetes replica environments with vCluster. Start with the guide that matches the code you are using.
+Replicove creates Kubernetes replica environments with vCluster. Start with the first-replica walkthrough.
 
 | I want to… | Start here |
 | --- | --- |
 | Create my first replica in a disposable local cluster | [First replica quickstart (tested alpha)](../QUICKSTART.md) |
-| Run the prototype on `main` | [Runtime quickstart](runtime-quickstart.md) |
+| Configure grants, selections, existing targets, secrets and access | [Configuration guide](replicove-quickstart.md) |
 | Understand what is implemented and tested | [Project status](project-status.md) |
-| Try the portable alpha under development | [PR #8](https://github.com/nimeshbuilds/replicove/pull/8) and its [tested quickstart](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/replicove-quickstart.md) |
+| Maintain runtime versions and prepare releases | [Maintenance](maintaining-replicove.md) |
 | Understand the runtime architecture | [Architecture](architecture.md) |
 | Understand the planned replica workflow | [Design](design/vcluster-wrapper-design.md) and [implementation plan](design/cluster-replica-implementation-plan.md) |
 | Check compatibility expectations | [Compatibility policy](design/vcluster-compatibility-policy.md) and [upstream provenance](upstream.md) |
@@ -16,6 +16,6 @@ Replicove creates Kubernetes replica environments with vCluster. Start with the 
 | Ask a question or report a problem | [Support](../SUPPORT.md) |
 | Use the logo or describe the project | [Brand guide](brand/README.md) |
 
-Design documents describe the intended system, including features that are not implemented. The [status page](project-status.md) distinguishes the default branch from the portable alpha.
+Design documents describe the intended system, including features that are not implemented. The [status page](project-status.md) records implemented capabilities and their test evidence.
 
 [Back to Replicove](../README.md)

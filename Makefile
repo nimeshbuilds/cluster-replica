@@ -2,7 +2,7 @@ GO ?= go
 CONTROLLER_GEN_VERSION := v0.22.0
 CHART := $(CURDIR)/.cache/vcluster-0.37.1.tgz
 
-.PHONY: build generate test test-contract test-integration vet check
+.PHONY: build generate test test-contract test-integration test-e2e vet check
 
 build:
 	mkdir -p bin
@@ -26,5 +26,10 @@ test-integration:
 
 vet:
 	$(GO) vet ./...
+
+# Requires Docker. Creates/deletes only its own fresh kind cluster.
+test-e2e:
+	./hack/fetch-e2e-tools.sh
+	./hack/e2e.sh
 
 check: test test-contract test-integration vet build

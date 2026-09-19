@@ -27,3 +27,20 @@ jobs:
           go mod tidy
           git diff --exit-code
       - run: make check
+
+  live-vcluster:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Run the actual host and guest lifecycle
+        run: make test-e2e
+      - name: Retain sanitized lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: live-vcluster-evidence
+          path: .cache/e2e/run.*/artifacts/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7

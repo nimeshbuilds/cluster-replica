@@ -37,3 +37,4 @@ go.work.sum
 *.kubeconfig
 .env
 .DS_Store
+__pycache__/

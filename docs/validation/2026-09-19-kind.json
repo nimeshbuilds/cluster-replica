@@ -1,0 +1,146 @@
+{
+  "result": "passed",
+  "hostKubernetesVersion": "v1.36.4",
+  "guestKubernetesVersion": "v1.36.0",
+  "runtime": {
+    "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+    "chartVersion": "0.37.1",
+    "guestKubernetesVersion": "v1.36.0",
+    "profile": "vcluster-0.37.1-lab",
+    "releaseName": "cr-eb3547436bd77e9035704734"
+  },
+  "cleanupPolicy": "HelmReleaseOnly",
+  "checks": [
+    "real image build and service-account deployment",
+    "runtime readiness",
+    "guest API connection",
+    "guest Deployment and HTTP/DNS probe",
+    "operator restart preserves runtime and TTL",
+    "real TTL expiry and no resurrection",
+    "explicit deletion",
+    "failed installation and partial cleanup",
+    "unrelated host resource preservation"
+  ],
+  "resourcesNotInBaselineAfterTTL": [
+    {
+      "apiVersion": "replica.nimeshbuilds.dev/v1alpha1",
+      "kind": "ClusterReplica",
+      "name": "ttl",
+      "namespace": "replica-lab",
+      "uid": "104c5711-3655-49b4-8285-58fefe78d6da",
+      "deletionTimestamp": null,
+      "ownerReferences": [],
+      "release": null,
+      "replicaUID": null,
+      "phase": "Expired",
+      "conditions": [
+        {
+          "type": "RuntimeReady",
+          "status": "False",
+          "reason": "RuntimeRemoved"
+        }
+      ],
+      "containers": []
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Pod",
+      "name": "cluster-replica-847c67fc57-hfl7z",
+      "namespace": "replica-lab",
+      "uid": "05064fbd-6bed-40fe-a0d7-f7e27e930e84",
+      "deletionTimestamp": null,
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "ReplicaSet",
+          "name": "cluster-replica-847c67fc57",
+          "uid": "a3bf06a5-6d84-471b-b33e-1cdee8974b15"
+        }
+      ],
+      "release": null,
+      "replicaUID": null,
+      "phase": "Running",
+      "conditions": [
+        {
+          "type": "PodReadyToStartContainers",
+          "status": "True",
+          "reason": null
+        },
+        {
+          "type": "Initialized",
+          "status": "True",
+          "reason": null
+        },
+        {
+          "type": "Ready",
+          "status": "True",
+          "reason": null
+        },
+        {
+          "type": "ContainersReady",
+          "status": "True",
+          "reason": null
+        },
+        {
+          "type": "PodScheduled",
+          "status": "True",
+          "reason": null
+        }
+      ],
+      "containers": [
+        {
+          "name": "operator",
+          "ready": true,
+          "imageID": "docker.io/library/import-2026-09-19@sha256:66dcc0eaf72d581e4a8dc7f181e0e60e6a9117188e87d81abdc3add1c46192a3",
+          "restartCount": 0,
+          "waitingReason": null,
+          "terminatedReason": null,
+          "exitCode": null
+        }
+      ]
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "ReplicaSet",
+      "name": "cluster-replica-847c67fc57",
+      "namespace": "replica-lab",
+      "uid": "a3bf06a5-6d84-471b-b33e-1cdee8974b15",
+      "deletionTimestamp": null,
+      "ownerReferences": [
+        {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "cluster-replica",
+          "uid": "4c1f2184-8b9f-4c31-8478-b6cbdc8f8ce4"
+        }
+      ],
+      "release": null,
+      "replicaUID": null,
+      "phase": null,
+      "conditions": [],
+      "containers": []
+    }
+  ],
+  "inventoryNote": "Includes the retained ClusterReplica record and replacement operator pods as well as any guest leftovers; this is not yet an ownership classification.",
+  "fullDataCleanupVerified": false,
+  "evidence": {
+    "run": "https://github.com/nimeshbuilds/cluster-replica/actions/runs/35454520096",
+    "commit": "dd999a07c99ce6fcad175830229c5d50323f853b",
+    "date": "2026-09-19",
+    "kindVersion": "v0.33.0",
+    "hostNodeImage": "kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed"
+  },
+  "observedContainerImages": [
+    "docker.io/coredns/coredns@sha256:e7e6440cfd1e919280958f5b5a6ab2b184d385bba774c12ad2a9e1e4183f90d9",
+    "docker.io/library/import-2026-09-19@sha256:66dcc0eaf72d581e4a8dc7f181e0e60e6a9117188e87d81abdc3add1c46192a3",
+    "ghcr.io/loft-sh/kubernetes@sha256:003a79a8b919489b1cd2adbc091aac8de489b60732747c5f2b919b4b5166b246",
+    "ghcr.io/loft-sh/vcluster-oss@sha256:b1a8e69723c46b17083beb6d2d77d7b95417e9b2524eac8b7259ab00e229487e",
+    "registry.k8s.io/e2e-test-images/agnhost@sha256:a62f40481e05709988fe44e5035b2e0f553cd52bf0ae4e83614928255b00e8c1",
+    "registry.k8s.io/e2e-test-images/busybox@sha256:0ffbe172f8d245c83f285c6992b452c53d085661e03ddfd3b484332026e6c8bb"
+  ],
+  "ttlObservation": {
+    "createdAt": "2026-09-19T16:21:00Z",
+    "expiresAt": "2026-09-19T16:29:00Z",
+    "expiredTransitionAt": "2026-09-19T16:29:00Z"
+  }
+}

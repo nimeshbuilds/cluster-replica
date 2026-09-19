@@ -76,6 +76,10 @@ rules:
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas, replicaaccesses]
     verbs: [get, list, watch, update, patch]
+  # Cleanup requests access revocation before it removes the guest API.
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaaccesses]
+    verbs: [delete]
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
     verbs: [get, update, patch]

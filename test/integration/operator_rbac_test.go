@@ -10,6 +10,9 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -25,6 +28,30 @@ func assertOperatorAuthorization(t *testing.T, admin *rest.Config) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
+	t.Run("access revocation allowed but request creation forbidden", func(t *testing.T) {
+		adminAPI, err := dynamic.NewForConfig(admin)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opAPI, err := dynamic.NewForConfig(config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		gvr := schema.GroupVersionResource{Group: "replica.nimeshbuilds.dev", Version: "v1alpha1", Resource: "replicaaccesses"}
+		request := &unstructured.Unstructured{Object: map[string]any{
+			"apiVersion": "replica.nimeshbuilds.dev/v1alpha1", "kind": "ReplicaAccess",
+			"metadata": map[string]any{"name": "rbac-proof", "namespace": "replica-lab"},
+			"spec":     map[string]any{"replicaName": "fixture", "replicaUID": "fixture-uid", "role": "viewer"},
+		}}
+		_, err = opAPI.Resource(gvr).Namespace("replica-lab").Create(ctx, request, metav1.CreateOptions{})
+		mustForbid(t, err)
+		if _, err := adminAPI.Resource(gvr).Namespace("replica-lab").Create(ctx, request, metav1.CreateOptions{}); err != nil {
+			t.Fatal(err)
+		}
+		if err := opAPI.Resource(gvr).Namespace("replica-lab").Delete(ctx, request.GetName(), metav1.DeleteOptions{}); err != nil {
+			t.Fatalf("operator cannot revoke an access request during replica cleanup: %v", err)
+		}
+	})
 	t.Run("destination mutation allowed", func(t *testing.T) {
 		_, err := op.CoreV1().ConfigMaps("replica-lab").Create(ctx, &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "rbac-proof"}}, metav1.CreateOptions{})
 		if err != nil {

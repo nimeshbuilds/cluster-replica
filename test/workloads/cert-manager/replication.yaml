@@ -1,0 +1,11 @@
+include:
+  - groups: [cert-manager.io]
+helmReleases:
+  - namespace: source-dev
+    name: fixture
+checks:
+  - apiVersion: cert-manager.io/v1
+    kind: Certificate
+    namespace: source-dev
+    name: integration-certificate
+    condition: Ready

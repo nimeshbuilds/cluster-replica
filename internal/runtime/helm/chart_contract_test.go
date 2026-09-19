@@ -3,6 +3,7 @@ package helm
 import (
 	"context"
 	"io"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"log/slog"
 	"os"
 	"strings"
@@ -78,6 +79,54 @@ func TestPinnedChartContract(t *testing.T) {
 			}
 			if !strings.Contains(a.Manifest(), "ghcr.io/loft-sh/kubernetes:v1.36.0") {
 				t.Fatal("guest version drifted")
+			}
+		})
+	}
+}
+
+func TestPinnedChartContractPersistent(t *testing.T) {
+	path := os.Getenv("VCLUSTER_CHART")
+	if path == "" {
+		t.Skip("run make test-contract")
+	}
+	ch, err := LoadChart(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, version := range []string{"v1.35.0", "v1.36.0", "v1.37.0"} {
+		t.Run(version, func(t *testing.T) {
+			cfg := action.NewConfiguration(action.ConfigurationSetLogger(slog.NewTextHandler(io.Discard, nil)))
+			install := action.NewInstall(cfg)
+			install.DryRunStrategy = action.DryRunClient
+			install.ReleaseName = "persistent-test"
+			install.Namespace = "lab"
+			install.KubeVersion, _ = common.ParseKubeVersion(version)
+			rel, err := install.RunWithContext(context.Background(), ch, catalog.ValuesProfile("owner", catalog.PersistentProfile))
+			if err != nil {
+				t.Fatal(err)
+			}
+			a, _ := release.NewAccessor(rel)
+			objects, err := manifestObjects(a.Manifest(), "lab")
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, obj := range objects {
+				if obj.GetKind() != "StatefulSet" {
+					continue
+				}
+				found = true
+				policy, _, _ := unstructured.NestedString(obj.Object, "spec", "persistentVolumeClaimRetentionPolicy", "whenDeleted")
+				if policy != "Delete" {
+					t.Fatal("control-plane PVC is retained")
+				}
+				claims, _, _ := unstructured.NestedSlice(obj.Object, "spec", "volumeClaimTemplates")
+				if len(claims) != 1 {
+					t.Fatal("durable profile must have one control-plane PVC")
+				}
+			}
+			if !found {
+				t.Fatal("persistent profile did not render a StatefulSet")
 			}
 		})
 	}

@@ -2,17 +2,13 @@
 
 Replicove is experimental. There is no supported production release, published operator image, or public binary release yet.
 
-## Default branch
+## Portable alpha
 
-The implementation on `main` is a runtime prototype. It accepts a namespaced `ClusterReplica`, installs a pinned standalone vCluster through Helm, reports readiness, and removes the owned Helm release on deletion or TTL expiry. The [runtime quickstart](runtime-quickstart.md) matches this code.
+The operator and CLI on `main` support source grants, capture and planning, selected Helm and resource replication, namespace/value overrides, selected secrets, explicit refresh, scoped guest access, and owned cleanup. The CLI defaults to a persistent vCluster; existing vClusters can be registered through administrator-pinned credentials. Follow the [first replica quickstart](../QUICKSTART.md) for a complete local walkthrough.
 
-Source discovery, guest replication, complete owned-resource cleanup, and scoped access are not implemented on this branch. The example permissions are for trusted administrator-operated labs; `HelmReleaseOnly` is a limited cleanup contract.
+The installed operator uses explicit runtime resource/verb permissions. Chart contracts verify coverage of the pinned vCluster Role without wildcard permissions or escalation bypasses. Real API tests and the two live host workflows check source/destination authorization and reject wildcard Role escalation and cluster-admin bindings. Host API permissions do not establish isolation of shared workers or networks; see [Security](../SECURITY.md).
 
-## Portable alpha under development
-
-Follow the [first replica quickstart](../QUICKSTART.md) for a complete local walkthrough at the tested revision.
-
-[PR #7](https://github.com/nimeshbuilds/replicove/pull/7) adds a real vCluster lifecycle suite. [PR #8](https://github.com/nimeshbuilds/replicove/pull/8), stacked on that work, adds source grants, capture and planning, selected Helm and resource replication, overrides, secrets, refresh, scoped guest access, and owned cleanup.
+## Recorded behavior evidence
 
 At tested revision [`5ffeb42`](https://github.com/nimeshbuilds/replicove/commit/5ffeb4243f7e6588fb5a04afe906f1cc40c47624), **all eight jobs passed** in [this disposable-cluster CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35467194302):
 
@@ -28,19 +24,19 @@ At tested revision [`5ffeb42`](https://github.com/nimeshbuilds/replicove/commit/
 
 These scenarios use vCluster 0.37.1 and guest Kubernetes v1.36.0. Chart rendering for other host versions is not live compatibility evidence. The small workloads do not establish throughput, production isolation, large-cluster reliability, or cloud identity behavior.
 
-The [alpha quickstart](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/replicove-quickstart.md), [implementation ledger](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/IMPLEMENTATION_STATUS.md), and [workload details](https://github.com/nimeshbuilds/replicove/blob/5ffeb4243f7e6588fb5a04afe906f1cc40c47624/docs/workload-adapters.md) are pinned to that revision. The CI run above is newer than some historical evidence files in the branch.
+See the [configuration guide](replicove-quickstart.md), [implementation ledger](IMPLEMENTATION_STATUS.md), and [workload details](workload-adapters.md). The [CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) reports current integration results; the linked run above preserves the pre-integration eight-job baseline.
 
 ## Remaining release gates
 
-- Review and land the portable alpha, then publish installable binaries and a verified operator image.
+- Publish installable binaries and a verified operator image from the integrated alpha.
 - Qualify cloud identity adapters such as IRSA, cloud storage/data restoration, and external-resource cleanup in dedicated cloud labs.
 - Qualify vCluster Platform integration and additional Kubernetes/distribution combinations.
-- Complete release maintenance, scale, recovery, and production hardening in the [roadmap](../ROADMAP.md).
+- Finish image-digest locking and automated runtime candidate diffs in [#6](https://github.com/nimeshbuilds/replicove/issues/6), plus scale, recovery, and production hardening in the [roadmap](../ROADMAP.md).
 
 No one-click exact clone of an arbitrary cluster is promised. Users select components within administrator-granted access, and unsupported capabilities must be surfaced explicitly.
 
 ## Keeping this page current
 
-When a feature lands on `main`, move its entry from the alpha section and link verification for the merged revision. Publish support claims only with matching live evidence. Keep the README, quickstarts, security policy, and release notes in agreement.
+When capabilities change, update this page and link verification for the tested revision. Publish support claims only with matching live evidence. Keep the README, quickstarts, security policy, and release notes in agreement.
 
 [Back to documentation](README.md)

@@ -12,8 +12,8 @@ body:
     id: revision
     attributes:
       label: Replicove version or commit
-      description: Include the branch, since main and the portable alpha differ.
-      placeholder: "main at <commit>, or feat/replicove-platform at <commit>"
+      description: Include the exact source revision or released version.
+      placeholder: "main at <commit>"
     validations:
       required: true
   - type: textarea

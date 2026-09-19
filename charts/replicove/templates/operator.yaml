@@ -1,0 +1,88 @@
+{{- if eq .Release.Namespace .Values.destinationNamespace }}
+{{- fail "Install Replicove into a protected namespace separate from destinationNamespace" }}
+{{- end }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: replicove-state-key
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+immutable: true
+data:
+{{- $existing := lookup "v1" "Secret" .Release.Namespace "replicove-state-key" }}
+{{- if $existing }}
+  key: {{ index $existing.data "key" | quote }}
+{{- else }}
+  key: {{ randBytes 32 | quote }}
+{{- end }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: operator
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --watch-namespace={{ .Values.destinationNamespace }}
+            - --state-namespace={{ .Release.Namespace }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: probes
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: probes
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: probes
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: temporary
+              mountPath: /tmp
+      volumes:
+        - name: temporary
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi

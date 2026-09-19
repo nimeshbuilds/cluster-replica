@@ -1,0 +1,19 @@
+crds:
+  enabled: true
+  keep: false
+startupapicheck:
+  enabled: false
+global:
+  leaderElection:
+    namespace: source-dev
+resources:
+  requests: {cpu: 10m, memory: 64Mi}
+  limits: {memory: 192Mi}
+webhook:
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 128Mi}
+cainjector:
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 192Mi}

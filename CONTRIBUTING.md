@@ -1,10 +1,10 @@
 # Contributing to Replicove
 
-Replicove welcomes documentation, reproducible testing problems, design feedback, and code. Read the [project status](docs/project-status.md) and [roadmap](ROADMAP.md) first: the portable alpha is being developed in [PR #8](https://github.com/nimeshbuilds/replicove/pull/8), while `main` contains the runtime prototype.
+Replicove welcomes documentation, reproducible testing problems, design feedback, and code. Read the [project status](docs/project-status.md) and [roadmap](ROADMAP.md) first: `main` contains the experimental portable alpha; cloud adapters and production qualification remain roadmap work.
 
 ## Find a useful first contribution
 
-- Try the [first replica quickstart](QUICKSTART.md) or [runtime quickstart](docs/runtime-quickstart.md) and clarify a step that was difficult to follow.
+- Try the [first replica quickstart](QUICKSTART.md) and clarify a step that was difficult to follow.
 - Reproduce an [open issue](https://github.com/nimeshbuilds/replicove/issues) with sanitized manifests and exact versions.
 - Share a real operator/configuration workflow in [Discussions](https://github.com/nimeshbuilds/replicove/discussions).
 

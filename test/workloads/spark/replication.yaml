@@ -1,0 +1,12 @@
+include:
+  - groups: [sparkoperator.k8s.io]
+helmReleases:
+  - namespace: source-dev
+    name: fixture
+checks:
+  - apiVersion: sparkoperator.k8s.io/v1beta2
+    kind: SparkApplication
+    namespace: source-dev
+    name: spark-pi
+    field: status.applicationState.state
+    equals: COMPLETED

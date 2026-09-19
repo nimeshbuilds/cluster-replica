@@ -1,0 +1,20 @@
+server:
+  workers: 0
+  node:
+    environment: integration
+  config:
+    query:
+      maxMemory: 128MB
+coordinator:
+  jvm:
+    maxHeapSize: 512M
+  config:
+    memory:
+      heapHeadroomPerNode: 128MB
+    nodeScheduler:
+      includeCoordinator: true
+    query:
+      maxMemoryPerNode: 128MB
+  resources:
+    requests: {cpu: 100m, memory: 768Mi}
+    limits: {memory: 1Gi}

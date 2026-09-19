@@ -11,18 +11,19 @@ import (
 )
 
 const (
-	Profile      = "vcluster-0.37.1-lab"
-	ChartVersion = "0.37.1"
-	ChartURL     = "https://charts.loft.sh/charts/vcluster-0.37.1.tgz"
-	ChartSHA256  = "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969"
-	GuestVersion = "v1.36.0"
-	OwnerLabel   = "replica.nimeshbuilds.dev/uid"
+	Profile           = "vcluster-0.37.1-lab"
+	PersistentProfile = "vcluster-0.37.1-persistent"
+	ChartVersion      = "0.37.1"
+	ChartURL          = "https://charts.loft.sh/charts/vcluster-0.37.1.tgz"
+	ChartSHA256       = "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969"
+	GuestVersion      = "v1.36.0"
+	OwnerLabel        = "replica.nimeshbuilds.dev/uid"
 )
 
 var ttlPattern = regexp.MustCompile(`^([1-9][0-9]{0,3}m|[1-9][0-9]{0,2}h)$`)
 
 func Validate(spec v1alpha1.ClusterReplicaSpec) (time.Duration, error) {
-	if spec.Profile != Profile {
+	if spec.Profile != Profile && spec.Profile != PersistentProfile {
 		return 0, fmt.Errorf("unknown profile: use %s", Profile)
 	}
 	if spec.CleanupPolicy != "HelmReleaseOnly" {
@@ -36,10 +37,12 @@ func Validate(spec v1alpha1.ClusterReplicaSpec) (time.Duration, error) {
 }
 
 // The name is derived from the immutable Kubernetes UID, never from a reusable CR name.
-func Resolve(uid string) v1alpha1.RuntimeReference {
+func Resolve(uid string) v1alpha1.RuntimeReference { return ResolveProfile(uid, Profile) }
+
+func ResolveProfile(uid, profile string) v1alpha1.RuntimeReference {
 	hash := sha256.Sum256([]byte(uid))
 	return v1alpha1.RuntimeReference{
-		ReleaseName: fmt.Sprintf("cr-%x", hash[:12]), Profile: Profile,
+		ReleaseName: fmt.Sprintf("cr-%x", hash[:12]), Profile: profile,
 		ChartVersion: ChartVersion, ChartSHA256: ChartSHA256,
 		GuestKubernetesVersion: GuestVersion,
 	}
@@ -47,7 +50,10 @@ func Resolve(uid string) v1alpha1.RuntimeReference {
 
 // Values is the only chart-specific translation surface. The lab control plane
 // deliberately uses emptyDir and has no host-wide discovery permissions.
-func Values(uid string) map[string]any {
+func Values(uid string) map[string]any { return ValuesProfile(uid, Profile) }
+
+func ValuesProfile(uid, profile string) map[string]any {
+	persistent := profile == PersistentProfile
 	return map[string]any{
 		"rbac": map[string]any{
 			"clusterRole":               map[string]any{"enabled": false},
@@ -59,7 +65,7 @@ func Values(uid string) map[string]any {
 				"image":       map[string]any{"repository": "loft-sh/vcluster-oss", "tag": ChartVersion},
 				"labels":      map[string]any{OwnerLabel: uid},
 				"pods":        map[string]any{"labels": map[string]any{OwnerLabel: uid}},
-				"persistence": map[string]any{"volumeClaim": map[string]any{"enabled": false}},
+				"persistence": map[string]any{"volumeClaim": map[string]any{"enabled": persistent, "retentionPolicy": "Delete", "size": "1Gi"}},
 			},
 		},
 	}

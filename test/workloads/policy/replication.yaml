@@ -1,0 +1,6 @@
+include:
+  - groups: [admissionregistration.k8s.io]
+    names: [replicove-probe-label]
+helmReleases:
+  - namespace: source-dev
+    name: fixture

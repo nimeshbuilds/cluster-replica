@@ -24,3 +24,7 @@ These are development pins, not a certified compatibility claim. No upstream sou
 5. Mark a profile certified only after the required behavioral evidence exists. Existing requests never move to the new profile automatically.
 
 Automated dependency PRs help find releases. They must not automatically publish a new certified profile. Cleanup must continue without downloading an old chart.
+
+## Guest TLS routing
+
+The pinned [vCluster serving-certificate implementation](https://github.com/loft-sh/vcluster/blob/v0.37.1/pkg/server/cert/cert.go) signs `RELEASE.NAMESPACE`, not `RELEASE.NAMESPACE.svc`. Replicove routes to the Service's `.svc:443` address and verifies the signed `RELEASE.NAMESPACE` TLS name against the exported CA. The same verified name is retained in scoped guest kubeconfigs when the CLI opens a loopback tunnel. TLS verification is never disabled.

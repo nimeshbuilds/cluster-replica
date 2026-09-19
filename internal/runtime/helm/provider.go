@@ -37,7 +37,13 @@ func (p *Provider) configuration(namespace string) (*action.Configuration, error
 	if namespace == "" || namespace != p.Namespace {
 		return nil, runtimeprovider.ErrOwnership
 	}
-	config := rest.CopyConfig(p.Config)
+	return Configuration(p.Config, namespace)
+}
+
+// Configuration uses the caller's existing identity and suppresses upstream
+// manifest logging. Callers must authorize the namespace before using it.
+func Configuration(source *rest.Config, namespace string) (*action.Configuration, error) {
+	config := rest.CopyConfig(source)
 	config.Timeout = 30 * time.Second
 	// Upstream error logging may contain rendered Secret manifests. The controller
 	// emits classified status messages; admins inspect Helm directly for details.
@@ -46,12 +52,20 @@ func (p *Provider) configuration(namespace string) (*action.Configuration, error
 	return cfg, err
 }
 
+// NewInstall fixes SDK defaults explicitly; Helm 4 requires a wait strategy
+// even when callers do their own readiness polling.
+func NewInstall(cfg *action.Configuration) *action.Install {
+	install := action.NewInstall(cfg)
+	install.WaitStrategy = kube.HookOnlyStrategy
+	return install
+}
+
 func Owned(rel release.Accessor, req runtimeprovider.Request) bool {
 	return req.OwnerUID != "" && rel.Name() == req.Reference.ReleaseName && rel.Namespace() == req.Namespace && rel.Labels()[catalog.OwnerLabel] == req.OwnerUID
 }
 
 func (p *Provider) Ensure(ctx context.Context, req runtimeprovider.Request) (runtimeprovider.Observation, error) {
-	if req.Reference != catalog.Resolve(req.OwnerUID) {
+	if (req.Reference.Profile != catalog.Profile && req.Reference.Profile != catalog.PersistentProfile) || req.Reference != catalog.ResolveProfile(req.OwnerUID, req.Reference.Profile) {
 		return runtimeprovider.Observation{}, runtimeprovider.ErrProfileMismatch
 	}
 	cfg, err := p.configuration(req.Namespace)
@@ -64,14 +78,14 @@ func (p *Provider) Ensure(ctx context.Context, req runtimeprovider.Request) (run
 		if err != nil {
 			return runtimeprovider.Observation{}, err
 		}
-		install := action.NewInstall(cfg)
+		install := NewInstall(cfg)
 		install.ReleaseName, install.Namespace = req.Reference.ReleaseName, req.Namespace
 		install.CreateNamespace, install.TakeOwnership = false, false
 		install.DisableHooks, install.SkipCRDs = true, true
 		install.Timeout = time.Minute
 		install.WaitStrategy = kube.HookOnlyStrategy
 		install.Labels = map[string]string{catalog.OwnerLabel: req.OwnerUID}
-		_, err = install.RunWithContext(ctx, ch, catalog.Values(req.OwnerUID))
+		_, err = install.RunWithContext(ctx, ch, catalog.ValuesProfile(req.OwnerUID, req.Reference.Profile))
 		return runtimeprovider.Observation{}, err
 	}
 	if err != nil {
@@ -101,6 +115,22 @@ func (p *Provider) Ensure(ctx context.Context, req runtimeprovider.Request) (run
 }
 
 func (p *Provider) observe(ctx context.Context, req runtimeprovider.Request) (runtimeprovider.Observation, error) {
+	if req.Reference.Profile == catalog.PersistentProfile {
+		sets := &appsv1.StatefulSetList{}
+		if err := p.Client.List(ctx, sets, client.InNamespace(req.Namespace), client.MatchingLabels{catalog.OwnerLabel: req.OwnerUID}); err != nil {
+			return runtimeprovider.Observation{}, err
+		}
+		if len(sets.Items) != 1 {
+			return runtimeprovider.Observation{}, nil
+		}
+		s := sets.Items[0]
+		if s.Annotations["meta.helm.sh/release-name"] != req.Reference.ReleaseName || s.Annotations["meta.helm.sh/release-namespace"] != req.Namespace {
+			return runtimeprovider.Observation{}, runtimeprovider.ErrOwnership
+		}
+		ready := s.DeletionTimestamp.IsZero() && s.Spec.Replicas != nil && *s.Spec.Replicas > 0 && s.Status.ObservedGeneration >= s.Generation && s.Status.ReadyReplicas == *s.Spec.Replicas && s.Status.UpdatedReplicas == *s.Spec.Replicas
+		return runtimeprovider.Observation{Ready: ready}, nil
+	}
+
 	sets := &appsv1.DeploymentList{}
 	if err := p.Client.List(ctx, sets, client.InNamespace(req.Namespace), client.MatchingLabels{catalog.OwnerLabel: req.OwnerUID}); err != nil {
 		return runtimeprovider.Observation{}, err
@@ -226,7 +256,7 @@ func manifestObjects(manifest, namespace string) ([]*unstructured.Unstructured, 
 		}
 		// This fixed profile must never manage host cluster-scoped resources.
 		switch obj.GetAPIVersion() + "/" + obj.GetKind() {
-		case "v1/Service", "v1/Secret", "v1/ConfigMap", "v1/ServiceAccount", "v1/LimitRange", "v1/ResourceQuota", "apps/v1/Deployment", "rbac.authorization.k8s.io/v1/Role", "rbac.authorization.k8s.io/v1/RoleBinding", "policy/v1/PodDisruptionBudget", "networking.k8s.io/v1/NetworkPolicy":
+		case "v1/Service", "v1/Secret", "v1/ConfigMap", "v1/ServiceAccount", "v1/LimitRange", "v1/ResourceQuota", "apps/v1/Deployment", "apps/v1/StatefulSet", "rbac.authorization.k8s.io/v1/Role", "rbac.authorization.k8s.io/v1/RoleBinding", "policy/v1/PodDisruptionBudget", "networking.k8s.io/v1/NetworkPolicy":
 		default:
 			return nil, fmt.Errorf("%w: unexpected resource %s/%s", runtimeprovider.ErrProfileMismatch, obj.GetAPIVersion(), obj.GetKind())
 		}

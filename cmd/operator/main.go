@@ -7,10 +7,15 @@ import (
 	"time"
 
 	v1alpha1 "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
+	"github.com/nimeshbuilds/cluster-replica/internal/capture"
 	"github.com/nimeshbuilds/cluster-replica/internal/controller"
 	helmprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime/helm"
+	"github.com/nimeshbuilds/cluster-replica/internal/state"
+	"github.com/nimeshbuilds/cluster-replica/internal/workflow"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -21,7 +26,8 @@ import (
 )
 
 func main() {
-	var namespace, chartPath, probes string
+	var namespace, chartPath, probes, stateNamespace string
+	flag.StringVar(&stateNamespace, "state-namespace", "", "Administrator-only namespace for encrypted captures and access state")
 	flag.StringVar(&namespace, "watch-namespace", "", "Required: one administrator-granted lab namespace")
 	flag.StringVar(&chartPath, "chart-path", "", "Optional administrator-supplied archive; SHA-256 must match the pinned profile")
 	flag.StringVar(&probes, "health-probe-bind-address", ":8081", "Health probe address")
@@ -50,7 +56,21 @@ func main() {
 	uncached, err := client.New(config, client.Options{Scheme: scheme})
 	check(err)
 	provider := &helmprovider.Provider{Config: config, Client: uncached, Namespace: namespace, ChartPath: chartPath}
-	check((&controller.Reconciler{Client: mgr.GetClient(), Provider: provider, Namespace: namespace}).SetupWithManager(mgr))
+	reconciler := &controller.Reconciler{Client: mgr.GetClient(), Provider: provider, Namespace: namespace}
+	if stateNamespace != "" {
+		if stateNamespace == namespace {
+			fmt.Fprintln(os.Stderr, "state namespace must be separate from the destination namespace")
+			os.Exit(2)
+		}
+		dyn, err := dynamic.NewForConfig(config)
+		check(err)
+		disc, err := discovery.NewDiscoveryClientForConfig(config)
+		check(err)
+		engine := &workflow.Engine{Client: uncached, Store: &state.Store{Client: uncached, Namespace: stateNamespace, MaxBytes: 716800}, Reader: &capture.Reader{Config: config, Dynamic: dyn, Discovery: disc}, Runtime: provider}
+		reconciler.Workflow = engine
+		check((&workflow.AccessReconciler{Engine: engine, Namespace: namespace}).SetupWithManager(mgr))
+	}
+	check(reconciler.SetupWithManager(mgr))
 	check(mgr.AddHealthzCheck("healthz", healthz.Ping))
 	check(mgr.AddReadyzCheck("readyz", healthz.Ping))
 	check(mgr.Start(ctrl.SetupSignalHandler()))

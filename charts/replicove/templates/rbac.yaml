@@ -1,0 +1,165 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Name }}-state
+  namespace: {{ .Release.Namespace }}
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Name }}-state
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-state
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}
+---
+# The pinned vCluster Role plus installation, inventory, and controller rights.
+# No bind/escalate bypass: Kubernetes checks each Role/RoleBinding we create.
+# TestPinnedChartContractRBAC checks this against both upstream profiles.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Name }}-runtime
+  namespace: {{ .Values.destinationNamespace }}
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, secrets, services, endpoints, pods, pods/attach, pods/portforward, pods/exec, persistentvolumeclaims]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [""]
+    resources: [pods/status, pods/ephemeralcontainers, pods/resize]
+    verbs: [update, patch]
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [serviceaccounts]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: ["", events.k8s.io]
+    resources: [events]
+    verbs: [get, list, watch, create, patch]
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list, watch, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [daemonsets]
+    verbs: [get, list, delete]
+  - apiGroups: [batch]
+    resources: [jobs, cronjobs]
+    verbs: [get, list, delete]
+  - apiGroups: [discovery.k8s.io]
+    resources: [endpointslices]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [coordination.k8s.io]
+    resources: [leases]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [rbac.authorization.k8s.io]
+    resources: [roles, rolebindings]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [clusterreplicas, replicaaccesses]
+    verbs: [get, list, watch, update, patch]
+  # Cleanup requests access revocation before it removes the guest API.
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaaccesses]
+    verbs: [delete]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
+    verbs: [get, update, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Name }}-runtime
+  namespace: {{ .Values.destinationNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Release.Name }}-runtime
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Namespace }}-{{ .Release.Name }}-reader
+rules:
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicagrants]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [namespaces]
+    resourceNames: [kube-system]
+    verbs: [get]
+  - apiGroups: [""]
+    resources: [persistentvolumes]
+    verbs: [get]
+  {{- with .Values.clusterReadRules }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ .Release.Namespace }}-{{ .Release.Name }}-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}-{{ .Release.Name }}-reader
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}
+{{- range .Values.sources }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
+  namespace: {{ .namespace }}
+rules:
+  {{- toYaml .rules | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
+  namespace: {{ .namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
+subjects:
+  - kind: ServiceAccount
+    name: {{ $.Release.Name }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}

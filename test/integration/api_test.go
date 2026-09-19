@@ -3,16 +3,27 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"helm.sh/helm/v4/pkg/action"
+	chartloader "helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/kube"
+	"io"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	kYaml "k8s.io/apimachinery/pkg/util/yaml"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
+	"strings"
 	"testing"
 	"time"
 
 	v1alpha1 "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
+	"github.com/nimeshbuilds/cluster-replica/internal/capture"
 	"github.com/nimeshbuilds/cluster-replica/internal/catalog"
 	"github.com/nimeshbuilds/cluster-replica/internal/controller"
+	"github.com/nimeshbuilds/cluster-replica/internal/policy"
 	runtimeprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime"
 	helmprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime/helm"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
@@ -21,9 +32,12 @@ import (
 	"helm.sh/helm/v4/pkg/storage/driver"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -238,4 +252,155 @@ func TestAPIServerContract(t *testing.T) {
 			t.Fatalf("history not purged after manifest absence: %v", err)
 		}
 	})
+}
+
+func TestOperatorInstallationChart(t *testing.T) {
+	environment := &envtest.Environment{}
+	config, err := environment.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer environment.Stop()
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	c, err := client.New(config, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, name := range []string{"replicove-system", "replica-lab", "source-dev"} {
+		if err := c.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	chartSource := os.Getenv("REPLICOVE_OPERATOR_CHART")
+	if chartSource == "" {
+		chartSource = filepath.Join("..", "..", "charts", "replicove")
+	}
+	ch, err := chartloader.Load(chartSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := helmprovider.Configuration(config, "replicove-system")
+	if err != nil {
+		t.Fatal(err)
+	}
+	install := helmprovider.NewInstall(cfg)
+	install.ReleaseName = "replicove"
+	install.Namespace = "replicove-system"
+	install.Timeout = 30 * time.Second
+	values := map[string]any{"image": map[string]any{"repository": "test", "tag": "test"}, "sources": []any{map[string]any{"namespace": "source-dev", "rules": []any{map[string]any{"apiGroups": []any{""}, "resources": []any{"configmaps"}, "verbs": []any{"get", "list"}}}}}}
+	if _, err := install.RunWithContext(ctx, ch, values); err != nil {
+		t.Fatal(err)
+	}
+	key := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: "replicove-system", Name: "replicove-state-key"}, key); err != nil {
+		t.Fatal(err)
+	}
+	if len(key.Data["key"]) != 32 || key.Immutable == nil || !*key.Immutable {
+		t.Fatal("state key is not immutable AES-256 material")
+	}
+	originalKey := append([]byte{}, key.Data["key"]...)
+	originalKeyUID := key.UID
+	upgrade := action.NewUpgrade(cfg)
+	upgrade.Namespace = "replicove-system"
+	upgrade.WaitStrategy = kube.HookOnlyStrategy
+	upgrade.Timeout = 30 * time.Second
+	if _, err := upgrade.RunWithContext(ctx, "replicove", ch, values); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(key), key); err != nil {
+		t.Fatal(err)
+	}
+	if key.UID != originalKeyUID || !bytes.Equal(key.Data["key"], originalKey) {
+		t.Fatal("operator upgrade replaced the encryption key")
+	}
+	assertOperatorAuthorization(t, config)
+	// Real Helm storage often has nil Config when users accepted chart defaults.
+	// An override must still work and must never mutate the source release.
+	sourceChart, err := chartloader.Load(filepath.Join("..", "e2e", "chart"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceCfg, err := helmprovider.Configuration(config, "source-dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed := helmprovider.NewInstall(sourceCfg)
+	seed.ReleaseName = "fixture"
+	seed.Namespace = "source-dev"
+	if _, err := seed.RunWithContext(ctx, sourceChart, map[string]any{}); err != nil {
+		t.Fatal(err)
+	}
+	source := &corev1.ConfigMap{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: "source-dev", Name: "chart-settings"}, source); err != nil {
+		t.Fatal(err)
+	}
+	sourceRV := source.ResourceVersion
+	dyn, err := dynamic.NewForConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	disc, err := discovery.NewDiscoveryClientForConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := &capture.Reader{Config: config, Dynamic: dyn, Discovery: disc}
+	request := &v1alpha1.ClusterReplica{Spec: v1alpha1.ClusterReplicaSpec{Replication: &v1alpha1.ReplicationSpec{NamespaceMap: map[string]string{"source-dev": "integration"}, HelmReleases: []v1alpha1.NamespacedName{{Namespace: "source-dev", Name: "fixture"}}, HelmOverrides: []v1alpha1.HelmOverride{{NamespacedName: v1alpha1.NamespacedName{Namespace: "source-dev", Name: "fixture"}, Values: apiextensionsv1.JSON{Raw: []byte(`{"message":"guest-chart"}`)}}}}}}
+	grant := &v1alpha1.ReplicaGrant{Spec: v1alpha1.ReplicaGrantSpec{Resources: []v1alpha1.ResourceRule{{Kind: "ConfigMap"}}, HelmReleases: []v1alpha1.NamespacedName{{Namespace: "source-dev", Name: "fixture"}}}}
+	plan, err := reader.Capture(ctx, request, grant, policy.Resolution{Namespaces: []string{"source-dev"}, MaxObjects: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Packages) != 1 || len(plan.Objects) != 1 || plan.Objects[0].Namespace != "integration" || plan.Objects[0].Desired["data"].(map[string]any)["message"] != "guest-chart" {
+		t.Fatal("captured chart defaults/override or namespace mapping is incorrect")
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(source), source); err != nil {
+		t.Fatal(err)
+	}
+	if source.ResourceVersion != sourceRV || source.Data["message"] != "source-chart" {
+		t.Fatal("capture modified the source")
+	}
+
+	fixture, err := os.ReadFile(filepath.Join("..", "e2e", "source.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := kYaml.NewYAMLOrJSONDecoder(strings.NewReader(string(fixture)), 4096)
+	for {
+		obj := &unstructured.Unstructured{}
+		err := decoder.Decode(obj)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := c.Create(ctx, obj); err != nil {
+			t.Fatal(err)
+		}
+	}
+	selection, err := os.ReadFile(filepath.Join("..", "e2e", "replication.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Spec.Replication = &v1alpha1.ReplicationSpec{}
+	if err := yaml.UnmarshalStrict(selection, request.Spec.Replication); err != nil {
+		t.Fatal(err)
+	}
+	grantFixture, err := os.ReadFile(filepath.Join("..", "e2e", "grant.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.UnmarshalStrict(grantFixture, grant); err != nil {
+		t.Fatal(err)
+	}
+	plan, err = reader.Capture(ctx, request, grant, policy.Resolution{Namespaces: []string{"source-dev"}, MaxObjects: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Objects) != 6 {
+		t.Fatalf("full fixture has %d objects", len(plan.Objects))
+	}
+
 }

@@ -1,0 +1,19 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: local-selfsigned
+  namespace: source-dev
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: integration-certificate
+  namespace: source-dev
+spec:
+  secretName: integration-certificate
+  dnsNames: [replicove.test]
+  issuerRef:
+    name: local-selfsigned
+    kind: Issuer

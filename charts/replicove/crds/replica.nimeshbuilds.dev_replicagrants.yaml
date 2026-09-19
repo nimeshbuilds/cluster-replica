@@ -1,0 +1,217 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: replicagrants.replica.nimeshbuilds.dev
+spec:
+  group: replica.nimeshbuilds.dev
+  names:
+    kind: ReplicaGrant
+    listKind: ReplicaGrantList
+    plural: replicagrants
+    singular: replicagrant
+  scope: Cluster
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ReplicaGrant is administered at cluster scope. Destination users must not
+          receive write access to grants or to the operator's protected state namespace.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              accessRoles:
+                items:
+                  type: string
+                type: array
+              accessSubjects:
+                description: Optional exact-Secret RBAC recipients for every access
+                  session under this grant.
+                items:
+                  description: |-
+                    AccessSubject is an administrator-approved reader of session credentials.
+                    It does not infer who originally created a request in the shared namespace.
+                  properties:
+                    kind:
+                      enum:
+                      - User
+                      - Group
+                      - ServiceAccount
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - kind
+                  - name
+                  type: object
+                maxItems: 32
+                type: array
+              allowEmptyVolumes:
+                type: boolean
+              clusterResources:
+                items:
+                  properties:
+                    group:
+                      description: Empty group means the core API. Wildcards must
+                        be explicitly granted.
+                      type: string
+                    kind:
+                      type: string
+                  required:
+                  - group
+                  - kind
+                  type: object
+                type: array
+              defaultProvider:
+                default: helm
+                enum:
+                - helm
+                - platform
+                type: string
+              existingTargets:
+                items:
+                  properties:
+                    clusterUID:
+                      description: The administrator pins the expected kube-system
+                        namespace UID.
+                      type: string
+                    kubeconfigSecret:
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    name:
+                      type: string
+                  required:
+                  - clusterUID
+                  - kubeconfigSecret
+                  - name
+                  type: object
+                type: array
+              helmReleases:
+                description: Helm release storage contains sensitive values and embedded
+                  templates.
+                items:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
+                type: array
+              maxAccessSeconds:
+                default: 900
+                format: int64
+                maximum: 3600
+                minimum: 600
+                type: integer
+              maxCaptureBytes:
+                default: 524288
+                format: int32
+                maximum: 716800
+                minimum: 1024
+                type: integer
+              maxObjects:
+                default: 500
+                format: int32
+                maximum: 2000
+                minimum: 1
+                type: integer
+              maxTTL:
+                default: 24h
+                type: string
+              platform:
+                properties:
+                  namespace:
+                    type: string
+                  project:
+                    type: string
+                  template:
+                    type: string
+                  templateVersion:
+                    type: string
+                required:
+                - namespace
+                - project
+                - template
+                - templateVersion
+                type: object
+              resources:
+                description: Rules allow namespaced desired-state reads; credentials
+                  have separate grants.
+                items:
+                  properties:
+                    group:
+                      description: Empty group means the core API. Wildcards must
+                        be explicitly granted.
+                      type: string
+                    kind:
+                      type: string
+                  required:
+                  - group
+                  - kind
+                  type: object
+                type: array
+              secrets:
+                description: Explicitly selected credential names. '*' is an administrator
+                  opt-in.
+                items:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
+                type: array
+              sourceNamespaces:
+                items:
+                  type: string
+                maxItems: 32
+                minItems: 1
+                type: array
+              targetNamespace:
+                type: string
+            required:
+            - resources
+            - sourceNamespaces
+            - targetNamespace
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true

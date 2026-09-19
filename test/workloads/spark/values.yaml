@@ -1,0 +1,12 @@
+webhook:
+  enable: false
+spark:
+  jobNamespaces: [source-dev]
+  serviceAccount:
+    name: spark
+controller:
+  resources:
+    # spark-submit starts a JVM inside the controller; upstream explicitly
+    # warns that small limits kill submissions before driver creation.
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 1Gi}

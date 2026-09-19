@@ -1,0 +1,184 @@
+{
+  "recordedAt": "2026-09-19",
+  "commit": "8123f9a29cb4de02d80ebc59fb5dd8cfcaf67526",
+  "run": "https://github.com/nimeshbuilds/cluster-replica/actions/runs/35466203137",
+  "conclusion": "success",
+  "scope": "Disposable kind CI; no cloud identity or external data qualification. Exact-Secret reader RBAC was added after this run and requires its own current-head CI.",
+  "replicaWorkflows": [
+    {
+      "host": "1.36.4",
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-7e72420516f979945b28c217",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "report": {
+        "result": "passed",
+        "scenarios": [
+          "embedded-installer",
+          "manual-plan",
+          "real-vcluster",
+          "source-helm-reconstruction",
+          "secret-snapshot-follow",
+          "namespace-mapping",
+          "overrides",
+          "guest-workload-service",
+          "restart",
+          "explicit-refresh",
+          "viewer-rbac",
+          "access-revocation",
+          "owned-cleanup",
+          "source-preservation",
+          "durable-control-plane-reschedule",
+          "full-workflow-ttl",
+          "control-plane-pvc-cleanup",
+          "existing-target-preservation",
+          "existing-target-conflict",
+          "tunnel-reconnect"
+        ]
+      },
+      "ttl": {
+        "createdAt": "2026-09-19T20:09:08Z",
+        "expiresAt": "2026-09-19T20:14:08Z",
+        "finalPhase": "Expired"
+      }
+    },
+    {
+      "host": "1.35.8",
+      "sourceKubernetes": "v1.35.8",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-91087f29b9ae1c28836b91cf",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "report": {
+        "result": "passed",
+        "scenarios": [
+          "embedded-installer",
+          "manual-plan",
+          "real-vcluster",
+          "source-helm-reconstruction",
+          "secret-snapshot-follow",
+          "namespace-mapping",
+          "overrides",
+          "guest-workload-service",
+          "restart",
+          "explicit-refresh",
+          "viewer-rbac",
+          "access-revocation",
+          "owned-cleanup",
+          "source-preservation",
+          "durable-control-plane-reschedule",
+          "full-workflow-ttl",
+          "control-plane-pvc-cleanup",
+          "existing-target-preservation",
+          "existing-target-conflict",
+          "tunnel-reconnect"
+        ]
+      },
+      "ttl": {
+        "createdAt": "2026-09-19T20:09:19Z",
+        "expiresAt": "2026-09-19T20:14:19Z",
+        "finalPhase": "Expired"
+      }
+    }
+  ],
+  "workloads": [
+    {
+      "name": "cert-manager",
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-97f007c1903dfe5c16d42ea1",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "report": {
+        "workload": "cert-manager",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "observedImages": [
+        "quay.io/jetstack/cert-manager-cainjector@sha256:30c8617ebb3b4a9054da555ee9c6389a7faa464fffe3c7679f80892a9cfbf213",
+        "quay.io/jetstack/cert-manager-controller@sha256:d4d576c7e6ed3cfe5730f5458fa096b7d8713368d2ccb7ff01b2951861483838",
+        "quay.io/jetstack/cert-manager-webhook@sha256:303a962e77acbed075716379ed8045de65a72fdd5514f9367f449a1f9a907aa7"
+      ]
+    },
+    {
+      "name": "spark",
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-9671c21db54335feefe61934",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "report": {
+        "workload": "spark",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "observedImages": [
+        "docker.io/apache/spark@sha256:94ad730f7510002d8a1615de269f27cdeca4d4eef51657384db3fa9246b5a4d8",
+        "ghcr.io/kubeflow/spark-operator/controller@sha256:57e146696e49ea1ef3cc199097dabff3d570d9638dc33155b9170293081c49c7"
+      ]
+    },
+    {
+      "name": "trino",
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-134edbb961ac0976ca9871e9",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "report": {
+        "workload": "trino",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "observedImages": [
+        "docker.io/trinodb/trino@sha256:1565e8cac299a32dd9177a4da2d748da4ceb9f1560a9c409d1d18fd72ea5253e"
+      ]
+    },
+    {
+      "name": "policy",
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-9a59ead78a5e478cb6812fa1",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "report": {
+        "workload": "policy",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "observedImages": []
+    }
+  ]
+}

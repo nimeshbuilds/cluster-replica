@@ -1,0 +1,75 @@
+{
+  "recordedAt": "2026-09-19",
+  "commit": "fa2889ce9f3d8949706c4f3b8f3d59b8666d1d04",
+  "run": "https://github.com/nimeshbuilds/cluster-replica/actions/runs/35465687281",
+  "note": "Individual workload jobs passed; the overall run also contains failed core/trino tests. This evidence does not certify later commits or production scale.",
+  "workloads": [
+    {
+      "name": "cert-manager",
+      "result": {
+        "workload": "cert-manager",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-4d92a1cc0a39dfb95d212924",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "observedImages": [
+        "quay.io/jetstack/cert-manager-cainjector@sha256:30c8617ebb3b4a9054da555ee9c6389a7faa464fffe3c7679f80892a9cfbf213",
+        "quay.io/jetstack/cert-manager-controller@sha256:d4d576c7e6ed3cfe5730f5458fa096b7d8713368d2ccb7ff01b2951861483838",
+        "quay.io/jetstack/cert-manager-webhook@sha256:303a962e77acbed075716379ed8045de65a72fdd5514f9367f449a1f9a907aa7"
+      ]
+    },
+    {
+      "name": "spark",
+      "result": {
+        "workload": "spark",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-407defd5b0bcbc79c4a4c06f",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "observedImages": [
+        "docker.io/apache/spark@sha256:94ad730f7510002d8a1615de269f27cdeca4d4eef51657384db3fa9246b5a4d8",
+        "ghcr.io/kubeflow/spark-operator/controller@sha256:57e146696e49ea1ef3cc199097dabff3d570d9638dc33155b9170293081c49c7"
+      ]
+    },
+    {
+      "name": "policy",
+      "result": {
+        "workload": "policy",
+        "result": "passed",
+        "sourceHelmCapture": true,
+        "guestExecution": true,
+        "ownedCleanup": true
+      },
+      "sourceKubernetes": "v1.36.4",
+      "guestKubernetes": "v1.36.0",
+      "runtime": {
+        "releaseName": "cr-48fbc4f7664472792f40f666",
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "observedImages": []
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+# Install into an administrator-only namespace, separate from destinationNamespace.
+image:
+  repository: ghcr.io/nimeshbuilds/replicove
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+destinationNamespace: replica-lab
+# Source RBAC is explicit; ReplicaGrant narrows which reads each request may use.
+sources: []
+# Example source:
+# - namespace: source-dev
+#   rules:
+#   - apiGroups: ["", "apps", "batch"]
+#     resources: ["configmaps", "secrets", "serviceaccounts", "services", "deployments", "statefulsets", "jobs"]
+#     verbs: ["get", "list"]
+# Optional read-only cluster resources, such as CRDs and ClusterRoles.
+clusterReadRules: []
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi

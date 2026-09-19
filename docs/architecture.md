@@ -1,41 +1,70 @@
-# Architecture
+# Replicove architecture
 
-ClusterReplica adds discovery, planning, component replication, access policy, and lifecycle management around vCluster. The first prototype implements only the standalone runtime and a limited lifecycle.
+Replicove is one Go operator plus a CLI. The core workflow depends on Kubernetes APIs and a pinned vCluster runtime; cloud identity, storage and distribution capabilities require separately qualified adapters.
 
 ```mermaid
-flowchart LR
-  CR[ClusterReplica CR] --> C[Lifecycle controller]
-  C --> R[Runtime provider interface]
-  R --> H[Helm adapter]
-  H --> V[vCluster]
-  K[Pinned compatibility catalog] --> H
-  C -. planned .-> D[Source discovery]
-  D -.-> P[Inspectable dependency plan]
-  P -.-> A[Component / identity / data adapters]
-  A -.-> V
-  C -. planned .-> I[Ownership inventory and full teardown]
+flowchart TD
+  U[Human / CI / agent] --> CLI[CLI or Kubernetes API]
+  CLI --> CR[ClusterReplica]
+  G[Administrator ReplicaGrant] --> A[Scope and policy checks]
+  CR --> A
+  A --> C[Read-only source capture]
+  C --> P[Dependencies, mappings and overrides]
+  P --> S[Encrypted plan and ownership inventory]
+  S --> M{Plan approval}
+  M --> R[Owned Helm runtime or pinned existing guest]
+  R --> V[vCluster API]
+  S --> W[Apply, verify, drift and refresh]
+  W --> V
+  CLI --> X[ReplicaAccess]
+  X --> T[Bounded guest token and role]
+  T --> V
+  CR --> D[TTL and deletion]
+  D --> S
+  D --> Q[Revoke access, remove owned additions, verify cleanup]
 ```
 
-## Implemented boundaries
+## Code boundaries
 
-- `api/v1alpha1`: a namespaced, deliberately small immutable request. Detailed product fields in the design documents are proposals, not silently ignored API features.
-- `internal/controller`: persist a finalizer and resolved runtime before installation; reconcile readiness, deletion, and a creation-time TTL. Never pass raw runtime errors into status.
-- `internal/runtime`: idempotent provider contract. It knows nothing about source discovery or any cloud distribution.
-- `internal/runtime/helm`: installation and observation, release ownership verification, chart-manifest cleanup with retained history until absence is verified. It uses the same authenticated Kubernetes REST configuration as the manager.
-- `internal/catalog`: exact chart URL/hash, guest version, and values translation. No `latest` selection, user-controlled download URL, or arbitrary Helm values.
+| Package | Responsibility |
+| --- | --- |
+| `api/v1alpha1` | Immutable ClusterReplica and ReplicaAccess requests; administrator ReplicaGrant |
+| `internal/controller` | Namespaced dispatch and retained legacy HelmReleaseOnly lifecycle |
+| `internal/policy` | Source, destination, credential, existing-target, TTL and size grants |
+| `internal/capture` | Bounded API reads and exact Helm revision reconstruction; no source writes |
+| `internal/planner` | Selectors, safe transformations, known references and deterministic order |
+| `internal/state` | Compressed AES-GCM captures, keyed plan revisions, durable intent and UID inventory |
+| `internal/catalog` | Exact upstream pins and version-specific values profiles |
+| `internal/runtime/helm` | Install, observe and remove a runtime while preserving Helm ownership/history |
+| `internal/target` | Data-only kubeconfigs, TLS validation and guest/host identity checks |
+| `internal/workflow` | Approval, apply, readiness, drift, refresh, secret follow, access and cleanup |
+| `cmd/replicove` | Embedded installation, request lifecycle, scoped credentials and local tunnel |
+| `charts/replicove` | Operator, immutable key and explicit source/destination RBAC |
 
-The operator watches one explicitly granted namespace and uses leader election there. The host namespace exists independently and is never owned/deleted by a request. Runtime Secrets are accessed directly through the Helm client, not through a cluster-wide Secret informer.
+The operator watches one destination namespace. The state namespace is separate from both destination and sources. Cross-namespace reads use an uncached client; there is no global Secret informer. The installer labels its own infrastructure so it cannot become a guest source dependency.
 
-## State and recovery
+## Authorization and ownership
 
-`Provisioning → RuntimeReady → Deleting → Expired` describes the ordinary lifecycle; `Rejected` and `Blocked` expose invalid intent or runtime failure. Kubernetes deletion uses a finalizer and removes the CR after cleanup rather than recording `Expired`.
+Kubernetes RBAC authenticates callers. Cluster administrators create grants; users who can create requests in a destination namespace share that namespace's granted options. The controller never reconstructs caller identity from user-editable annotations. Per-user gateway authorization remains a future interface.
 
-The Helm release name is derived from the CR UID. The resolved profile and expiry are persisted before the first external mutation. Reconciliation after a process restart keeps that identity. Failed and pending Helm installations are inspected without starting an overlapping installation or automatically taking ownership; deletion/expiry remains available.
+A grant's UID and resourceVersion are pinned in encrypted state. A grant change blocks new changes and access issuance; cleanup continues using protected ownership records. Existing targets additionally require a kubeconfig in the protected namespace and a pinned `kube-system` UID. The host cannot be selected as its own guest.
 
-The current cleanup contract covers chart manifest objects. It preserves Helm release history until they are absent, checks object ownership before uninstall, and blocks on retention policies or ownership conflicts. It deliberately does not equate release deletion with deletion of all guest data or generated credentials.
+An operation intent is persisted before a guest create. Completed operations record UIDs and random operation markers. Apply and cleanup reject reused names, foreign objects and changed ownership. An existing guest's runtime and preexisting namespaces are never adopted.
 
-## Next architectural addition
+## Capture and reconciliation
 
-Introduce a read-only capture and planner before adding host-to-guest mutations. A plan should identify source provenance, required APIs, installation order, overrides, conflicts, unsupported components, and expected ownership. Runtime providers stay independent: Helm standalone, existing guest, and vCluster Platform use different lifecycle ownership contracts.
+Capture is a sequence of bounded source reads, not an atomic cluster database snapshot. Helm charts are reconstructed from stored content and revision values. Rendered resources enter the same graph and ownership inventory as raw desired-state objects; they are not installed as guest Helm releases.
 
-See the [full product design](design/vcluster-wrapper-design.md), [implementation plan](design/cluster-replica-implementation-plan.md), and [compatibility policy](design/vcluster-compatibility-policy.md).
+Dependencies include known Kubernetes references, chart CRDs, captured controller readiness, and RBAC needed by controller workloads. Unknown application-specific references are not guessed. Lifecycle hooks, unadapted host/cloud capabilities and missing dependencies block a plan.
+
+A manual approval binds to the keyed plan revision. Runtime identity is persisted before installation. The persistent profile uses a StatefulSet and a fresh control-plane PVC; the lab profile uses a Deployment and emptyDir. Ordinary reconciliation verifies readiness and reports drift. Explicit refresh recaptures source state, applies changes to source-owned fields, and preserves unrelated added fields.
+
+## Access and cleanup
+
+ReplicaAccess creates a guest service account and a viewer, deployer or admin binding within the grant. Kubernetes TokenRequest issues a bounded token. The resulting private kubeconfig lives in an immutable host Secret; status contains only its reference and expiration. Optional administrator-configured `accessSubjects` receive per-session, exact-name Secret-get Roles and bindings, recorded in encrypted ownership state. Revocation removes these permissions before guest identities and credentials. Without configured subjects, administrators supply exact-name RBAC themselves. The CLI tunnel uses the caller's host authentication and retains the guest's verified TLS name.
+
+Cleanup persists its intent, revokes access, removes guest objects in reverse order, then removes the owned runtime. Host cleanup follows recorded ownerReference UIDs and tracks bound PersistentVolume identities. It requires supported Delete reclaim behavior and waits for deletion; it does not directly delete arbitrary PVs. State is removed last, after terminal status is persisted. Finalizers remain when verification cannot complete.
+
+## Remaining provider boundaries
+
+Configured vCluster Platform requests currently block with `PlatformQualificationRequired` and cannot silently fall back to Helm. Cloud identity exchange, CSI data restoration, external backend recreation and broader vendor qualification are not implemented or certified by the portable fixtures. See the [implementation ledger](IMPLEMENTATION_STATUS.md), [full plan](design/cluster-replica-implementation-plan.md) and [maintenance guide](maintaining-replicove.md).

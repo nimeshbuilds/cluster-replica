@@ -1,0 +1,15 @@
+image:
+  repository: cluster-replica
+  tag: e2e
+sources:
+  - namespace: source-dev
+    rules:
+      - apiGroups: [""]
+        resources: [configmaps, secrets, serviceaccounts, services, persistentvolumeclaims]
+        verbs: [get, list]
+      - apiGroups: [apps]
+        resources: [deployments]
+        verbs: [get, list]
+      - apiGroups: [rbac.authorization.k8s.io]
+        resources: [roles, rolebindings]
+        verbs: [get, list]

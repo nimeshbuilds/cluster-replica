@@ -63,6 +63,20 @@ func TestPinnedChartContractRBAC(t *testing.T) {
 			}
 			for _, profile := range []string{catalog.Profile, catalog.PersistentProfile} {
 				for _, obj := range renderRBACContract(t, upstream, version, "replica-lab", catalog.ValuesProfile("owner", profile)) {
+					resources := map[string]string{
+						"Secret": "secrets", "ConfigMap": "configmaps", "Service": "services", "ServiceAccount": "serviceaccounts",
+						"Deployment": "deployments", "StatefulSet": "statefulsets", "Role": "roles", "RoleBinding": "rolebindings",
+						"PodDisruptionBudget": "poddisruptionbudgets", "NetworkPolicy": "networkpolicies", "LimitRange": "limitranges", "ResourceQuota": "resourcequotas",
+					}
+					resource, ok := resources[obj.GetKind()]
+					if !ok {
+						t.Fatalf("unreviewed chart resource %s/%s", obj.GetAPIVersion(), obj.GetKind())
+					}
+					for _, verb := range []string{"get", "create", "update", "patch", "delete"} {
+						if !permits(granted, obj.GroupVersionKind().Group, resource, verb) {
+							t.Errorf("%s needs %s %s/%s for chart resource lifecycle", profile, verb, obj.GroupVersionKind().Group, resource)
+						}
+					}
 					if obj.GetKind() != "Role" {
 						continue
 					}

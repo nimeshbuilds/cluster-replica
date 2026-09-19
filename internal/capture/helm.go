@@ -48,6 +48,9 @@ func (r *Reader) chart(ctx context.Context, ref api.NamespacedName, spec *api.Re
 	if err != nil {
 		return nil, nil, failed("HelmReadFailed", "Cannot read the captured Helm revision values.")
 	}
+	if values == nil {
+		values = map[string]any{}
+	}
 	for _, override := range spec.HelmOverrides {
 		if override.Namespace == ref.Namespace && override.Name == ref.Name {
 			before, _ := json.Marshal(values)

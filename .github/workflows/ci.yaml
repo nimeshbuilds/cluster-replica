@@ -73,3 +73,30 @@ jobs:
           path: .cache/replication-e2e/run.*/artifacts/
           include-hidden-files: true
           retention-days: 7
+
+  workload-replication:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        workload: [cert-manager, spark, trino]
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: ./hack/fetch-e2e-tools.sh
+      - name: Replicate and exercise a real operator or data workload
+        env:
+          WORKLOAD: ${{ matrix.workload }}
+        run: ./hack/e2e-workload.sh "$WORKLOAD"
+      - name: Retain sanitized workload evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: workload-${{ matrix.workload }}
+          path: .cache/workload-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7

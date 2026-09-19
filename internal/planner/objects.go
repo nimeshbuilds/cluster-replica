@@ -148,8 +148,12 @@ func Transform(source *unstructured.Unstructured, spec *api.ReplicationSpec) (*u
 	}
 	switch obj.GetKind() {
 	case "Service":
+		headless, _, _ := unstructured.NestedString(obj.Object, "spec", "clusterIP")
 		for _, key := range []string{"clusterIP", "clusterIPs", "ipFamilies", "ipFamilyPolicy", "healthCheckNodePort"} {
 			unstructured.RemoveNestedField(obj.Object, "spec", key)
+		}
+		if headless == "None" {
+			_ = unstructured.SetNestedField(obj.Object, "None", "spec", "clusterIP")
 		}
 		ports, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "ports")
 		if ok {
@@ -182,6 +186,28 @@ func Transform(source *unstructured.Unstructured, spec *api.ReplicationSpec) (*u
 		if ok && spec.StorageClassMap[sc] != "" {
 			_ = unstructured.SetNestedField(obj.Object, spec.StorageClassMap[sc], "spec", "storageClassName")
 		}
+	case "StatefulSet":
+		claims, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "volumeClaimTemplates")
+		if ok && len(claims) > 0 {
+			if spec == nil || spec.Data != "EmptyVolumes" {
+				return nil, problem("DataModeRequired", "StatefulSet %s/%s creates PVCs and requires data: EmptyVolumes.", source.GetNamespace(), source.GetName())
+			}
+			for _, claim := range claims {
+				m, ok := claim.(map[string]any)
+				if !ok {
+					return nil, problem("InvalidObject", "StatefulSet claim template is invalid.")
+				}
+				for _, key := range []string{"volumeName", "dataSource", "dataSourceRef", "selector"} {
+					unstructured.RemoveNestedField(m, "spec", key)
+				}
+				sc, ok, _ := unstructured.NestedString(m, "spec", "storageClassName")
+				if ok && spec.StorageClassMap[sc] != "" {
+					_ = unstructured.SetNestedField(m, spec.StorageClassMap[sc], "spec", "storageClassName")
+				}
+			}
+			_ = unstructured.SetNestedSlice(obj.Object, claims, "spec", "volumeClaimTemplates")
+		}
+
 	case "Job":
 		unstructured.RemoveNestedField(obj.Object, "spec", "selector")
 		unstructured.RemoveNestedField(obj.Object, "spec", "manualSelector")

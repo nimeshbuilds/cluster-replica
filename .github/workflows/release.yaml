@@ -1,0 +1,30 @@
+name: Release artifacts
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Artifact version (for example v0.1.0-rc.1)
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: make check
+      - name: Build versioned CLI and chart artifacts
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./hack/release-artifacts.sh "$RELEASE_VERSION"
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: replicove-release
+          path: dist/
+          retention-days: 14

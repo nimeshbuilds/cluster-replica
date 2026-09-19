@@ -39,6 +39,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+var version = "dev"
+
 type cli struct{ Namespace, Kubeconfig, Context string }
 
 func (c *cli) clients() (client.Client, *rest.Config, error) {
@@ -67,7 +69,7 @@ func main() {
 }
 func command() *cobra.Command {
 	c := &cli{}
-	root := &cobra.Command{Use: "replicove", Short: "Your cluster's tools. A fresh place to test.", SilenceUsage: true, SilenceErrors: true}
+	root := &cobra.Command{Use: "replicove", Version: version, Short: "Your cluster's tools. A fresh place to test.", SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().StringVarP(&c.Namespace, "namespace", "n", "replica-lab", "Administrator-granted destination namespace")
 	root.PersistentFlags().StringVar(&c.Kubeconfig, "kubeconfig", "", "Host kubeconfig path")
 	root.PersistentFlags().StringVar(&c.Context, "context", "", "Host kubeconfig context")
@@ -196,6 +198,10 @@ func (c *cli) installCommand() *cobra.Command {
 		chart, err := loader.LoadFiles(files)
 		if err != nil {
 			return errors.New("embedded operator chart is invalid")
+		}
+		if version != "dev" {
+			chart.Metadata.Version = strings.TrimPrefix(version, "v")
+			chart.Metadata.AppVersion = strings.TrimPrefix(version, "v")
 		}
 		values := map[string]any{}
 		if valuesFile != "" {

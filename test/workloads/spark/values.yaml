@@ -1,0 +1,10 @@
+webhook:
+  enable: false
+spark:
+  jobNamespaces: [source-dev]
+  serviceAccount:
+    name: spark
+controller:
+  resources:
+    requests: {cpu: 10m, memory: 64Mi}
+    limits: {memory: 256Mi}

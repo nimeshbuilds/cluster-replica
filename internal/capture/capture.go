@@ -237,6 +237,34 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 			}
 		}
 	}
+	// Install matching RoleBindings before starting operator workloads. Otherwise
+	// readiness can wait forever for permissions that appear later in the plan.
+	bindings := map[string][]string{}
+	for id, c := range pool {
+		if c.object.Kind != "RoleBinding" && c.object.Kind != "ClusterRoleBinding" {
+			continue
+		}
+		subjects, _, _ := unstructured.NestedSlice(c.object.Desired, "subjects")
+		for _, s := range subjects {
+			if m, ok := s.(map[string]any); ok && m["kind"] == "ServiceAccount" {
+				name, _ := m["name"].(string)
+				ns, _ := m["namespace"].(string)
+				key := planner.ID("", "ServiceAccount", ns, name)
+				bindings[key] = append(bindings[key], id)
+			}
+		}
+	}
+	for id, c := range pool {
+		if c.object.Kind != "Deployment" && c.object.Kind != "StatefulSet" && c.object.Kind != "DaemonSet" && c.object.Kind != "Job" && c.object.Kind != "CronJob" {
+			continue
+		}
+		original := append([]string{}, c.object.Dependencies...)
+		for _, dep := range original {
+			c.object.Dependencies = append(c.object.Dependencies, bindings[dep]...)
+		}
+		pool[id] = c
+	}
+
 	// CRs must be ordered after their definitions and all captured operator workloads.
 	definitions := map[string]string{}
 	operators := []string{}

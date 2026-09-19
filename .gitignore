@@ -38,3 +38,5 @@ go.work.sum
 .env
 .DS_Store
 __pycache__/
+
+/dist/

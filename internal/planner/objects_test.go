@@ -75,3 +75,28 @@ func TestOverridesCannotAddHostPrivilegesOrOperationIdentity(t *testing.T) {
 		t.Fatal("source IP retained")
 	}
 }
+
+func TestStatefulStorageOptInAndHeadlessService(t *testing.T) {
+	service := fixture(t, `{"apiVersion":"v1","kind":"Service","metadata":{"name":"headless","namespace":"source"},"spec":{"clusterIP":"None","clusterIPs":["None"]}}`)
+	got, err := Transform(service, &api.ReplicationSpec{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ip, _, _ := unstructured.NestedString(got.Object, "spec", "clusterIP")
+	if ip != "None" {
+		t.Fatal("headless service semantics lost")
+	}
+	set := fixture(t, `{"apiVersion":"apps/v1","kind":"StatefulSet","metadata":{"name":"database","namespace":"source"},"spec":{"volumeClaimTemplates":[{"metadata":{"name":"data"},"spec":{"storageClassName":"production","dataSource":{"name":"source-snapshot"}}}]}}`)
+	if _, err := Transform(set, &api.ReplicationSpec{}); err == nil {
+		t.Fatal("StatefulSet provisioned ungranted storage")
+	}
+	got, err = Transform(set, &api.ReplicationSpec{Data: "EmptyVolumes", StorageClassMap: map[string]string{"production": "test"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims, _, _ := unstructured.NestedSlice(got.Object, "spec", "volumeClaimTemplates")
+	spec := claims[0].(map[string]any)["spec"].(map[string]any)
+	if spec["storageClassName"] != "test" || spec["dataSource"] != nil {
+		t.Fatal("claim mapping or fresh-volume contract failed")
+	}
+}

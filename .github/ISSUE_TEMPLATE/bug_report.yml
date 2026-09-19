@@ -1,0 +1,44 @@
+name: Bug report
+description: Report a reproducible problem with Replicove.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Replicove. For vulnerabilities, use [private reporting](https://github.com/nimeshbuilds/replicove/security/advisories/new).
+        Remove credentials, kubeconfigs, Secret data, and private cluster details from every field.
+  - type: input
+    id: revision
+    attributes:
+      label: Replicove version or commit
+      description: Include the branch, since main and the portable alpha differ.
+      placeholder: "main at <commit>, or feat/replicove-platform at <commit>"
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Host/guest Kubernetes versions, vCluster profile, installation method, and relevant operator versions.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Smallest reproduction
+      description: Steps and sanitized configuration that reproduce the problem in a disposable environment.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized error or status
+      description: Include relevant conditions or errors. Do not paste Secret manifests or kubeconfigs.
+      render: text

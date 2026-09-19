@@ -1,0 +1,40 @@
+name: Compatibility report
+description: Share evidence from a Kubernetes, vCluster, or operator combination.
+title: "[Compatibility]: "
+labels: [area/compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A report helps build evidence; it does not automatically certify support.
+        Use disposable environments and redact credentials, account identifiers, kubeconfigs, and Secret data.
+  - type: input
+    id: revision
+    attributes:
+      label: Replicove revision
+    validations:
+      required: true
+  - type: textarea
+    id: versions
+    attributes:
+      label: Exact versions and capabilities
+      description: Host and guest Kubernetes, vCluster profile, operator/chart version, and relevant storage or admission capabilities.
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Worked in the described scenario
+        - Failed in the described scenario
+        - Partially worked
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Reproduction and evidence
+      description: Include the operation tested, actual workload behavior, and what remained after cleanup. Attach only sanitized output.
+    validations:
+      required: true

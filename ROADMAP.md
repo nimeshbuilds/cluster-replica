@@ -1,26 +1,25 @@
-# Roadmap
+# Replicove roadmap
 
-This is a build sequence, not a release promise. [The full plan](docs/design/cluster-replica-implementation-plan.md) contains acceptance criteria and dependencies for all phases.
+The goal is a declarative workflow for disposable Kubernetes environments that reproduce selected tools and configuration. This is a development sequence, not a release-date promise. See [project status](docs/project-status.md) for the tested revision and [the full implementation plan](docs/design/cluster-replica-implementation-plan.md) for acceptance criteria.
 
-| Phase | Outcome | Status |
+| Area | On `main` | Portable alpha / remaining work |
 | --- | --- | --- |
-| 0. Evidence and compatibility baseline | Pin upstream contracts; establish a real host/guest test | First stateless kind/vCluster lifecycle passed; broader certification pending ([evidence](docs/validation.md)) |
-| 1. API and operator foundation | CRD, immutable requests, status, namespace grants | Minimal lab CRD/controller implemented; grants and production RBAC pending |
-| 2. Runtime and initial lifecycle | Provision/connect/expire; standalone, existing, Platform providers | Standalone Helm adapter implemented; full cleanup and other providers pending |
-| 3. Discovery and plan | Read selected source components, detect dependencies, produce an inspectable plan | Next |
-| 4. Replication engine | Install supported operators/configuration with overrides and verification | Planned |
-| 5. Workloads and identities | Spark/Trino scenarios, selected secrets and cloud identity mappings | Planned |
-| 6. Complete cleanup | Ownership inventory, guest teardown, storage/external-resource deletion evidence | Planned; required before promising fully ephemeral replicas |
-| 7. Access and agents | Short-lived, scoped human/CI/agent credentials | Planned |
-| 8. Cloud and distribution validation | Validate adapters on EKS, AKS, GKE, OpenShift, RKE2 as needed | Planned |
-| 9. Release maintenance | Candidate-to-certified pipeline, drift and upgrade testing | Pinned translator and chart contract tests started |
-| 10. Public release and operations | Installable releases, docs, diagnostics, support process | Planned |
+| Runtime | Pinned Helm provisioning, readiness, ownership, release deletion and TTL | Real lifecycle evidence in [#7](https://github.com/nimeshbuilds/replicove/pull/7); persistent runtime and existing-target workflow in [#8](https://github.com/nimeshbuilds/replicove/pull/8) |
+| Discovery and plan | Design | Grants, source capture, selection, dependency planning and approval in #8 |
+| Replication | Design | Selected Helm components, resources, overrides and refresh in #8 |
+| Secrets and access | Namespace administrator access | Selected secrets and scoped guest credentials/revocation in #8; cloud identity remains future work |
+| Cleanup | `HelmReleaseOnly` | Owned guest/runtime inventory and TTL scenarios in #8; external data and cloud resources remain future work |
+| Workloads | No live workload qualification | Small cert-manager, Spark, Trino and native admission-policy scenarios passed in #8 |
+| Compatibility | Pinned chart contract | Two live host Kubernetes minors in #8; wider capability/distribution and cloud qualification pending |
+| Public releases | Source builds | Packaging in #8; public binaries/images, signing and release qualification pending |
 
-## Immediate milestones
+## Next milestones
 
-1. Run a reproducible real-cluster demo: CR → reachable vCluster → small guest workload → deletion, with an inventory of every leftover. Do not call the cleanup contract complete until it is demonstrated.
-2. Add read-only host discovery and a reviewable plan for one explicitly selected Helm-installed component. Start with a fixture operator and then validate cert-manager as a real example.
-3. Apply that plan to the guest, verify behavior, and record ownership. Implement selection and value overrides before expanding adapters.
-4. Design the complete TTL teardown and least-privilege access contract before copying secrets or provisioning cloud identities.
+1. Review and land the tested portable alpha with reproducible installation, scoped grants, and honest cleanup boundaries.
+2. Publish a usable alpha release and a verified operator image with the matching quickstart and evidence.
+3. Strengthen version maintenance, retained compatibility profiles, image provenance, and upgrade/recovery coverage.
+4. Add cloud identity and data adapters with explicit permissions and disposable cloud-lab evidence.
 
-Kubernetes versions and capabilities are the core compatibility axes. EKS is a candidate for the first AWS identity adapter; the generic controller has no AWS dependency.
+Kubernetes versions, available APIs, and required capabilities are the core compatibility axes. Distribution names add adapter context. Cloud labs are deferred; current validation uses disposable CI clusters.
+
+Have a concrete test-environment problem? [Describe it in Discussions](https://github.com/nimeshbuilds/replicove/discussions) or [propose a feature](https://github.com/nimeshbuilds/replicove/issues/new/choose).

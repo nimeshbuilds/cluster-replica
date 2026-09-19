@@ -1,0 +1,31 @@
+name: Feature request
+description: Describe a cluster-testing problem Replicove should solve.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Check the [roadmap](https://github.com/nimeshbuilds/replicove/blob/main/ROADMAP.md) and open pull requests first. Exploratory questions belong in Discussions.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the integration test or developer workflow and what is difficult today.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired behavior
+      description: Describe the user-visible outcome, including selection, access, and cleanup expectations where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Existing tools or workarounds
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How could we verify it works?
+      description: Suggest a small, disposable test and any relevant Kubernetes/operator versions. Do not include private access details.

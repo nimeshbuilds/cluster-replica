@@ -10,13 +10,13 @@ The installed operator uses explicit runtime resource/verb permissions. Chart co
 
 ## Recorded behavior evidence
 
-At tested revision [`5ffeb42`](https://github.com/nimeshbuilds/replicove/commit/5ffeb4243f7e6588fb5a04afe906f1cc40c47624), **all eight jobs passed** in [this disposable-cluster CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35467194302):
+At integrated alpha revision [`c2c5ea3`](https://github.com/nimeshbuilds/replicove/commit/c2c5ea387c74964dd8f12c9c0d81a0c96c1c673c), **all eight jobs passed** in [this disposable-cluster CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195). Its file contents were merged unchanged into `main` as [`c5d4d62`](https://github.com/nimeshbuilds/replicove/commit/c5d4d627e5e16da22085305f591c9fea305cd236):
 
 | Evidence | Scope |
 | --- | --- |
 | Verification | Generated files, Go tests and race checks, chart contract checks, local API integration, vet, builds |
 | Original vCluster lifecycle | Actual Helm provisioning, a reachable guest, and teardown |
-| Core workflow, Kubernetes 1.35.8 and 1.36.4 hosts | Plan/approval, selected Helm resources and secrets, refresh, access and revocation, operator restart, persistent control-plane recovery, owned cleanup and TTL |
+| Core workflow, Kubernetes 1.35.8 and 1.36.4 hosts | Plan/approval, selected Helm resources and secrets, refresh, scoped operator permissions, rejected privilege escalation, access and revocation, operator restart, persistent control-plane recovery, owned cleanup and TTL |
 | cert-manager | Replicated operator issues a certificate and creates its TLS Secret |
 | Spark | Replicated Spark Operator completes a small Spark Pi job |
 | Trino | A single coordinator answers a TPCH query |
@@ -24,7 +24,7 @@ At tested revision [`5ffeb42`](https://github.com/nimeshbuilds/replicove/commit/
 
 These scenarios use vCluster 0.37.1 and guest Kubernetes v1.36.0. Chart rendering for other host versions is not live compatibility evidence. The small workloads do not establish throughput, production isolation, large-cluster reliability, or cloud identity behavior.
 
-See the [configuration guide](replicove-quickstart.md), [implementation ledger](IMPLEMENTATION_STATUS.md), and [workload details](workload-adapters.md). The [CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) reports current integration results; the linked run above preserves the pre-integration eight-job baseline.
+See the [configuration guide](replicove-quickstart.md), [implementation ledger](IMPLEMENTATION_STATUS.md), and [workload details](workload-adapters.md). The [CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes to `main`; the linked run above records the integrated alpha's behavior evidence.
 
 ## Remaining release gates
 

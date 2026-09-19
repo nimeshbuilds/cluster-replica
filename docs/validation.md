@@ -1,8 +1,14 @@
 # Validation record
 
-## Complete portable workflow
+## Integrated portable alpha
 
-[CI run 35466203137](https://github.com/nimeshbuilds/cluster-replica/actions/runs/35466203137) passed **all eight jobs** at commit `8123f9a`: verification, the original runtime lifecycle, both full-workflow host minors, and cert-manager/Spark/Trino/native-policy workloads. The [saved portable evidence](validation/2026-09-19-portable.json) records versions, runtime pins, TTL timestamps, scenarios and observed workload images.
+[CI run 35472630195](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195) passed **all eight jobs** at `c2c5ea3`. The same file contents were merged into `main` as `c5d4d62`. Both full host workflows verified explicit operator permissions, rejection of wildcard Role escalation and cluster-admin bindings, exact-Secret credential readers, access revocation, owned deletion, and a real five-minute TTL with control-plane PVC cleanup. The runtime lifecycle and all four functional workload suites also passed.
+
+The [first replica quickstart](../QUICKSTART.md) now builds from the normal `main` branch. This record preserves exact tested revisions for traceability; following the guide does not require a detached checkout. [Current main CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports subsequent runs.
+
+## Earlier complete portable workflow
+
+[CI run 35466203137](https://github.com/nimeshbuilds/replicove/actions/runs/35466203137) passed **all eight jobs** at commit `8123f9a`: verification, the original runtime lifecycle, both full-workflow host minors, and cert-manager/Spark/Trino/native-policy workloads. The [saved portable evidence](validation/2026-09-19-portable.json) records versions, runtime pins, TTL timestamps, scenarios and observed workload images.
 
 The full workflow passed on Kubernetes **1.35.8 and 1.36.4**, with a pinned vCluster 0.37.1 / Kubernetes 1.36.0 guest. It verified embedded installation, manual approval, source Helm reconstruction, Secret snapshot/follow, namespace maps/overrides, a guest workload and HTTP Service probe, operator restart, durable control-plane replacement, tunnel reconnection, explicit refresh, viewer RBAC, access revocation, owned cleanup, existing-target conflict/preservation, source preservation, and a real five-minute TTL with control-plane PVC removal.
 
@@ -15,7 +21,7 @@ The full workflow passed on Kubernetes **1.35.8 and 1.36.4**, with a pinned vClu
 
 These are small disposable-cluster integration checks. They do not certify production scale, cloud identity exchange, cloud storage erasure, external data restoration, Platform, or vendor-specific behavior. Later code changes must pass current-head CI.
 
-The optional exact-Secret credential-reader RBAC addition came after `8123f9a`. It passes local real-API authorization/revocation tests and is included in the next full-workflow CI gate; it is not retroactively attributed to this run. Local tests also cover Helm installation/key-preserving upgrade, exact-grant capture, target identity, stable status, preserved drift, and missing access-state recovery. Linux/macOS amd64/arm64 packaging was built and its archives/checksums inspected.
+The optional exact-Secret credential-reader RBAC addition came after `8123f9a` and passed the later integrated workflow recorded above; it is not retroactively attributed to this earlier run. Local tests also cover Helm installation/key-preserving upgrade, exact-grant capture, target identity, stable status, preserved drift, and missing access-state recovery. Linux/macOS amd64/arm64 packaging was built and its archives/checksums inspected.
 
 Earlier failed runs exposed installer wait-strategy, nil Helm values, infrastructure-capture, TLS name, test image and tunnel teardown problems. Those issues were corrected before the all-green run. The [earlier individual workload evidence](validation/2026-09-19-workloads.json) remains historical.
 

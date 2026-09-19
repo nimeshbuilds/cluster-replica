@@ -2,7 +2,7 @@
 
 Create a disposable Kubernetes cluster, install Replicove, and recreate a small application’s configuration and Helm component inside a vCluster. You will inspect the plan, connect to the replica, verify the copied resources, and remove the environment.
 
-> **Developer preview:** this guide pins alpha revision `0a52183`, including explicit runtime permissions and the full replication workflow. The [CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) runs it in disposable clusters. There is no published release image yet, so you build one locally.
+> **Developer preview:** this guide uses the complete portable alpha on `main`. There is no published release image yet, so you build one locally. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
 
 ## Before you start
 
@@ -13,14 +13,13 @@ Create a disposable Kubernetes cluster, install Replicove, and recreate a small 
 
 The tool downloader installs checksum-verified kind, kubectl, and vCluster binaries under this checkout’s `.cache`, without a system-wide installation. The demo uses a **new kind cluster and separate kubeconfig files**; it does not need access to your existing clusters or a paid cloud account. No Helm CLI or registry push is required.
 
-## 1. Get the tested code and build
+## 1. Get Replicove and build
 
 In **Terminal A**:
 
 ```bash
-git clone https://github.com/nimeshbuilds/replicove.git replicove-demo
+git clone --branch main https://github.com/nimeshbuilds/replicove.git replicove-demo
 cd replicove-demo
-git checkout --detach 0a5218350e95eaf1fc3f5f4573f37ac9c727ef56
 
 ./hack/fetch-e2e-tools.sh
 export PATH="$PWD/.cache/e2e-tools:$PATH"
@@ -29,7 +28,21 @@ docker info >/dev/null
 docker build --tag replicove:quickstart .
 ```
 
-The detached checkout is intentional: the guide’s commands and fixtures match a specific tested revision. The first build can take several minutes while dependencies download.
+You stay on the normal `main` branch. The first build can take several minutes while dependencies download. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
+
+<details>
+<summary>Already cloned the repository or followed the older guide?</summary>
+
+After cleaning up any previous demo using step 7, run these commands from your existing `replicove-demo` directory:
+
+```bash
+git switch main
+git pull --ff-only
+```
+
+This also returns an older detached checkout to `main`. Then rerun step 1 starting at `./hack/fetch-e2e-tools.sh` to rebuild the CLI and operator image together, and continue with step 2.
+
+</details>
 
 ## 2. Create the disposable host cluster
 
@@ -168,7 +181,7 @@ hk -n replicove-system logs deployment/replicove --tail=100
 
 | Symptom | Next check |
 | --- | --- |
-| `bin/replicove` or a fixture is missing | Confirm `git rev-parse HEAD` is the revision in step 1 and run `make build`. `main` does not yet contain the alpha CLI. |
+| `bin/replicove` or a fixture is missing | Run from the repository root. `git branch --show-current` should print `main`; follow the existing-checkout instructions in step 1 to update and rebuild. |
 | Docker is unreachable | Start your Docker engine, confirm `docker info`, and rerun the failed step. |
 | Operator `ImagePullBackOff` | Load `replicove:quickstart` into this guide’s kind cluster; the same tag must be passed to `install`. |
 | `AwaitingApproval` | Read `rk plan demo`, then approve that plan with `rk approve demo`. |
@@ -178,12 +191,12 @@ hk -n replicove-system logs deployment/replicove --tail=100
 | Credential output file already exists | Use a new output filename and update `gk` to point to it; the CLI does not overwrite files. |
 | Deletion is stuck | Check operator health and request conditions. Resolve the reported dependency; do not strip finalizers to conceal unfinished cleanup. |
 
-For a scripted verification instead of the interactive walkthrough, install Python 3 and run `./hack/e2e-replication.sh` after step 1. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running.
+For a scripted verification instead of the interactive walkthrough, install Python 3 and run `./hack/e2e-replication.sh` after step 1. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The [integrated alpha passed all eight CI checks](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
 
 ## Next steps
 
-- [Selection, secrets, access, existing targets, and cleanup details](https://github.com/nimeshbuilds/replicove/blob/0a5218350e95eaf1fc3f5f4573f37ac9c727ef56/docs/replicove-quickstart.md).
-- [cert-manager, Spark, Trino, and admission-policy examples](https://github.com/nimeshbuilds/replicove/blob/0a5218350e95eaf1fc3f5f4573f37ac9c727ef56/docs/workload-adapters.md).
+- [Selection, secrets, access, existing targets, and cleanup details](docs/replicove-quickstart.md).
+- [cert-manager, Spark, Trino, and admission-policy examples](docs/workload-adapters.md).
 - [Project status](docs/project-status.md), [support](SUPPORT.md), and [contributing](CONTRIBUTING.md).
 
 This walkthrough uses the existing tested source and fixtures. Cloud identity, source volume contents, and arbitrary external resources are outside its scope. See the upstream [kind guide](https://kind.sigs.k8s.io/docs/user/quick-start/) for the local host-cluster tooling.

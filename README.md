@@ -34,7 +34,7 @@ Useful scenarios include testing operator upgrades, reproducing configuration bu
 | Access | Short-lived viewer/deployer/admin credentials, exact-Secret reader permissions and a reconnecting CLI tunnel |
 | Lifecycle | UID-based guest/host inventory, access revocation, owned cleanup, deletion and TTL |
 
-The alpha’s [eight-job CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35467194302) passed on commit `5ffeb42`, including host Kubernetes 1.35.8 and 1.36.4, vCluster 0.37.1, and small cert-manager, Spark, Trino, and admission-policy scenarios. These are **functional test results**, not production-scale or cloud-platform certification. See [project status and evidence](docs/project-status.md).
+The integrated alpha’s [eight-job CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195) passed on commit `c2c5ea3`, including host Kubernetes 1.35.8 and 1.36.4, vCluster 0.37.1, and small cert-manager, Spark, Trino, and admission-policy scenarios. These are **functional test results**, not production-scale or cloud-platform certification. See [project status and evidence](docs/project-status.md).
 
 ## Quick start
 
@@ -42,7 +42,7 @@ The alpha’s [eight-job CI run](https://github.com/nimeshbuilds/replicove/actio
 
 The walkthrough takes you through building the tested alpha, creating a disposable kind cluster, installing Replicove, approving a replication plan, connecting to the guest, verifying copied configuration, and cleaning up. It uses complete sample files and an isolated kubeconfig; no cloud account or registry push is needed.
 
-The guide builds a specific source revision and uses disposable fixtures. The [configuration guide](docs/replicove-quickstart.md) covers existing targets, grants, secrets, and cleanup policies.
+The guide builds from `main` and uses disposable fixtures. The [configuration guide](docs/replicove-quickstart.md) covers existing targets, grants, secrets, and cleanup policies.
 
 The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 

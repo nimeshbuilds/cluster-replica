@@ -1,5 +1,7 @@
 # Replicove portable alpha
 
+For a complete first run, start with the [first replica quickstart](../QUICKSTART.md). This guide explains the configuration and permissions for adapting that workflow to your own test cluster.
+
 Replicove captures an administrator-granted toolset and reconstructs it in a vCluster. It records source provenance, dependencies, target ownership and cleanup progress. The product name and icon are documented in [brand research](brand/research.md).
 
 The supported workflow is portable Kubernetes desired state. Cloud identity exchange, cloud data copying, vCluster Platform provisioning, and broad operator certification are qualification work in progress. `platform` requests currently block with `PlatformQualificationRequired`; they never fall back to Helm. An existing vCluster can be selected using an administrator-provided, data-only kubeconfig pinned to its `kube-system` UID.

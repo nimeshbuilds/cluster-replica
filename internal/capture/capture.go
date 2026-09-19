@@ -201,7 +201,7 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 		}
 	}
 	for _, ref := range request.Spec.Replication.HelmReleases {
-		pkg, objects, err := r.chart(ctx, ref, request.Spec.Replication, version.GitVersion)
+		pkg, objects, err := r.chart(ctx, ref, request.Spec.Replication, scope.GuestVersion)
 		if err != nil {
 			return nil, err
 		}

@@ -15,5 +15,5 @@ clusterReadRules:
     resources: [clusterroles, clusterrolebindings]
     verbs: [get, list]
   - apiGroups: [admissionregistration.k8s.io]
-    resources: [mutatingwebhookconfigurations, validatingwebhookconfigurations]
+    resources: [mutatingwebhookconfigurations, validatingwebhookconfigurations, validatingadmissionpolicies, validatingadmissionpolicybindings]
     verbs: [get, list]

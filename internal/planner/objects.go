@@ -352,6 +352,21 @@ func Dependencies(obj *unstructured.Unstructured) []string {
 			}
 		}
 	}
+	if obj.GetKind() == "ValidatingAdmissionPolicyBinding" {
+		name, _, _ := unstructured.NestedString(obj.Object, "spec", "policyName")
+		add("admissionregistration.k8s.io", "ValidatingAdmissionPolicy", "", name)
+	}
+	if obj.GetKind() == "HorizontalPodAutoscaler" {
+		ref, _, _ := unstructured.NestedMap(obj.Object, "spec", "scaleTargetRef")
+		version, _ := ref["apiVersion"].(string)
+		kind, _ := ref["kind"].(string)
+		name, _ := ref["name"].(string)
+		gv, err := schema.ParseGroupVersion(version)
+		if err == nil {
+			add(gv.Group, kind, ns, name)
+		}
+	}
+
 	slices.Sort(deps)
 	return slices.Compact(deps)
 }

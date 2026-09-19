@@ -239,6 +239,9 @@ func (r *AccessReconciler) report(ctx context.Context, a *api.ReplicaAccess, pha
 		}
 	}
 	after := poll
+	if phase == "Revoking" {
+		after = time.Second
+	}
 	if phase == "Revoked" {
 		after = 0
 	}

@@ -7,6 +7,7 @@ case "$workload" in
  cert-manager) chart=cert-manager-v1.20.4.tgz ;;
  spark) chart=spark-operator-2.5.2.tgz ;;
  trino) chart=trino-1.42.2.tgz ;;
+ policy) chart=policy ;;
  *) exit 2 ;;
 esac
 export PATH="$PWD/.cache/e2e-tools:$PATH"
@@ -45,7 +46,9 @@ hk create namespace source-dev
 make build
 bin/replicove install --image cluster-replica:e2e --values test/workloads/operator-values.yaml
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
-go run ./test/e2e/seed ".cache/workload-charts/$chart" source-dev fixture "test/workloads/$workload/values.yaml"
+chart_path=".cache/workload-charts/$chart"
+if [[ "$workload" == policy ]];then chart_path=test/e2e/chart;fi
+go run ./test/e2e/seed "$chart_path" source-dev fixture "test/workloads/$workload/values.yaml"
 while IFS= read -r deployment;do hk -n source-dev rollout status "$deployment" --timeout=240s;done < <(hk -n source-dev get deployment -o name)
 if [[ -f "test/workloads/$workload/resources.yaml" ]];then hk apply -f "test/workloads/$workload/resources.yaml";fi
 case "$workload" in
@@ -60,6 +63,22 @@ tunnel_pid=$!
 for i in $(seq 1 180);do if [[ -f "$work/guest.kubeconfig" ]];then break;fi;sleep 1;done
 [[ -f "$work/guest.kubeconfig" ]]
 case "$workload" in
+ policy)
+  # Give the admission dispatcher one polling interval to observe the binding.
+  sleep 10
+  if gk -n source-dev create configmap policy-probe-denied --from-literal=mode=deny;then exit 1;fi
+  cat <<YAML | gk apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-probe-allowed
+  namespace: source-dev
+  labels:
+    replicove.test/allow: "true"
+data:
+  mode: allow
+YAML
+  ;;
  cert-manager)
   gk -n source-dev wait certificate/integration-certificate --for=condition=Ready --timeout=120s
   gk -n source-dev get secret integration-certificate -o json | python3 -c 'import json,sys;assert set(json.load(sys.stdin)["data"])>={"tls.crt","tls.key"}'

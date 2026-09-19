@@ -1,0 +1,26 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: replicove-probe-label
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: [v1]
+        operations: [CREATE]
+        resources: [configmaps]
+  matchConditions:
+    - name: probe-only
+      expression: object.metadata.name.startsWith('policy-probe-')
+  validations:
+    - expression: has(object.metadata.labels) && 'replicove.test/allow' in object.metadata.labels && object.metadata.labels['replicove.test/allow'] == 'true'
+      message: The policy probe requires the explicit test label.
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: replicove-probe-label
+spec:
+  policyName: replicove-probe-label
+  validationActions: [Deny]

@@ -35,6 +35,7 @@ func TestDataOnlyKubeconfig(t *testing.T) {
 		strings.Replace(fixture, "server: https://guest.example", "server: http://guest.example", 1),
 		strings.Replace(fixture, "certificate-authority-data: Y2E=", "certificate-authority-data: Y2E=\n    insecure-skip-tls-verify: true", 1),
 		strings.Replace(fixture, "token: test-only", "token: test-only\n    as: system:admin", 1),
+		strings.Replace(fixture, "token: test-only", "token: test-only\n    as-uid: other-uid", 1),
 		strings.Replace(fixture, "server: https://guest.example", "server: https://user:secret@guest.example", 1),
 	}
 	for i, data := range tests {

@@ -14,8 +14,13 @@ root.mkdir(parents=True, exist_ok=True)
 for name, (file, url, digest) in pins.items():
     path = root / file
     if not path.exists():
-        with urllib.request.urlopen(url, timeout=60) as response:
-            data = response.read(16 * 1024 * 1024 + 1)
+        vendored = Path(__file__).resolve().parents[1] / 'test/workloads/charts' / file
+        if vendored.exists():
+            data = vendored.read_bytes()
+        else:
+            request = urllib.request.Request(url, headers={'User-Agent': 'Replicove-Qualification/0.1'})
+            with urllib.request.urlopen(request, timeout=60) as response:
+                data = response.read(16 * 1024 * 1024 + 1)
         if len(data) > 16 * 1024 * 1024:
             raise SystemExit('Chart exceeds test download limit')
         if hashlib.sha256(data).hexdigest() != digest:

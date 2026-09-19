@@ -25,7 +25,7 @@ import (
 // chart reconstructs the exact stored chart and revision's user values. This
 // proves source provenance, not an upstream registry URL or signature. Helm is
 // used only as a renderer: objects enter the same UID-tracked plan as raw YAML.
-func (r *Reader) chart(ctx context.Context, ref api.NamespacedName, spec *api.ReplicationSpec, _ string) (*state.Package, []*unstructured.Unstructured, error) {
+func (r *Reader) chart(ctx context.Context, ref api.NamespacedName, spec *api.ReplicationSpec, guestVersion string) (*state.Package, []*unstructured.Unstructured, error) {
 	cfg, err := helmprovider.Configuration(r.Config, ref.Namespace)
 	if err != nil {
 		return nil, nil, failed("HelmReadFailed", "Cannot initialize granted Helm storage.")
@@ -81,7 +81,13 @@ func (r *Reader) chart(ctx context.Context, ref api.NamespacedName, spec *api.Re
 	render.Namespace = ref.Namespace
 	render.DryRunStrategy = action.DryRunClient
 	render.IncludeCRDs = true
-	render.KubeVersion, _ = common.ParseKubeVersion(catalog.GuestVersion)
+	if guestVersion == "" {
+		guestVersion = catalog.GuestVersion
+	}
+	render.KubeVersion, err = common.ParseKubeVersion(guestVersion)
+	if err != nil {
+		return nil, nil, failed("TargetVersionUnknown", "Cannot render against the target Kubernetes version.")
+	}
 	rendered, err := render.RunWithContext(ctx, ch, values)
 	if err != nil {
 		return nil, nil, failed("ChartRenderFailed", "Chart rendering failed; verify pinned guest version compatibility and explicit values.")

@@ -98,6 +98,13 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		}
 	}
 	if st.Plan == nil || obj.Annotations[RefreshAnnotation] != st.RefreshToken {
+		if st.Provider == "existing" {
+			conn, err := target.Connect(ctx, w.Client, st, "")
+			if err != nil {
+				return w.report(ctx, obj, "Connecting", err, false)
+			}
+			scope.GuestVersion = conn.Version
+		}
 		plan, err := w.Reader.Capture(ctx, obj, grant, scope)
 		if err != nil {
 			return w.report(ctx, obj, "Blocked", err, false)
@@ -329,7 +336,14 @@ func (w *Engine) report(ctx context.Context, obj *api.ClusterReplica, phase stri
 			return ctrl.Result{}, err
 		}
 	}
+	if !reflect.DeepEqual(before.Status, obj.Status) {
+		ctrl.LoggerFrom(ctx).Info("Replica condition", "phase", phase, "reason", reason, "message", message)
+	}
+
 	after := poll
+	if phase == "Deleting" || phase == "Refreshing" {
+		after = time.Second
+	}
 	if phase == "Expired" {
 		after = 0
 	}

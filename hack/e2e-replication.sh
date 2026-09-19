@@ -17,6 +17,7 @@ cleanup(){
  if [[ -n "$tunnel_pid" ]];then kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" 2>/dev/null || true;fi
  if [[ "$created" == true ]];then
   hk -n replicove-system logs deployment/replicove --tail=200 > "$work/artifacts/operator.log" 2>&1 || true
+  hk -n replica-lab get clusterreplica full -o jsonpath='{.status}' > "$work/artifacts/status.json" || true
   hk -n replica-lab get clusterreplicas,replicaaccesses -o json | python3 test/e2e/inventory.py > "$work/artifacts/requests.json" || true
   hk -n replica-lab get pods,services,secrets,persistentvolumeclaims,deployments -o json | python3 test/e2e/inventory.py > "$work/artifacts/host-inventory.json" || true
   kind delete cluster --name "$cluster" || true

@@ -6,8 +6,13 @@ import (
 	"context"
 	"errors"
 	chartloader "helm.sh/helm/v4/pkg/chart/loader"
+	"io"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	kYaml "k8s.io/apimachinery/pkg/util/yaml"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
+	"strings"
 	"testing"
 	"time"
 
@@ -332,6 +337,42 @@ func TestOperatorInstallationChart(t *testing.T) {
 	}
 	if source.ResourceVersion != sourceRV || source.Data["message"] != "source-chart" {
 		t.Fatal("capture modified the source")
+	}
+
+	fixture, err := os.ReadFile(filepath.Join("..", "e2e", "source.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoder := kYaml.NewYAMLOrJSONDecoder(strings.NewReader(string(fixture)), 4096)
+	for {
+		obj := &unstructured.Unstructured{}
+		err := decoder.Decode(obj)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := c.Create(ctx, obj); err != nil {
+			t.Fatal(err)
+		}
+	}
+	selection, err := os.ReadFile(filepath.Join("..", "e2e", "replication.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Spec.Replication = &v1alpha1.ReplicationSpec{}
+	if err := yaml.UnmarshalStrict(selection, request.Spec.Replication); err != nil {
+		t.Fatal(err)
+	}
+	grant.Spec.Resources = []v1alpha1.ResourceRule{{Kind: "ConfigMap"}, {Kind: "ServiceAccount"}, {Kind: "Service"}, {Group: "apps", Kind: "Deployment"}}
+	grant.Spec.Secrets = []v1alpha1.NamespacedName{{Namespace: "source-dev", Name: "fixture-password"}}
+	plan, err = reader.Capture(ctx, request, grant, policy.Resolution{Namespaces: []string{"source-dev"}, MaxObjects: 50})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Objects) != 6 {
+		t.Fatalf("full fixture has %d objects", len(plan.Objects))
 	}
 
 }

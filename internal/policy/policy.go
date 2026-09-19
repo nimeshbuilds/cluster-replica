@@ -19,11 +19,12 @@ func (e *Denied) Error() string        { return e.Detail }
 func deny(reason, detail string) error { return &Denied{reason, detail} }
 
 type Resolution struct {
-	Provider   string
-	Namespaces []string
-	MaxObjects int
-	MaxBytes   int
-	Existing   *api.ExistingTarget
+	GuestVersion string
+	Provider     string
+	Namespaces   []string
+	MaxObjects   int
+	MaxBytes     int
+	Existing     *api.ExistingTarget
 }
 
 func Resolve(grant *api.ReplicaGrant, obj *api.ClusterReplica, privateNamespace string) (Resolution, error) {

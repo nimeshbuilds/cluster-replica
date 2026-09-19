@@ -43,7 +43,7 @@ func Parse(data []byte) (*rest.Config, error) {
 		return nil, ErrUnsafe
 	}
 	for _, a := range raw.AuthInfos {
-		if a.Exec != nil || a.AuthProvider != nil || a.TokenFile != "" || a.ClientCertificate != "" || a.ClientKey != "" || a.Impersonate != "" || len(a.ImpersonateGroups) > 0 || len(a.ImpersonateUserExtra) > 0 || a.Username != "" || a.Password != "" {
+		if a.Exec != nil || a.AuthProvider != nil || a.TokenFile != "" || a.ClientCertificate != "" || a.ClientKey != "" || a.Impersonate != "" || a.ImpersonateUID != "" || len(a.ImpersonateGroups) > 0 || len(a.ImpersonateUserExtra) > 0 || a.Username != "" || a.Password != "" {
 			return nil, ErrUnsafe
 		}
 	}

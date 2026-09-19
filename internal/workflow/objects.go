@@ -187,6 +187,12 @@ func (w *Engine) deleteEntry(ctx context.Context, conn *target.Connection, st *s
 	if err != nil && !apierrors.IsNotFound(err) {
 		return false, failure("CleanupDeleteFailed", "Cannot delete an inventoried resource; finalizers and admission policy remain in effect.")
 	}
+	// Most leaf resources disappear immediately. Verify that before yielding,
+	// while still waiting for dependants/finalizers when deletion is asynchronous.
+	if _, err := client.Get(ctx, e.Name, metav1.GetOptions{}); apierrors.IsNotFound(err) {
+		e.Deleted = true
+		return true, w.Store.Save(ctx, st)
+	}
 	return false, nil
 }
 

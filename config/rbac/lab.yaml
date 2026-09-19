@@ -1,0 +1,37 @@
+# Bootstrap once as a host administrator. Use a disposable, trusted lab.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: replica-lab
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-replica
+  namespace: replica-lab
+---
+# Deliberately broad INSIDE the granted namespace for this prototype. This is
+# not a production multi-tenant role. No ClusterRoleBinding is installed.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cluster-replica
+  namespace: replica-lab
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cluster-replica
+  namespace: replica-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cluster-replica
+subjects:
+  - kind: ServiceAccount
+    name: cluster-replica
+    namespace: replica-lab

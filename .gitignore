@@ -30,3 +30,10 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Local builds, downloaded test dependencies and private connection material
+/bin/
+/.cache/
+*.kubeconfig
+.env
+.DS_Store

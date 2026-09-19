@@ -1,0 +1,42 @@
+# PROPOSED FULL API ONLY. Use ../../config/samples/replica.yaml for the implemented prototype.
+# Proposed API example. Requires an operator/CRD that has not been implemented.
+# API group and component identifiers are illustrative.
+apiVersion: replica.example.io/v1alpha1
+kind: ClusterReplica
+metadata:
+  name: integration
+  namespace: team-a-tests
+spec:
+  source:
+    cluster: host
+  vcluster:
+    provider: auto
+    versionPolicy: certified
+    kubernetesVersionPolicy: match-host
+  replication:
+    preset: all-replicable
+    secrets:
+      mode: copy
+      updates: snapshot
+    exclude:
+      components:
+        - helm:external-dns/external-dns
+  identity:
+    provider: auto
+    # Optional for selected workloads using AWS IRSA, with an authorized adapter:
+    # aws:
+    #   irsa:
+    #     roleStrategy: reuse-source
+    #     trustPolicy: reconcile
+  overrides:
+    helm:
+      - releaseRef:
+          namespace: cert-manager
+          name: cert-manager
+        values:
+          replicaCount: 1
+  lifecycle:
+    sourceUpdates: manual
+    targetDrift: report
+    ttl: 8h
+    deletionPolicy: DeleteOwned

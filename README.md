@@ -103,11 +103,14 @@ make generate         # regenerate DeepCopy code and the CRD
 make test             # unit tests with the race detector
 make test-contract    # download/hash-check and render the real pinned chart
 make test-integration # real local API server: CRD validation and lifecycle tests
+make test-e2e         # Docker: disposable kind host, real vCluster and guest workload
 make vet
 make build
 ```
 
-The integration suite uses envtest's local API server and etcd. It exercises CR lifecycle with a fake provider and installs the actual chart through the Helm SDK to verify resource creation, repeated observation, and cleanup recovery. It requires no Docker and does not run vCluster pods or guest workloads. A real host + guest end-to-end suite is the next validation milestone. See [testing](docs/testing.md) for the exact boundaries.
+The integration suite uses envtest's local API server and etcd. It exercises CR lifecycle with a fake provider and installs the actual chart through the Helm SDK to verify resource creation, repeated observation, and cleanup recovery. It requires no Docker and does not run vCluster pods or guest workloads.
+
+The separate end-to-end suite builds the operator container and installs it on its own disposable kind cluster. It exercises real vCluster installation, guest access and HTTP/DNS, operator restart, TTL, explicit deletion, and a failed installation. See the [validation record](docs/validation.md) for observed results and [testing](docs/testing.md) for exact boundaries and requirements.
 
 ## Build in public
 

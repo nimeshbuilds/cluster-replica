@@ -4,7 +4,7 @@ This is a build sequence, not a release promise. [The full plan](docs/design/clu
 
 | Phase | Outcome | Status |
 | --- | --- | --- |
-| 0. Evidence and compatibility baseline | Pin upstream contracts; establish a real host/guest test | Chart candidate pinned; live validation pending |
+| 0. Evidence and compatibility baseline | Pin upstream contracts; establish a real host/guest test | First stateless kind/vCluster lifecycle passed; broader certification pending ([evidence](docs/validation.md)) |
 | 1. API and operator foundation | CRD, immutable requests, status, namespace grants | Minimal lab CRD/controller implemented; grants and production RBAC pending |
 | 2. Runtime and initial lifecycle | Provision/connect/expire; standalone, existing, Platform providers | Standalone Helm adapter implemented; full cleanup and other providers pending |
 | 3. Discovery and plan | Read selected source components, detect dependencies, produce an inspectable plan | Next |

@@ -100,6 +100,7 @@ create_replica ttl 8m
 hk -n "$namespace" wait clusterreplica/ttl --for=condition=RuntimeReady --timeout=300s
 release=$(reference ttl)
 owner=$(hk -n "$namespace" get clusterreplica ttl -o jsonpath='{.metadata.uid}')
+deployment_uid=$(hk -n "$namespace" get deployment "$release" -o jsonpath='{.metadata.uid}')
 expires=$(hk -n "$namespace" get clusterreplica ttl -o jsonpath='{.status.expiresAt}')
 hk -n "$namespace" get clusterreplica ttl -o json > "$E2E_RESULTS/ttl-before.json"
 connect_guest "$release" create
@@ -107,6 +108,7 @@ inventory before-restart
 hk -n "$namespace" rollout restart deployment/cluster-replica
 hk -n "$namespace" rollout status deployment/cluster-replica --timeout=120s
 [[ "$(reference ttl)" == "$release" ]]
+[[ "$(hk -n "$namespace" get deployment "$release" -o jsonpath='{.metadata.uid}')" == "$deployment_uid" ]]
 [[ "$(hk -n "$namespace" get clusterreplica ttl -o jsonpath='{.status.expiresAt}')" == "$expires" ]]
 connect_guest "$release" check
 inventory before-expiry
@@ -122,7 +124,9 @@ assert datetime.datetime.now(datetime.timezone.utc) >= expiry, 'expired prematur
 PY
 assert_release_absent "$release" "$owner"
 inventory after-expiry
-# At least two reconcile periods must pass without recreating the release.
+# Trigger a fresh reconciliation of the retained record. Merely waiting would
+# not exercise this path because an Expired object stops periodic polling.
+hk -n "$namespace" annotate clusterreplica ttl e2e.nimeshbuilds.dev/after-expiry=yes
 sleep 35
 assert_release_absent "$release" "$owner"
 
@@ -152,6 +156,12 @@ hk -n "$namespace" wait clusterreplica/rejected-install --for=jsonpath='{.status
 failed_release=$(reference rejected-install)
 failed_owner=$(hk -n "$namespace" get clusterreplica rejected-install -o jsonpath='{.metadata.uid}')
 hk -n "$namespace" get clusterreplica rejected-install -o json > "$E2E_RESULTS/failed-install.json"
+# A generic Blocked phase alone could mean a download failure. Require an
+# actual failed Helm transaction and partial chart resources before deletion.
+[[ -n "$(hk -n "$namespace" get secret -l "owner=helm,name=$failed_release,status=failed" -o name)" ]]
+hk -n "$namespace" get service "$failed_release" >/dev/null
+[[ -z "$(hk -n "$namespace" get deployment -l "replica.nimeshbuilds.dev/uid=$failed_owner" -o name)" ]]
+inventory failed-install-before-delete
 hk -n "$namespace" delete clusterreplica rejected-install --timeout=180s
 assert_release_absent "$failed_release" "$failed_owner"
 hk -n "$namespace" get resourcequota block-vcluster-deployment >/dev/null

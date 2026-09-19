@@ -1,0 +1,24 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: source-dev-lab
+spec:
+  targetNamespace: replica-lab
+  sourceNamespaces: [source-dev]
+  resources:
+    - {group: "", kind: ConfigMap}
+    - {group: "", kind: ServiceAccount}
+    - {group: "", kind: Service}
+    - {group: "", kind: PersistentVolumeClaim}
+    - {group: apps, kind: Deployment}
+    - {group: rbac.authorization.k8s.io, kind: Role}
+    - {group: rbac.authorization.k8s.io, kind: RoleBinding}
+  secrets:
+    - {namespace: source-dev, name: fixture-password}
+  helmReleases:
+    - {namespace: source-dev, name: fixture}
+  maxTTL: 2h
+  maxCaptureBytes: 716800
+  allowEmptyVolumes: true
+  accessRoles: [viewer, deployer, admin]
+  maxAccessSeconds: 900

@@ -1,0 +1,19 @@
+namespaceMap:
+  source-dev: integration
+secrets: Follow
+helmReleases:
+  - namespace: source-dev
+    name: fixture
+helmOverrides:
+  - namespace: source-dev
+    name: fixture
+    values:
+      message: guest-chart
+patches:
+  - apiVersion: v1
+    kind: ConfigMap
+    namespace: source-dev
+    name: settings
+    patch:
+      data:
+        mode: guest

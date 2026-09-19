@@ -44,3 +44,32 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
           retention-days: 7
+
+  replica-workflow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        node:
+          - kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed
+          - kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6ed45afd09323c0
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: ./hack/fetch-e2e-tools.sh
+      - name: Exercise the complete portable replica workflow
+        run: ./hack/e2e-replication.sh
+        env:
+          REPLICOVE_KIND_IMAGE: ${{ matrix.node }}
+      - name: Retain sanitized replica evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: replica-workflow-${{ strategy.job-index }}
+          path: .cache/replication-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7

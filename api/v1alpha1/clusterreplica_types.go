@@ -2,7 +2,7 @@ package v1alpha1
 
 import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-// ClusterReplicaSpec is intentionally narrower than the proposed product API.
+// ClusterReplicaSpec describes one immutable, administrator-granted replica.
 // Create a new request to change its immutable runtime or lifetime.
 // +kubebuilder:validation:XValidation:rule="self == oldSelf",message="spec is immutable; create a new ClusterReplica"
 type ClusterReplicaSpec struct {
@@ -13,9 +13,16 @@ type ClusterReplicaSpec struct {
 	// +kubebuilder:validation:Pattern=`^([1-9][0-9]{0,3}m|[1-9][0-9]{0,2}h)$`
 	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('5m') && duration(self) <= duration('168h')",message="ttl must be between 5 minutes and 168 hours"
 	TTL string `json:"ttl"`
-	// CleanupPolicy explicitly acknowledges that synced workloads and external data are not inventoried yet.
-	// +kubebuilder:validation:Enum=HelmReleaseOnly
+	// CleanupPolicy selects the legacy Helm-only lifecycle or full owned-resource cleanup.
+	// +kubebuilder:validation:Enum=HelmReleaseOnly;DeleteOwned
 	CleanupPolicy string `json:"cleanupPolicy"`
+	// GrantRef delegates source capabilities to this destination namespace.
+	// +kubebuilder:validation:Enum=Automatic;Manual
+	// +kubebuilder:default=Automatic
+	Approval    string           `json:"approval,omitempty"`
+	GrantRef    string           `json:"grantRef,omitempty"`
+	Target      *TargetSpec      `json:"target,omitempty"`
+	Replication *ReplicationSpec `json:"replication,omitempty"`
 }
 
 // RuntimeReference is persisted before installation. It contains no credentials.
@@ -32,6 +39,10 @@ type ClusterReplicaStatus struct {
 	Phase              string            `json:"phase,omitempty"`
 	Runtime            *RuntimeReference `json:"runtime,omitempty"`
 	ExpiresAt          *metav1.Time      `json:"expiresAt,omitempty"`
+	Plan               *PlanSummary      `json:"plan,omitempty"`
+	TargetVersion      string            `json:"targetVersion,omitempty"`
+	SourceVersion      string            `json:"sourceVersion,omitempty"`
+	DriftCount         int32             `json:"driftCount,omitempty"`
 	// +listType=map
 	// +listMapKey=type
 	Conditions []metav1.Condition `json:"conditions,omitempty"`

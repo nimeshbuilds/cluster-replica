@@ -19,7 +19,12 @@ import (
 const Finalizer = "replica.nimeshbuilds.dev/runtime-cleanup"
 const pollInterval = 15 * time.Second
 
+type Workflow interface {
+	Reconcile(context.Context, *v1alpha1.ClusterReplica) (ctrl.Result, error)
+}
+
 type Reconciler struct {
+	Workflow Workflow
 	client.Client
 	Provider  runtimeprovider.Provider
 	Namespace string
@@ -34,6 +39,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctrl.Resu
 	obj := &v1alpha1.ClusterReplica{}
 	if err := r.Get(ctx, key.NamespacedName, obj); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if obj.Spec.GrantRef != "" || obj.Spec.Replication != nil || obj.Spec.Target != nil || obj.Spec.CleanupPolicy == "DeleteOwned" {
+		if r.Workflow == nil {
+			return r.report(ctx, obj, "Blocked", "ReplicaWorkflowDisabled", "Configure an administrator-only state namespace to enable replication.", false, pollInterval)
+		}
+		return r.Workflow.Reconcile(ctx, obj)
 	}
 	now := time.Now()
 	if r.Now != nil {

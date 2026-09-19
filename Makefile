@@ -7,10 +7,12 @@ CHART := $(CURDIR)/.cache/vcluster-0.37.1.tgz
 build:
 	mkdir -p bin
 	$(GO) build -trimpath -o bin/cluster-replica ./cmd/operator
+	$(GO) build -trimpath -o bin/replicove ./cmd/replicove
 
 generate:
 	$(GO) run sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) object paths=./api/... crd output:crd:artifacts:config=config/crd
 	gofmt -w api cmd internal test
+	cp config/crd/*.yaml charts/replicove/crds/
 
 test:
 	$(GO) test -race ./...

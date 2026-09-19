@@ -1,15 +1,19 @@
-# ClusterReplica
+# Replicove
 
-**Your Kubernetes toolset. A fresh vCluster. One request.**
+<img src="assets/brand/replicove-icon.png" alt="Replicove product icon: two cluster cubes in an open cove" width="128" height="128">
+
+**Your cluster’s tools. A fresh place to test.**
+
+The portable Replicove workflow is being implemented in the current feature branch. Start with the [CLI and operator quickstart](docs/replicove-quickstart.md) and [implementation ledger](docs/IMPLEMENTATION_STATUS.md). Live CI evidence is required before treating a new capability as verified.
 
 [![CI](https://github.com/nimeshbuilds/cluster-replica/actions/workflows/ci.yaml/badge.svg)](https://github.com/nimeshbuilds/cluster-replica/actions/workflows/ci.yaml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-Integration tests need more than an empty cluster. They need the operators and configuration your application depends on. ClusterReplica is an experimental Kubernetes operator building toward recreating that selected environment on top of [vCluster](https://www.vcluster.com/).
+Integration tests need more than an empty cluster. They need the operators and configuration your application depends on. Replicove is an experimental Kubernetes operator building toward recreating that selected environment on top of [vCluster](https://www.vcluster.com/).
 
 **Current status: early runtime prototype.** The code provisions a standalone vCluster through Helm, reports control-plane readiness, and removes its Helm release on deletion or TTL expiry. Automatic host discovery and toolset replication are the next milestones. No Kubernetes/vCluster pair is behaviorally certified yet.
 
-[Roadmap](ROADMAP.md) · [Architecture](docs/architecture.md) · [Full implementation plan](docs/design/cluster-replica-implementation-plan.md) · [Contribute](CONTRIBUTING.md) · [Discuss](https://github.com/orgs/nimeshbuilds/discussions)
+[Brand research](docs/brand/research.md) · [Roadmap](ROADMAP.md) · [Architecture](docs/architecture.md) · [Full implementation plan](docs/design/cluster-replica-implementation-plan.md) · [Contribute](CONTRIBUTING.md) · [Discuss](https://github.com/orgs/nimeshbuilds/discussions)
 
 ## The first working surface
 

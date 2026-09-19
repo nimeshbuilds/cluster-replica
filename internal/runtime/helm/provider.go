@@ -37,7 +37,13 @@ func (p *Provider) configuration(namespace string) (*action.Configuration, error
 	if namespace == "" || namespace != p.Namespace {
 		return nil, runtimeprovider.ErrOwnership
 	}
-	config := rest.CopyConfig(p.Config)
+	return Configuration(p.Config, namespace)
+}
+
+// Configuration uses the caller's existing identity and suppresses upstream
+// manifest logging. Callers must authorize the namespace before using it.
+func Configuration(source *rest.Config, namespace string) (*action.Configuration, error) {
+	config := rest.CopyConfig(source)
 	config.Timeout = 30 * time.Second
 	// Upstream error logging may contain rendered Secret manifests. The controller
 	// emits classified status messages; admins inspect Helm directly for details.

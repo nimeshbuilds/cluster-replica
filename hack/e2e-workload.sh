@@ -97,10 +97,15 @@ YAML
   result=$(gk -n source-dev exec deployment/fixture-trino-coordinator -- trino --server http://localhost:8080 --execute 'SELECT count(*) FROM tpch.tiny.nation' --output-format TSV)
   [[ "$result" == 25 ]]
   printf '%s\n' "$result" > "$work/artifacts/trino-result.txt"
+  for i in $(seq 1 30);do
+   if gk --request-timeout=2s get namespace source-dev >/dev/null 2>&1;then break;fi
+   sleep 1
+  done
+  [[ "$i" -lt 30 ]]
   ;;
 esac
 bin/replicove status workload > "$work/artifacts/ready.json"
-kill "$tunnel_pid";wait "$tunnel_pid" || true;tunnel_pid=''
+kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" || true;tunnel_pid=''
 bin/replicove delete workload
 hk -n replica-lab wait clusterreplica/workload --for=delete --timeout=420s
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]

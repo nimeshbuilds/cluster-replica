@@ -1,5 +1,17 @@
 # Validation record
 
+## Portable workload replication
+
+At commit `fa2889c`, [CI run 35465687281](https://github.com/nimeshbuilds/cluster-replica/actions/runs/35465687281) passed the cert-manager, Spark and native admission-policy jobs. Each job installed a real source Helm release, captured its toolset, provisioned a persistent vCluster, performed its guest behavior check and verified owned cleanup. The [saved workload evidence](validation/2026-09-19-workloads.json) records observed versions and images.
+
+- cert-manager recreated an Issuer/Certificate and produced a guest TLS Secret.
+- Spark Operator recreated the SparkApplication and completed a real Spark Pi calculation.
+- Native admission policy rejected an unlabelled test ConfigMap and accepted a labelled one.
+
+Trino returned the expected result (`25`) from `SELECT count(*) FROM tpch.tiny.nation`, but that job failed during tunnel teardown; its complete lifecycle was not yet verified. The full replica workflow failed at a probe image pull after guest readiness. The overall run therefore failed. Follow-up fixes and the broader host-minor/TTL/existing-target checks remain under validation; individual successful jobs do not make the entire run green.
+
+Local checks additionally cover the actual operator Helm installation and key-preserving upgrade, exact-grant source capture, two-API existing-target identity verification, stable full-workflow status and preserved guest drift, and Linux/macOS amd64/arm64 packaging.
+
 ## Live host and guest lifecycle
 
 The [19 September 2026 live run](https://github.com/nimeshbuilds/cluster-replica/actions/runs/35454520096) passed at commit `dd999a07c99ce6fcad175830229c5d50323f853b`. It built the actual operator image and deployed it under the sample namespace-scoped service account on a disposable kind cluster. Both `verify` and `live-vcluster` completed successfully.
@@ -24,7 +36,7 @@ Passed checks:
 
 The request was created at `16:21:00Z` and reached `Expired` at its original `16:29:00Z` deadline. The inventory delta after TTL contained only the retained `ClusterReplica` record and the replacement operator Pod/ReplicaSet from the restart. No guest pods, Services, or Secrets remained among the enumerated resource types in `replica-lab` for this fixture.
 
-This fixture creates no PVCs, snapshots, cloud identities, or external data. Their cleanup and credential revocation remain unverified. This is a stateless lifecycle smoke test for one exact host/guest combination, not a general compatibility certification. Source discovery, configuration/operator/secret replication, existing-vCluster integration, scoped agent access, IRSA, Spark, Trino, and cloud/distribution scenarios are not covered or implemented by this change.
+This fixture creates no PVCs, snapshots, cloud identities, or external data. Their cleanup and credential revocation remain unverified. This is a stateless lifecycle smoke test for one exact host/guest combination, not a general compatibility certification. That original fixture does not cover source capture, scoped access, identity, data or operator replication. The newer portable workload evidence above is separate; cloud/distribution qualification remains incomplete.
 
 The [first live attempt](https://github.com/nimeshbuilds/cluster-replica/actions/runs/35454086084) installed and connected to vCluster but failed because the test replaced the workload image's entrypoint with a subcommand. The smoke command was corrected to `/agnhost netexec`; the successful run above uses that correction. Guest diagnostics are now retained on failure, with Secret payloads and arbitrary manifests excluded.
 

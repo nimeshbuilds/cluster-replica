@@ -1,6 +1,6 @@
 # Workload qualification fixtures
 
-Replicove's portable adapter uses CRDs, explicit Helm revision capture, dependency ordering, value overrides, and custom readiness checks. Workload-specific settings stay in inspectable fixture YAML. These profiles are being exercised in disposable CI; the fixture files alone are not a certification.
+Replicove's portable adapter uses CRDs, explicit Helm revision capture, dependency ordering, value overrides, and custom readiness checks. Workload-specific settings stay in inspectable fixture YAML. The cert-manager, Spark and native policy profiles passed source-to-guest functional checks and owned cleanup at `fa2889c`; see the [recorded evidence](validation.md). Trino returned the expected query result but failed tunnel teardown in that run. Later commits must pass the same jobs; these small fixtures do not certify production scale.
 
 | Fixture | Pinned upstream | Adaptation | Functional check |
 | --- | --- | --- | --- |

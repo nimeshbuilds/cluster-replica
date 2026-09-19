@@ -163,8 +163,10 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 	before := a.DeepCopy()
 	a.Status.CredentialSecret = name
 	a.Status.ExpiresAt = &metav1.Time{Time: st.AccessExpiresAt}
-	if err := r.Engine.Client.Status().Patch(ctx, a, client.MergeFrom(before)); err != nil {
-		return ctrl.Result{}, err
+	if !reflect.DeepEqual(before.Status, a.Status) {
+		if err := r.Engine.Client.Status().Patch(ctx, a, client.MergeFrom(before)); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	return r.report(ctx, a, "Ready", "CredentialIssued", "A bounded guest credential is available in the referenced Secret.")
 }

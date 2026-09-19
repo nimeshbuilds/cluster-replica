@@ -8,10 +8,13 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -326,8 +329,8 @@ func (c *cli) accessCommand(tunnel bool) *cobra.Command {
 			select {
 			case <-cmd.Context().Done():
 			case <-timer.C:
-			case <-tunnelDone:
-				return errors.New("guest tunnel closed; run connect again to establish a new session")
+			case err := <-tunnelDone:
+				return err
 			}
 			return nil
 		}
@@ -362,7 +365,69 @@ func writeCredential(path string, data []byte) (func(), error) {
 	}
 	return cleanup, nil
 }
+
+// forward retains its loopback port and original guest credentials through a
+// transient SPDY stream loss. TLS still authenticates the pinned guest CA/name.
 func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, data []byte) ([]byte, func(), <-chan error, error) {
+	session, cancel := context.WithCancel(ctx)
+	output, closeCurrent, currentDone, err := forwardOnce(session, cfg, obj, data, 0)
+	if err != nil {
+		cancel()
+		return nil, nil, nil, err
+	}
+	parsed, err := target.Parse(output)
+	if err != nil {
+		closeCurrent()
+		cancel()
+		return nil, nil, nil, err
+	}
+	endpoint, err := url.Parse(parsed.Host)
+	if err != nil {
+		closeCurrent()
+		cancel()
+		return nil, nil, nil, errors.New("invalid local tunnel endpoint")
+	}
+	port, err := strconv.Atoi(endpoint.Port())
+	if err != nil {
+		closeCurrent()
+		cancel()
+		return nil, nil, nil, errors.New("invalid local tunnel port")
+	}
+	done := make(chan error, 1)
+	go func() {
+		defer close(done)
+		defer func() { closeCurrent() }()
+		defer cancel()
+		for {
+			select {
+			case <-session.Done():
+				return
+			case <-currentDone:
+			}
+			closeCurrent()
+			reconnected := false
+			for attempt := 0; attempt < 120; attempt++ {
+				select {
+				case <-session.Done():
+					return
+				case <-time.After(time.Second):
+				}
+				_, nextClose, nextDone, err := forwardOnce(session, cfg, obj, data, port)
+				if err == nil {
+					closeCurrent, currentDone, reconnected = nextClose, nextDone, true
+					break
+				}
+			}
+			if !reconnected {
+				done <- errors.New("guest tunnel could not reconnect; run connect again")
+				return
+			}
+		}
+	}()
+	return output, cancel, done, nil
+}
+
+func forwardOnce(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, data []byte, localPort int) ([]byte, func(), <-chan error, error) {
 	k, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, nil, nil, errors.New("cannot initialize host tunnel")
@@ -390,13 +455,14 @@ func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, dat
 	url := k.CoreV1().RESTClient().Post().Resource("pods").Namespace(obj.Namespace).Name(pod).SubResource("portforward").URL()
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 	stop, ready := make(chan struct{}), make(chan struct{})
-	forwarder, err := portforward.NewOnAddresses(dialer, []string{"127.0.0.1"}, []string{"0:8443"}, stop, ready, io.Discard, io.Discard)
+	forwarder, err := portforward.NewOnAddresses(dialer, []string{"127.0.0.1"}, []string{fmt.Sprintf("%d:8443", localPort)}, stop, ready, io.Discard, io.Discard)
 	if err != nil {
 		return nil, nil, nil, errors.New("cannot initialize local tunnel")
 	}
 	result := make(chan error, 1)
 	go func() { result <- forwarder.ForwardPorts() }()
-	closeTunnel := func() { close(stop) }
+	var stopOnce sync.Once
+	closeTunnel := func() { stopOnce.Do(func() { close(stop) }) }
 	select {
 	case <-ready:
 	case <-ctx.Done():

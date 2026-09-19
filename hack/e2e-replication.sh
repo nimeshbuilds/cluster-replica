@@ -57,7 +57,7 @@ gk -n integration rollout status deployment/echo --timeout=180s
 [[ "$(gk -n integration get configmap chart-settings -o jsonpath='{.data.message}')" == guest-chart ]]
 # Secret contents are compared in memory and are never printed or uploaded.
 hk -n source-dev get secret fixture-password -o json | python3 -c 'import json,subprocess,sys;source=json.load(sys.stdin);guest=json.loads(subprocess.check_output(["kubectl","--kubeconfig",sys.argv[1],"-n","integration","get","secret","fixture-password","-o","json"]));assert source["data"]==guest["data"]' "$work/guest.kubeconfig"
-gk -n integration run probe --image=busybox:1.37.0-1 --restart=Never --command -- sh -c 'wget -qO- http://echo:8080/hostname'
+gk -n integration run probe --image=registry.k8s.io/e2e-test-images/busybox:1.37.0-1 --restart=Never --command -- sh -c 'wget -qO- http://echo:8080/hostname'
 gk -n integration wait pod/probe --for=jsonpath='{.status.phase}'=Succeeded --timeout=120s
 # Experiments must survive a controller restart and ordinary reconciliation.
 gk -n integration annotate configmap settings experiment=keep
@@ -70,13 +70,14 @@ sleep 15
 # The durable profile must survive rescheduling its own control-plane pod.
 guest_cluster_uid=$(gk get namespace kube-system -o jsonpath='{.metadata.uid}')
 guest_workload_uid=$(gk -n integration get deployment echo -o jsonpath='{.metadata.uid}')
-kill "$tunnel_pid";wait "$tunnel_pid" || true;tunnel_pid=''
 hk -n replica-lab delete pod "$runtime_uid-0" --wait=true
 hk -n replica-lab rollout status statefulset/"$runtime_uid" --timeout=180s
-bin/replicove connect full --role admin --output "$work/guest.kubeconfig" > "$work/artifacts/reconnect.txt" 2>&1 &
-tunnel_pid=$!
-for i in $(seq 1 180);do if [[ -f "$work/guest.kubeconfig" ]];then break;fi;sleep 1;done
-[[ -f "$work/guest.kubeconfig" ]]
+# The existing CLI process must recover on the same loopback port and file.
+for i in $(seq 1 120);do
+ if gk --request-timeout=2s get namespace kube-system >/dev/null 2>&1;then break;fi
+ sleep 1
+done
+[[ "$i" -lt 120 ]]
 [[ "$(gk get namespace kube-system -o jsonpath='{.metadata.uid}')" == "$guest_cluster_uid" ]]
 [[ "$(gk -n integration get deployment echo -o jsonpath='{.metadata.uid}')" == "$guest_workload_uid" ]]
 # Snapshot refresh changes only source-owned fields and preserves added fields.
@@ -168,7 +169,7 @@ hk delete replicagrant existing-lab
 bin/replicove status full > "$work/artifacts/ready.json"
 # Stop the local proxy before deleting the guest. The access controller still
 # revokes both guest identities and their host credential Secrets.
-kill "$tunnel_pid";wait "$tunnel_pid" || true;tunnel_pid=''
+kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" || true;tunnel_pid=''
 bin/replicove delete full
 hk -n replica-lab wait clusterreplica/full --for=delete --timeout=300s
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
@@ -186,5 +187,5 @@ sleep 15
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict"]}
+{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect"]}
 JSON

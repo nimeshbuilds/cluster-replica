@@ -132,6 +132,9 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		obj.Status.Runtime = &resolved
 	}
 	obj.Status.Plan = &api.PlanSummary{Revision: st.Plan.Revision, CapturedAt: metav1.NewTime(st.Plan.CapturedAt), ObjectCount: int32(len(st.Plan.Objects)), PackageCount: int32(len(st.Plan.Packages)), Message: "Encrypted source capture; Helm charts are reconstructed as inventoried resources."}
+	if st.AppliedRevision == st.Plan.Revision {
+		obj.Status.Plan.AppliedCount = int32(len(st.Plan.Objects))
+	}
 	for _, item := range st.Plan.Objects {
 		obj.Status.Plan.Resources = append(obj.Status.Plan.Resources, api.PlannedResource{ObjectReference: api.ObjectReference{APIVersion: item.APIVersion, Kind: item.Kind, Namespace: item.Namespace, Name: item.Name}, SourceNamespace: item.SourceNamespace, Dependencies: item.Dependencies})
 	}
@@ -284,8 +287,10 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	before = obj.DeepCopy()
 	obj.Status.DriftCount = drift
 	obj.Status.Plan.AppliedCount = int32(len(st.Plan.Objects))
-	if err := w.Client.Status().Patch(ctx, obj, client.MergeFrom(before)); err != nil {
-		return ctrl.Result{}, err
+	if !reflect.DeepEqual(before.Status, obj.Status) {
+		if err := w.Client.Status().Patch(ctx, obj, client.MergeFrom(before)); err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	if !ready {
 		return w.report(ctx, obj, "Verifying", nil, false)

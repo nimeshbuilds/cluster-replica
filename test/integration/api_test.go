@@ -3,9 +3,12 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"helm.sh/helm/v4/pkg/action"
 	chartloader "helm.sh/helm/v4/pkg/chart/loader"
+	"helm.sh/helm/v4/pkg/kube"
 	"io"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	kYaml "k8s.io/apimachinery/pkg/util/yaml"
@@ -293,6 +296,21 @@ func TestOperatorInstallationChart(t *testing.T) {
 	if len(key.Data["key"]) != 32 || key.Immutable == nil || !*key.Immutable {
 		t.Fatal("state key is not immutable AES-256 material")
 	}
+	originalKey := append([]byte{}, key.Data["key"]...)
+	originalKeyUID := key.UID
+	upgrade := action.NewUpgrade(cfg)
+	upgrade.Namespace = "replicove-system"
+	upgrade.WaitStrategy = kube.HookOnlyStrategy
+	upgrade.Timeout = 30 * time.Second
+	if _, err := upgrade.RunWithContext(ctx, "replicove", ch, values); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(key), key); err != nil {
+		t.Fatal(err)
+	}
+	if key.UID != originalKeyUID || !bytes.Equal(key.Data["key"], originalKey) {
+		t.Fatal("operator upgrade replaced the encryption key")
+	}
 	// Real Helm storage often has nil Config when users accepted chart defaults.
 	// An override must still work and must never mutate the source release.
 	sourceChart, err := chartloader.Load(filepath.Join("..", "e2e", "chart"))
@@ -365,8 +383,13 @@ func TestOperatorInstallationChart(t *testing.T) {
 	if err := yaml.UnmarshalStrict(selection, request.Spec.Replication); err != nil {
 		t.Fatal(err)
 	}
-	grant.Spec.Resources = []v1alpha1.ResourceRule{{Kind: "ConfigMap"}, {Kind: "ServiceAccount"}, {Kind: "Service"}, {Group: "apps", Kind: "Deployment"}}
-	grant.Spec.Secrets = []v1alpha1.NamespacedName{{Namespace: "source-dev", Name: "fixture-password"}}
+	grantFixture, err := os.ReadFile(filepath.Join("..", "e2e", "grant.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.UnmarshalStrict(grantFixture, grant); err != nil {
+		t.Fatal(err)
+	}
 	plan, err = reader.Capture(ctx, request, grant, policy.Resolution{Namespaces: []string{"source-dev"}, MaxObjects: 50})
 	if err != nil {
 		t.Fatal(err)

@@ -73,7 +73,7 @@ func command() *cobra.Command {
 	root.PersistentFlags().StringVarP(&c.Namespace, "namespace", "n", "replica-lab", "Administrator-granted destination namespace")
 	root.PersistentFlags().StringVar(&c.Kubeconfig, "kubeconfig", "", "Host kubeconfig path")
 	root.PersistentFlags().StringVar(&c.Context, "context", "", "Host kubeconfig context")
-	var grant, ttl, from, replicationFile, profile string
+	var grant, ttl, from, replicationFile, profile, existing string
 	var manual bool
 	create := &cobra.Command{Use: "create NAME", Short: "Capture the granted toolset and provision an ephemeral replica", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		k, _, err := c.clients()
@@ -98,6 +98,9 @@ func command() *cobra.Command {
 			approval = "Manual"
 		}
 		obj := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Name: args[0], Namespace: c.Namespace}, Spec: api.ClusterReplicaSpec{Profile: profile, TTL: ttl, CleanupPolicy: "DeleteOwned", GrantRef: grant, Replication: spec, Approval: approval}}
+		if existing != "" {
+			obj.Spec.Target = &api.TargetSpec{Provider: "existing", ExistingRef: existing}
+		}
 		if err := k.Create(cmd.Context(), obj); err != nil {
 			return errors.New("cannot create ClusterReplica; verify namespace access, grant, name, and spec")
 		}
@@ -106,6 +109,7 @@ func command() *cobra.Command {
 	}}
 	create.Flags().StringVar(&grant, "grant", "", "Administrator ReplicaGrant name")
 	_ = create.MarkFlagRequired("grant")
+	create.Flags().StringVar(&existing, "existing", "", "Administrator-granted existing target name; preserve its runtime")
 	create.Flags().StringVar(&profile, "profile", catalog.PersistentProfile, "Pinned vCluster runtime profile")
 	create.Flags().StringVar(&ttl, "ttl", "2h", "Lifetime including provisioning")
 	create.Flags().StringVar(&from, "from", "", "Comma-separated granted source namespaces")

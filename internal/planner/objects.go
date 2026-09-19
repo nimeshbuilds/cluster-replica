@@ -20,6 +20,14 @@ import (
 const OperationAnnotation = "replicove.nimeshbuilds.dev/operation"
 const OwnerAnnotation = "replicove.nimeshbuilds.dev/owner"
 
+// InfrastructureLabel prevents the operator's own source readers and runtime
+// management resources from becoming dependencies of a guest replica.
+const InfrastructureLabel = "replicove.nimeshbuilds.dev/infrastructure"
+
+func IsInfrastructure(obj *unstructured.Unstructured) bool {
+	return obj.GetLabels()[InfrastructureLabel] == "true"
+}
+
 type Problem struct{ Reason, Detail string }
 
 func (e *Problem) Error() string { return e.Detail }

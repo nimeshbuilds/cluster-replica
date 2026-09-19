@@ -52,7 +52,21 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 	}
 	lists, err := r.Discovery.ServerPreferredResources()
 	if err != nil {
-		return nil, failed("DiscoveryIncomplete", "Source API discovery is incomplete; restore failing API services before capture.")
+		groups, partial := discovery.GroupDiscoveryFailedErrorGroups(err)
+		if !partial {
+			return nil, failed("DiscoveryIncomplete", "Source API discovery is unavailable.")
+		}
+		// Unrelated aggregated APIs (for example metrics) must not prevent an
+		// explicitly scoped capture. A wildcard grant includes every group.
+		for gv := range groups {
+			for _, rules := range [][]api.ResourceRule{grant.Spec.Resources, grant.Spec.ClusterResources} {
+				for _, rule := range rules {
+					if rule.Group == "*" || rule.Group == gv.Group {
+						return nil, failed("DiscoveryIncomplete", "Discovery of granted API group %s is unavailable.", gv.Group)
+					}
+				}
+			}
+		}
 	}
 	resources := map[string]resource{}
 	ordered := []resource{}
@@ -78,7 +92,7 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 		packages[ref.Namespace+"/"+ref.Name] = true
 	}
 	add := func(source *unstructured.Unstructured, res resource, fromChart bool) error {
-		if planner.IsGenerated(source) || policy.ReservedKind(res.gvr.Group, res.kind) {
+		if planner.IsGenerated(source) || planner.IsInfrastructure(source) || policy.ReservedKind(res.gvr.Group, res.kind) {
 			return nil
 		}
 		if !fromChart && packages[source.GetAnnotations()["meta.helm.sh/release-namespace"]+"/"+source.GetAnnotations()["meta.helm.sh/release-name"]] {

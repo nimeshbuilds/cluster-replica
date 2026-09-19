@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 cd "$(dirname "$0")/.."
-workload="${1:?Select cert-manager, spark, or trino}"
+workload="${1:?Select cert-manager, spark, trino, or policy}"
 case "$workload" in
  cert-manager) chart=cert-manager-v1.20.4.tgz ;;
  spark) chart=spark-operator-2.5.2.tgz ;;
@@ -28,6 +28,10 @@ cleanup(){
   # These CR statuses contain only Replicove's deliberately sanitized summaries.
   hk -n replica-lab get clusterreplica workload -o jsonpath='{.status}' > "$work/artifacts/status.json" || true
   hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o json | python3 test/e2e/inventory.py > "$work/artifacts/inventory.json" || true
+  hk -n source-dev get pods,deployments -o json | python3 test/e2e/inventory.py > "$work/artifacts/source-inventory.json" || true
+  if [[ "$workload" == spark ]];then
+   hk -n source-dev get sparkapplication spark-pi -o jsonpath='{.status.applicationState.state}' > "$work/artifacts/source-spark-state.txt" || true
+  fi
   kind delete cluster --name "$cluster" || true
  fi
  rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig"

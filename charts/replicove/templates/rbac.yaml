@@ -1,6 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-state
   namespace: {{ .Release.Namespace }}
 rules:
@@ -11,6 +13,8 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-state
   namespace: {{ .Release.Namespace }}
 roleRef:
@@ -26,6 +30,8 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-runtime
   namespace: {{ .Values.destinationNamespace }}
 rules:
@@ -36,6 +42,8 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-runtime
   namespace: {{ .Values.destinationNamespace }}
 roleRef:
@@ -50,6 +58,8 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Namespace }}-{{ .Release.Name }}-reader
 rules:
   - apiGroups: [replica.nimeshbuilds.dev]
@@ -69,6 +79,8 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Namespace }}-{{ .Release.Name }}-reader
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -83,6 +95,8 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
   namespace: {{ .namespace }}
 rules:
@@ -91,6 +105,8 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
   namespace: {{ .namespace }}
 roleRef:

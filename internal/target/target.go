@@ -4,13 +4,16 @@ package target
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
+	"net"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/nimeshbuilds/cluster-replica/internal/state"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
@@ -22,6 +25,40 @@ import (
 
 var ErrUnsafe = errors.New("target credentials or identity are unsafe")
 var ErrUnavailable = errors.New("target connection unavailable")
+
+// ConnectionError contains only classified diagnostics, never upstream error
+// text, credential content, or an untrusted endpoint URL.
+type ConnectionError struct{ Stage, Reason string }
+
+func (e *ConnectionError) Error() string { return e.Stage + " failed (" + e.Reason + ")." }
+func (e *ConnectionError) Unwrap() error { return ErrUnavailable }
+func unavailable(stage string, err error) error {
+	reason := "Unavailable"
+	var hostname x509.HostnameError
+	var authority x509.UnknownAuthorityError
+	var certificate x509.CertificateInvalidError
+	var dns *net.DNSError
+	var network net.Error
+	switch {
+	case apierrors.IsNotFound(err):
+		reason = "NotFound"
+	case apierrors.IsUnauthorized(err):
+		reason = "Unauthorized"
+	case apierrors.IsForbidden(err):
+		reason = "Forbidden"
+	case errors.As(err, &hostname):
+		reason = "TLSHostname"
+	case errors.As(err, &authority):
+		reason = "TLSAuthority"
+	case errors.As(err, &certificate):
+		reason = "TLSCertificate"
+	case errors.As(err, &dns):
+		reason = "DNS"
+	case errors.As(err, &network) && network.Timeout():
+		reason = "Timeout"
+	}
+	return &ConnectionError{Stage: stage, Reason: reason}
+}
 
 type Connection struct {
 	Config       *rest.Config
@@ -67,13 +104,13 @@ func Parse(data []byte) (*rest.Config, error) {
 func Connect(ctx context.Context, host client.Client, st *state.State, release string) (*Connection, error) {
 	secret := &corev1.Secret{}
 	if err := host.Get(ctx, client.ObjectKey{Namespace: st.TargetSecretNamespace, Name: st.TargetSecretName}, secret); err != nil {
-		return nil, ErrUnavailable
+		return nil, unavailable("Read target credential Secret", err)
 	}
 	owned := st.Provider == "helm"
 	if owned {
 		svc := &corev1.Service{}
 		if err := host.Get(ctx, client.ObjectKey{Namespace: st.OwnerNamespace, Name: release}, svc); err != nil {
-			return nil, ErrUnavailable
+			return nil, unavailable("Read runtime Service", err)
 		}
 		if string(svc.UID) != st.RuntimeRootUID || !OwnedBy(secret.OwnerReferences, st.RuntimeRootUID) {
 			return nil, ErrUnsafe
@@ -85,7 +122,9 @@ func Connect(ctx context.Context, host client.Client, st *state.State, release s
 	}
 	if owned {
 		cfg.Host = "https://" + release + "." + st.OwnerNamespace + ".svc:443"
-		cfg.TLSClientConfig.ServerName = release + "." + st.OwnerNamespace + ".svc"
+		// vCluster 0.37.1 signs release.namespace, but not its .svc alias.
+		// Route through Kubernetes DNS while verifying the actual signed name.
+		cfg.TLSClientConfig.ServerName = release + "." + st.OwnerNamespace
 	}
 	clients, err := Clients(cfg)
 	if err != nil {
@@ -93,7 +132,7 @@ func Connect(ctx context.Context, host client.Client, st *state.State, release s
 	}
 	ns, err := clients.Kubernetes.CoreV1().Namespaces().Get(ctx, "kube-system", metav1.GetOptions{})
 	if err != nil {
-		return nil, ErrUnavailable
+		return nil, unavailable("Read guest cluster identity", err)
 	}
 	clients.UID = string(ns.UID)
 	if st.TargetClusterUID != "" && st.TargetClusterUID != clients.UID {
@@ -101,14 +140,14 @@ func Connect(ctx context.Context, host client.Client, st *state.State, release s
 	}
 	source := &corev1.Namespace{}
 	if err := host.Get(ctx, client.ObjectKey{Name: "kube-system"}, source); err != nil {
-		return nil, ErrUnavailable
+		return nil, unavailable("Read host cluster identity", err)
 	}
 	if source.UID == ns.UID {
 		return nil, ErrUnsafe
 	}
 	version, err := clients.Discovery.ServerVersion()
 	if err != nil {
-		return nil, ErrUnavailable
+		return nil, unavailable("Discover guest Kubernetes version", err)
 	}
 	clients.Version = version.GitVersion
 	return clients, nil

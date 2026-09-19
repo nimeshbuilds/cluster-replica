@@ -22,7 +22,7 @@ cleanup(){
   hk -n replica-lab get pods,services,secrets,persistentvolumeclaims,deployments -o json | python3 test/e2e/inventory.py > "$work/artifacts/host-inventory.json" || true
   kind delete cluster --name "$cluster" || true
  fi
- rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/guest-access.kubeconfig"
+ rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/guest-access.kubeconfig" "$work/existing.kubeconfig"
  echo "Sanitized replica evidence: $work/artifacts"
  exit "$result"
 }
@@ -44,7 +44,7 @@ hk apply -f test/e2e/grant.yaml
 hk -n replica-lab create configmap unrelated-sentinel --from-literal=keep=yes
 bin/replicove create full --grant source-dev-lab --ttl 30m --manual --replication-file test/e2e/replication.yaml
 hk -n replica-lab wait clusterreplica/full --for=jsonpath='{.status.phase}'=AwaitingApproval --timeout=120s
-[[ -z "$(hk -n replica-lab get deployment -o name)" ]]
+[[ -z "$(hk -n replica-lab get deployment,statefulset -o name)" ]]
 bin/replicove plan full > "$work/artifacts/plan.json"
 bin/replicove approve full
 hk -n replica-lab wait clusterreplica/full --for=condition=Ready --timeout=420s
@@ -107,6 +107,64 @@ with open(sys.argv[2],'w') as f:json.dump(viewer,f)
 PY
 [[ "$(kubectl --kubeconfig "$work/guest-access.kubeconfig" auth can-i get deployments -n integration)" == yes ]]
 if kubectl --kubeconfig "$work/guest-access.kubeconfig" auth can-i create deployments -n integration;then exit 1;fi
+# Register this disposable runtime as an externally managed target for a second
+# request. Only the original full request owns its runtime lifecycle.
+gk create namespace retained
+gk -n retained create configmap settings --from-literal=foreign=preserve
+foreign_uid=$(gk -n retained get configmap settings -o jsonpath='{.metadata.uid}')
+external_runtime_uid=$(hk -n replica-lab get statefulset "$runtime_uid" -o jsonpath='{.metadata.uid}')
+hk -n replica-lab get secret "vc-$runtime_uid" -o json | python3 -c 'import base64,json,sys;open(sys.argv[1],"wb").write(base64.b64decode(json.load(sys.stdin)["data"]["config"]))' "$work/existing.kubeconfig"
+python3 - "$work/existing.kubeconfig" "$runtime_uid" <<'PYEXISTING'
+import json,subprocess,sys
+path,release=sys.argv[1:]
+config=json.loads(subprocess.check_output(['kubectl','--kubeconfig',path,'config','view','--raw','-o','json']))
+config['clusters'][0]['cluster']['server']='https://'+release+'.replica-lab.svc:443'
+config['clusters'][0]['cluster']['tls-server-name']=release+'.replica-lab'
+with open(path,'w') as f:json.dump(config,f)
+PYEXISTING
+hk -n replicove-system create secret generic existing-runtime --from-file="config=$work/existing.kubeconfig"
+rm -f "$work/existing.kubeconfig"
+cat <<YAML | hk apply -f -
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: existing-lab
+spec:
+  targetNamespace: replica-lab
+  sourceNamespaces: [source-dev]
+  resources:
+    - {group: "", kind: ConfigMap}
+  existingTargets:
+    - name: retained
+      kubeconfigSecret: {namespace: replicove-system, name: existing-runtime}
+      clusterUID: "$guest_cluster_uid"
+YAML
+cat > "$work/existing-selection.yaml" <<YAML
+namespaceMap: {source-dev: retained}
+include:
+  - names: [settings]
+YAML
+bin/replicove create conflicting --grant existing-lab --existing retained --ttl 15m --replication-file "$work/existing-selection.yaml"
+hk -n replica-lab wait clusterreplica/conflicting --for=jsonpath='{.status.phase}'=Blocked --timeout=120s
+[[ "$(hk -n replica-lab get clusterreplica conflicting -o jsonpath='{.status.conditions[?(@.type=="Ready")].reason}')" == OwnershipConflict ]]
+bin/replicove delete conflicting
+hk -n replica-lab wait clusterreplica/conflicting --for=delete --timeout=120s
+[[ "$(gk -n retained get configmap settings -o jsonpath='{.metadata.uid}')" == "$foreign_uid" ]]
+cat > "$work/existing-selection.yaml" <<YAML
+namespaceMap: {source-dev: retained}
+include:
+  - names: [chart-settings]
+YAML
+bin/replicove create borrowed --grant existing-lab --existing retained --ttl 15m --replication-file "$work/existing-selection.yaml"
+hk -n replica-lab wait clusterreplica/borrowed --for=condition=Ready --timeout=120s
+[[ "$(gk -n retained get configmap chart-settings -o jsonpath='{.data.message}')" == source-chart ]]
+bin/replicove delete borrowed
+hk -n replica-lab wait clusterreplica/borrowed --for=delete --timeout=120s
+[[ -z "$(gk -n retained get configmap chart-settings --ignore-not-found -o name)" ]]
+[[ "$(gk -n retained get configmap settings -o jsonpath='{.metadata.uid}')" == "$foreign_uid" ]]
+[[ "$(hk -n replica-lab get statefulset "$runtime_uid" -o jsonpath='{.metadata.uid}')" == "$external_runtime_uid" ]]
+hk -n replicove-system delete secret existing-runtime
+hk delete replicagrant existing-lab
 bin/replicove status full > "$work/artifacts/ready.json"
 # Stop the local proxy before deleting the guest. The access controller still
 # revokes both guest identities and their host credential Secrets.
@@ -128,5 +186,5 @@ sleep 15
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup"]}
+{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict"]}
 JSON

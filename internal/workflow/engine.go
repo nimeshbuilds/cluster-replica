@@ -306,6 +306,7 @@ func (w *Engine) report(ctx context.Context, obj *api.ClusterReplica, phase stri
 		message = "The operation could not complete; inspect permissions and connectivity without exposing credentials."
 		var p *planner.Problem
 		var denied *policy.Denied
+		var connection *target.ConnectionError
 		switch {
 		case errors.As(err, &p):
 			reason, message = p.Reason, p.Detail
@@ -319,6 +320,8 @@ func (w *Engine) report(ctx context.Context, obj *api.ClusterReplica, phase stri
 			reason, message = "StateUnavailable", "The administrator-only state store or its encryption key is unavailable."
 		case errors.Is(err, target.ErrUnsafe):
 			reason, message = "TargetIdentityMismatch", "Guest credentials, ownership, or the pinned cluster identity failed validation."
+		case errors.As(err, &connection):
+			reason, message = "Target"+connection.Reason, connection.Error()
 		case errors.Is(err, target.ErrUnavailable):
 			reason, message = "TargetUnavailable", "The guest API or its administrator-provided credentials are not yet available."
 		}

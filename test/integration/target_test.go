@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
@@ -120,6 +121,8 @@ func TestExistingTargetPinsIdentityAndRejectsHost(t *testing.T) {
 			t.Fatal(err)
 		}
 		grant := &api.ReplicaGrant{ObjectMeta: metav1.ObjectMeta{Name: "integration"}, Spec: api.ReplicaGrantSpec{TargetNamespace: "lab", SourceNamespaces: []string{"source"}, Resources: []api.ResourceRule{{Kind: "ConfigMap"}}, ExistingTargets: []api.ExistingTarget{{Name: "guest", KubeconfigSecret: api.NamespacedName{Namespace: "private", Name: "guest"}, ClusterUID: guest.uid}}}}
+		grant.Spec.AccessRoles = []string{"viewer"}
+		grant.Spec.AccessSubjects = []api.AccessSubject{{Kind: "User", Name: "fixture-reader"}}
 		if err := host.client.Create(ctx, grant); err != nil {
 			t.Fatal(err)
 		}
@@ -178,6 +181,70 @@ func TestExistingTargetPinsIdentityAndRejectsHost(t *testing.T) {
 		}
 		if copied.Data["mode"] != "experiment" {
 			t.Fatal("ordinary reconciliation reset the experiment")
+		}
+
+		access := &api.ReplicaAccess{ObjectMeta: metav1.ObjectMeta{Name: "viewer", Namespace: "lab"}, Spec: api.ReplicaAccessSpec{ReplicaName: obj.Name, ReplicaUID: string(obj.UID), Role: "viewer", DurationSeconds: 900}}
+		if err := host.client.Create(ctx, access); err != nil {
+			t.Fatal(err)
+		}
+		reconciler := &workflow.AccessReconciler{Engine: engine, Namespace: "lab"}
+		for i := 0; i < 5 && access.Status.Phase != "Ready"; i++ {
+			if _, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(access)}); err != nil {
+				t.Fatal(err)
+			}
+			if err := host.client.Get(ctx, client.ObjectKeyFromObject(access), access); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if access.Status.Phase != "Ready" {
+			t.Fatalf("access did not become ready: %#v", access.Status)
+		}
+		readerConfig := rest.CopyConfig(host.cfg)
+		readerConfig.Impersonate = rest.ImpersonationConfig{UserName: "fixture-reader"}
+		reader, err := client.New(readerConfig, client.Options{Scheme: scheme})
+		if err != nil {
+			t.Fatal(err)
+		}
+		credential := &corev1.Secret{}
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: "lab", Name: access.Status.CredentialSecret}, credential); err != nil {
+			t.Fatal("exact-Secret credential reader was denied")
+		}
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: "private", Name: state.KeySecret}, &corev1.Secret{}); !apierrors.IsForbidden(err) {
+			t.Fatal("credential reader could read the state key")
+		}
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: "lab", Name: "unrelated"}, &corev1.Secret{}); !apierrors.IsForbidden(err) {
+			t.Fatal("credential reader received wildcard Secret access")
+		}
+		sealedState := &corev1.Secret{}
+		if err := host.client.Get(ctx, client.ObjectKey{Namespace: "private", Name: state.Name(string(access.UID))}, sealedState); err != nil {
+			t.Fatal(err)
+		}
+		if err := host.client.Delete(ctx, sealedState); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(access)}); err != nil {
+			t.Fatal(err)
+		}
+		if err := host.client.Get(ctx, client.ObjectKeyFromObject(access), access); err != nil {
+			t.Fatal(err)
+		}
+		if access.Status.Phase != "Blocked" {
+			t.Fatal("lost issued-access state was silently replaced")
+		}
+		sealedState.ResourceVersion = ""
+		sealedState.UID = ""
+		sealedState.CreationTimestamp = metav1.Time{}
+		if err := host.client.Create(ctx, sealedState); err != nil {
+			t.Fatal(err)
+		}
+		if err := host.client.Delete(ctx, access); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := reconciler.Reconcile(ctx, ctrl.Request{NamespacedName: client.ObjectKeyFromObject(access)}); err != nil {
+			t.Fatal(err)
+		}
+		if err := reader.Get(ctx, client.ObjectKey{Namespace: "lab", Name: access.Status.CredentialSecret}, &corev1.Secret{}); !apierrors.IsForbidden(err) {
+			t.Fatal("credential read permission survived revocation")
 		}
 	})
 }

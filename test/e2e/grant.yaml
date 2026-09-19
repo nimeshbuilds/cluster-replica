@@ -21,4 +21,6 @@ spec:
   maxCaptureBytes: 716800
   allowEmptyVolumes: true
   accessRoles: [viewer, deployer, admin]
+  accessSubjects:
+    - {kind: User, name: replica-developer}
   maxAccessSeconds: 900

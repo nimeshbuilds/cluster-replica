@@ -46,6 +46,9 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 		return r.report(ctx, a, "Blocked", "AccessStateUnavailable", "Protected access state is unavailable.")
 	}
 	terminal := a.Status.Phase == "Expired" || a.Status.Phase == "Revoked"
+	if st == nil && a.Status.CredentialSecret != "" && !terminal {
+		return r.report(ctx, a, "Blocked", "AccessStateUnavailable", "Previously issued access requires its protected ownership state; restore it before cleanup or reissuance.")
+	}
 	if !a.DeletionTimestamp.IsZero() || terminal || st != nil && st.CleanupStarted || st != nil && !st.AccessExpiresAt.IsZero() && !time.Now().Before(st.AccessExpiresAt) {
 		return r.revoke(ctx, a, st)
 	}
@@ -160,6 +163,9 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 			return r.report(ctx, a, "Blocked", "AccessStateUnavailable", "Cannot persist credential ownership.")
 		}
 	}
+	if err := r.credentialReaders(ctx, a, grant, st); err != nil {
+		return r.report(ctx, a, "Blocked", "CredentialRBACFailed", "Cannot establish administrator-granted exact-Secret permissions; inspect the grant and RBAC ownership.")
+	}
 	before := a.DeepCopy()
 	a.Status.CredentialSecret = name
 	a.Status.ExpiresAt = &metav1.Time{Time: st.AccessExpiresAt}
@@ -177,6 +183,9 @@ func (r *AccessReconciler) revoke(ctx context.Context, a *api.ReplicaAccess, st 
 			if err := r.Engine.Store.Save(ctx, st); err != nil {
 				return r.report(ctx, a, "Revoking", "AccessStateUnavailable", "Cannot persist access revocation intent.")
 			}
+		}
+		if err := r.revokeCredentialReaders(ctx, st); err != nil {
+			return r.report(ctx, a, "Revoking", "CredentialRBACPending", "Waiting for exact-Secret credential permissions to be revoked.")
 		}
 		pending := false
 		for _, e := range st.Entries {

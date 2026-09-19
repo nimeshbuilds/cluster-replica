@@ -90,7 +90,7 @@ Replicove reproduces selected, supported desired state. It does not duplicate ho
 
 Fresh PVCs require explicit `EmptyVolumes` permission and do not contain source data. Cloud identity annotations require a qualified adapter; copying an IRSA annotation alone does not establish identity. Platform provisioning, cloud identity exchanges, CSI snapshot/data restoration, External Secrets backend recreation and broader distribution qualification remain incomplete. Unsupported paths report a blocking condition.
 
-Administrators control source grants and the separate encrypted-state namespace. Destination users share the capabilities of their namespace grant. Credential consumers need permission to get their exact returned Secret, not general Secret-read access to the runtime namespace. This is not yet a per-user multi-tenant gateway.
+Administrators control source grants and the separate encrypted-state namespace. Destination users share the capabilities of their namespace grant. Administrators can configure session credential readers through `accessSubjects`; generated Roles permit only exact-name Secret reads and are revoked with each session. This is not yet a per-user multi-tenant gateway.
 
 TTL includes planning and provisioning time. Cleanup respects object UIDs and finalizers and waits for supported owned volume cleanup. It does not forcibly delete unrelated resources or claim that deleting Kubernetes metadata erases external data.
 

@@ -1,26 +1,21 @@
-# Roadmap
+# Replicove roadmap
 
-This is a build sequence, not a release promise. [The full plan](docs/design/cluster-replica-implementation-plan.md) contains acceptance criteria and dependencies for all phases.
+This is a build sequence, not a release promise. The [implementation ledger](docs/IMPLEMENTATION_STATUS.md) and [validation record](docs/validation.md) distinguish code from proven behavior. The [full design plan](docs/design/cluster-replica-implementation-plan.md) retains longer-term acceptance criteria.
 
-| Phase | Outcome | Status |
+| Phase | Outcome | Current status |
 | --- | --- | --- |
-| 0. Evidence and compatibility baseline | Pin upstream contracts; establish a real host/guest test | First stateless kind/vCluster lifecycle passed; broader certification pending ([evidence](docs/validation.md)) |
-| 1. API and operator foundation | CRD, immutable requests, status, namespace grants | Minimal lab CRD/controller implemented; grants and production RBAC pending |
-| 2. Runtime and initial lifecycle | Provision/connect/expire; standalone, existing, Platform providers | Standalone Helm adapter implemented; full cleanup and other providers pending |
-| 3. Discovery and plan | Read selected source components, detect dependencies, produce an inspectable plan | Next |
-| 4. Replication engine | Install supported operators/configuration with overrides and verification | Planned |
-| 5. Workloads and identities | Spark/Trino scenarios, selected secrets and cloud identity mappings | Planned |
-| 6. Complete cleanup | Ownership inventory, guest teardown, storage/external-resource deletion evidence | Planned; required before promising fully ephemeral replicas |
-| 7. Access and agents | Short-lived, scoped human/CI/agent credentials | Planned |
-| 8. Cloud and distribution validation | Validate adapters on EKS, AKS, GKE, OpenShift, RKE2 as needed | Planned |
-| 9. Release maintenance | Candidate-to-certified pipeline, drift and upgrade testing | Pinned translator and chart contract tests started |
-| 10. Public release and operations | Installable releases, docs, diagnostics, support process | Planned |
+| 0. Evidence and compatibility | Pinned upstream contract and real host/guest tests | Chart contracts and real runtime/workload evidence recorded; full 1.35/1.36 matrix passed at 8123f9a |
+| 1. Foundation | CRDs, immutable requests, grants, protected state | Implemented with real API and policy tests; namespace delegation is the authorization model |
+| 2. Runtime | Standalone and existing vCluster lifecycle | Helm and pinned existing-target paths implemented; Platform provisioning remains gated |
+| 3. Discovery and plan | Source capture, dependencies, selectors, overrides, approval | Implemented for supported desired state and stored Helm revisions |
+| 4. Replication | Owned apply, readiness, Secrets, refresh and drift | Implemented; arbitrary operator semantics/hooks and External Secrets backends remain incomplete |
+| 5. Workloads and identity | Spark/Trino and cloud identity | Small real Spark/Trino workloads pass; cloud identity adapters and labs remain deferred/incomplete |
+| 6. Cleanup and data | Guest/host inventory and data lifecycle | Owned runtime/fresh-volume cleanup implemented; content copying, snapshots and external data are incomplete |
+| 7. Access and agents | Expiring credentials, local connection, revocation | CLI, guest roles/tokens, tunnel recovery and exact-Secret reader RBAC implemented; per-user gateway is future work |
+| 8. Distribution qualification | EKS/AKS/GKE/OpenShift/RKE2 evidence | Cloud labs deferred; vendor claims require additional evidence |
+| 9. Maintenance | Release profiles and upgrade/recovery tests | Pinned adapter boundary, chart contracts, key-preserving upgrade test and update checker implemented |
+| 10. Public release and operations | Published artifacts, support and scale | Local four-platform CLI/chart packaging passes; publication, signing, scale and GA qualification remain |
 
-## Immediate milestones
+The next release gate is green CI for the complete portable workflow and its access controls, accurate installation/recovery documentation, and review of the stacked implementation PRs. The brand is Replicove; module names and API groups remain stable to preserve existing manifests and links.
 
-1. Run a reproducible real-cluster demo: CR → reachable vCluster → small guest workload → deletion, with an inventory of every leftover. Do not call the cleanup contract complete until it is demonstrated.
-2. Add read-only host discovery and a reviewable plan for one explicitly selected Helm-installed component. Start with a fixture operator and then validate cert-manager as a real example.
-3. Apply that plan to the guest, verify behavior, and record ownership. Implement selection and value overrides before expanding adapters.
-4. Design the complete TTL teardown and least-privilege access contract before copying secrets or provisioning cloud identities.
-
-Kubernetes versions and capabilities are the core compatibility axes. EKS is a candidate for the first AWS identity adapter; the generic controller has no AWS dependency.
+Kubernetes versions, served APIs and verified capabilities drive compatibility. Distribution names add adapter context; the generic controller has no AWS dependency.

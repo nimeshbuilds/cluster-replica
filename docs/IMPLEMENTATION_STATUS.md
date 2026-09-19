@@ -8,16 +8,16 @@ Requested scope: the full ClusterReplica product plan, researched product brandi
 | --- | --- | --- |
 | Replicove name and icon | Collision research and generated asset in `docs/brand` / `assets/brand` | Delivered |
 | Standalone vCluster lifecycle | Pinned Helm SDK provider, ownership, deletion and TTL | Passed original real kind/vCluster fixture repeatedly |
-| Administrator grants and encrypted state | Namespace policy, exact credential grants, AES-GCM, bounded records, UID/RV checks | Full workflow CI in progress |
-| Discovery and planning | Kubernetes/Helm capture, selectors, graph, mappings, patches, overrides | Real API capture regression passes; full workflow CI in progress |
-| Generic replication | Intent before writes, UID ownership, CRDs, readiness and foreign-object refusal | Full workflow and real operator fixtures in progress |
-| Secrets and refresh | Snapshot/follow, token exclusions, explicit refresh, drift, preserved added fields | Full workflow CI in progress |
-| Existing target | Protected data-only credentials, pinned guest identity, no runtime adoption | Two real API servers pass identity, full apply, stable status and drift checks; preservation/conflict CI added |
-| Ephemeral cleanup | Guest/host inventory, finalizers, access revocation, bound volume checks | Original stateless lifecycle passes; durable full-workflow TTL in progress |
-| Human/CI/agent access | Expiring guest role/token, CLI, loopback tunnel, exclusive private output file | Viewer permission and cleanup CI in progress |
-| Workloads | Pinned cert-manager, native policy, Spark Operator and Trino fixtures with functional probes | cert-manager, Spark and native policy passed at fa2889c; Trino query passed but teardown failed |
+| Administrator grants and encrypted state | Namespace policy, exact credential grants, AES-GCM, bounded records, UID/RV checks | Passed at 8123f9a on hosts 1.35.8/1.36.4 |
+| Discovery and planning | Kubernetes/Helm capture, selectors, graph, mappings, patches, overrides | Real API regression and both full workflows pass |
+| Generic replication | Intent before writes, UID ownership, CRDs, readiness and foreign-object refusal | Both full workflows and all four workload fixtures pass |
+| Secrets and refresh | Snapshot/follow, token exclusions, explicit refresh, drift, preserved added fields | Passed at 8123f9a on hosts 1.35.8/1.36.4 |
+| Existing target | Protected data-only credentials, pinned guest identity, no runtime adoption | Real API tests and live preservation/conflict checks pass |
+| Ephemeral cleanup | Guest/host inventory, finalizers, access revocation, bound volume checks | Stateless lifecycle and both durable TTL/PVC cleanup workflows pass |
+| Human/CI/agent access | Expiring guest role/token, exact-Secret reader RBAC, CLI/tunnel recovery, private output file | Viewer/cleanup pass; optional credential-reader RBAC passes local real-API tests, next CI gate pending |
+| Workloads | Pinned cert-manager, native policy, Spark Operator and Trino fixtures with functional probes | All four functional suites and cleanup passed at 8123f9a |
 | Maintenance and packaging | Embedded operator chart, four CLI builds, chart archive/checksums, read-only update checker | Local packaging and actual Helm key-preserving upgrade pass |
-| Kubernetes compatibility | Host 1.35/1.36 live matrix, pinned 1.36 guest, chart render 1.35–1.37 | Original 1.36 runtime path passed; new full matrix in progress |
+| Kubernetes compatibility | Host 1.35/1.36 live matrix, pinned 1.36 guest, chart render 1.35–1.37 | Full 1.35.8/1.36.4 workflows pass with 1.36.0 guest |
 
 `make check` passes locally: race tests, exact upstream chart contracts, real API-server integration, vet and both builds. Packaging for Linux/macOS amd64/arm64 was built and its archive checksums inspected. These checks do not replace real vCluster and workload execution.
 
@@ -29,7 +29,7 @@ The [current draft PR](https://github.com/nimeshbuilds/cluster-replica/pull/8) r
 - Cloud identity adapters and authenticated exchanges: IRSA, EKS Pod Identity, Azure/GCP workload identity. Source tokens are not cloned; unadapted annotations block capture.
 - Data content copying, CSI snapshot/restore workflows and external data lifecycle. Current data support provisions explicitly granted fresh volumes only.
 - External Secrets backend recreation and arbitrary operator-specific dependencies, lifecycle hooks or bootstrap cycles.
-- Per-user gateway delegation and automated exact-Secret RBAC distribution. The current model is administrator-granted namespace delegation.
+- Per-user gateway delegation. Exact-Secret RBAC distribution is implemented for administrator-selected subjects; the authorization model remains namespace delegation.
 - Public container/release publication, signed provenance, large encrypted object-store captures, scale/chaos qualification and GA readiness.
 - OpenShift/RKE2/cloud distribution qualification and external design-partner validation.
 

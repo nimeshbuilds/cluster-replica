@@ -97,6 +97,10 @@ done
 [[ "$i" -lt 60 ]]
 # Least-privilege guest viewer credentials can read workloads but cannot create them.
 bin/replicove access full --role viewer --output "$work/guest-access.kubeconfig"
+viewer_secret=$(hk -n replica-lab get replicaaccesses -o json | python3 -c 'import json,sys;items=[a for a in json.load(sys.stdin)["items"] if a["spec"]["role"]=="viewer"];assert len(items)==1;print(items[0]["status"]["credentialSecret"])')
+[[ "$(hk --as=replica-developer -n replica-lab auth can-i get "secret/$viewer_secret")" == yes ]]
+if hk --as=replica-developer -n replica-lab auth can-i get "secret/vc-$runtime_uid";then exit 1;fi
+if hk --as=replica-developer -n replica-lab auth can-i list secrets;then exit 1;fi
 python3 - "$work/guest.kubeconfig" "$work/guest-access.kubeconfig" <<'PY'
 # Kubeconfigs are handled in the private test directory only; kubectl emits JSON
 # to this process, never to logs or evidence artifacts.
@@ -172,6 +176,9 @@ bin/replicove status full > "$work/artifacts/ready.json"
 kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" || true;tunnel_pid=''
 bin/replicove delete full
 hk -n replica-lab wait clusterreplica/full --for=delete --timeout=300s
+if hk --as=replica-developer -n replica-lab auth can-i get "secret/$viewer_secret";then exit 1;fi
+[[ -z "$(hk -n replica-lab get role "$viewer_secret" --ignore-not-found -o name)" ]]
+[[ -z "$(hk -n replica-lab get rolebinding "$viewer_secret" --ignore-not-found -o name)" ]]
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
 hk -n replica-lab get configmap unrelated-sentinel >/dev/null
@@ -187,5 +194,5 @@ sleep 15
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect"]}
+{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
 JSON

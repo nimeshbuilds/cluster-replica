@@ -1,16 +1,23 @@
 # Validation record
 
-## Portable workload replication
+## Complete portable workflow
 
-At commit `fa2889c`, [CI run 35465687281](https://github.com/nimeshbuilds/cluster-replica/actions/runs/35465687281) passed the cert-manager, Spark and native admission-policy jobs. Each job installed a real source Helm release, captured its toolset, provisioned a persistent vCluster, performed its guest behavior check and verified owned cleanup. The [saved workload evidence](validation/2026-09-19-workloads.json) records observed versions and images.
+[CI run 35466203137](https://github.com/nimeshbuilds/cluster-replica/actions/runs/35466203137) passed **all eight jobs** at commit `8123f9a`: verification, the original runtime lifecycle, both full-workflow host minors, and cert-manager/Spark/Trino/native-policy workloads. The [saved portable evidence](validation/2026-09-19-portable.json) records versions, runtime pins, TTL timestamps, scenarios and observed workload images.
 
-- cert-manager recreated an Issuer/Certificate and produced a guest TLS Secret.
-- Spark Operator recreated the SparkApplication and completed a real Spark Pi calculation.
-- Native admission policy rejected an unlabelled test ConfigMap and accepted a labelled one.
+The full workflow passed on Kubernetes **1.35.8 and 1.36.4**, with a pinned vCluster 0.37.1 / Kubernetes 1.36.0 guest. It verified embedded installation, manual approval, source Helm reconstruction, Secret snapshot/follow, namespace maps/overrides, a guest workload and HTTP Service probe, operator restart, durable control-plane replacement, tunnel reconnection, explicit refresh, viewer RBAC, access revocation, owned cleanup, existing-target conflict/preservation, source preservation, and a real five-minute TTL with control-plane PVC removal.
 
-Trino returned the expected result (`25`) from `SELECT count(*) FROM tpch.tiny.nation`, but that job failed during tunnel teardown; its complete lifecycle was not yet verified. The full replica workflow failed at a probe image pull after guest readiness. The overall run therefore failed. Follow-up fixes and the broader host-minor/TTL/existing-target checks remain under validation; individual successful jobs do not make the entire run green.
+| Workload | Passed guest behavior and cleanup |
+| --- | --- |
+| cert-manager | Recreated Issuer/Certificate and generated a TLS Secret |
+| Spark Operator | Recreated SparkApplication and completed a real Spark Pi calculation |
+| Trino | Returned `25` from `SELECT count(*) FROM tpch.tiny.nation`; retained usable access after the query |
+| Native admission policy | Rejected an unlabelled ConfigMap probe and accepted a labelled probe |
 
-Local checks additionally cover the actual operator Helm installation and key-preserving upgrade, exact-grant source capture, two-API existing-target identity verification, stable full-workflow status and preserved guest drift, and Linux/macOS amd64/arm64 packaging.
+These are small disposable-cluster integration checks. They do not certify production scale, cloud identity exchange, cloud storage erasure, external data restoration, Platform, or vendor-specific behavior. Later code changes must pass current-head CI.
+
+The optional exact-Secret credential-reader RBAC addition came after `8123f9a`. It passes local real-API authorization/revocation tests and is included in the next full-workflow CI gate; it is not retroactively attributed to this run. Local tests also cover Helm installation/key-preserving upgrade, exact-grant capture, target identity, stable status, preserved drift, and missing access-state recovery. Linux/macOS amd64/arm64 packaging was built and its archives/checksums inspected.
+
+Earlier failed runs exposed installer wait-strategy, nil Helm values, infrastructure-capture, TLS name, test image and tunnel teardown problems. Those issues were corrected before the all-green run. The [earlier individual workload evidence](validation/2026-09-19-workloads.json) remains historical.
 
 ## Live host and guest lifecycle
 

@@ -97,6 +97,16 @@ type PlatformTarget struct {
 	TemplateVersion string `json:"templateVersion"`
 }
 
+// AccessSubject is an administrator-approved reader of session credentials.
+// It does not infer who originally created a request in the shared namespace.
+type AccessSubject struct {
+	// +kubebuilder:validation:Enum=User;Group;ServiceAccount
+	Kind string `json:"kind"`
+	// +kubebuilder:validation:MinLength=1
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
 type ReplicaGrantSpec struct {
 	TargetNamespace string `json:"targetNamespace"`
 	// +kubebuilder:validation:MinItems=1
@@ -126,6 +136,9 @@ type ReplicaGrantSpec struct {
 	MaxCaptureBytes   int32    `json:"maxCaptureBytes,omitempty"`
 	AllowEmptyVolumes bool     `json:"allowEmptyVolumes,omitempty"`
 	AccessRoles       []string `json:"accessRoles,omitempty"`
+	// Optional exact-Secret RBAC recipients for every access session under this grant.
+	// +kubebuilder:validation:MaxItems=32
+	AccessSubjects []AccessSubject `json:"accessSubjects,omitempty"`
 	// +kubebuilder:validation:Minimum=600
 	// +kubebuilder:validation:Maximum=3600
 	// +kubebuilder:default=900

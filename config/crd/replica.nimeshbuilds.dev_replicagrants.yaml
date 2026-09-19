@@ -44,6 +44,31 @@ spec:
                 items:
                   type: string
                 type: array
+              accessSubjects:
+                description: Optional exact-Secret RBAC recipients for every access
+                  session under this grant.
+                items:
+                  description: |-
+                    AccessSubject is an administrator-approved reader of session credentials.
+                    It does not infer who originally created a request in the shared namespace.
+                  properties:
+                    kind:
+                      enum:
+                      - User
+                      - Group
+                      - ServiceAccount
+                      type: string
+                    name:
+                      minLength: 1
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - kind
+                  - name
+                  type: object
+                maxItems: 32
+                type: array
               allowEmptyVolumes:
                 type: boolean
               clusterResources:

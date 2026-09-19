@@ -41,10 +41,16 @@ hk -n replicove-system rollout status deployment/replicove --timeout=180s
 operator_identity=system:serviceaccount:replicove-system:replicove
 [[ "$(hk --as="$operator_identity" -n source-dev auth can-i list configmaps)" == yes ]]
 expect_forbidden(){
+ echo "Checking rejected operation: $*"
  if "$@" > "$work/denial.txt" 2>&1; then
   echo 'Expected Kubernetes to reject the unauthorized operation' >&2; exit 1
  fi
- grep -q 'Forbidden' "$work/denial.txt"
+ # kubectl create wraps API errors with a lowercase "is forbidden:" message;
+ # kubectl get uses "(Forbidden)". Other failures must not satisfy this check.
+ if ! grep -Eq '\(Forbidden\)| is forbidden:' "$work/denial.txt"; then
+  cat "$work/denial.txt" >&2
+  exit 1
+ fi
 }
 expect_forbidden hk --as="$operator_identity" -n source-dev create configmap forbidden --from-literal=x=y
 expect_forbidden hk --as="$operator_identity" -n kube-system get secrets

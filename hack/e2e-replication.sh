@@ -66,6 +66,18 @@ hk -n replicove-system rollout status deployment/replicove --timeout=120s
 sleep 15
 [[ "$(gk -n integration get configmap settings -o jsonpath='{.metadata.annotations.experiment}')" == keep ]]
 [[ "$(hk -n replica-lab get clusterreplica full -o jsonpath='{.status.runtime.releaseName}')" == "$runtime_uid" ]]
+# The durable profile must survive rescheduling its own control-plane pod.
+guest_cluster_uid=$(gk get namespace kube-system -o jsonpath='{.metadata.uid}')
+guest_workload_uid=$(gk -n integration get deployment echo -o jsonpath='{.metadata.uid}')
+kill "$tunnel_pid";wait "$tunnel_pid" || true;tunnel_pid=''
+hk -n replica-lab delete pod "$runtime_uid-0" --wait=true
+hk -n replica-lab rollout status statefulset/"$runtime_uid" --timeout=180s
+bin/replicove connect full --role admin --output "$work/guest.kubeconfig" > "$work/artifacts/reconnect.txt" 2>&1 &
+tunnel_pid=$!
+for i in $(seq 1 180);do if [[ -f "$work/guest.kubeconfig" ]];then break;fi;sleep 1;done
+[[ -f "$work/guest.kubeconfig" ]]
+[[ "$(gk get namespace kube-system -o jsonpath='{.metadata.uid}')" == "$guest_cluster_uid" ]]
+[[ "$(gk -n integration get deployment echo -o jsonpath='{.metadata.uid}')" == "$guest_workload_uid" ]]
 # Snapshot refresh changes only source-owned fields and preserves added fields.
 hk -n source-dev patch configmap settings --type merge -p '{"data":{"extra":"refreshed"}}'
 bin/replicove refresh full
@@ -104,6 +116,16 @@ hk -n replica-lab wait clusterreplica/full --for=delete --timeout=300s
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
 hk -n replica-lab get configmap unrelated-sentinel >/dev/null
 hk -n source-dev get deployment echo >/dev/null
+# Exercise actual full-workflow TTL and persistent control-plane PVC cleanup.
+bin/replicove create ttl --grant source-dev-lab --ttl 5m --replication-file test/e2e/replication.yaml
+hk -n replica-lab wait clusterreplica/ttl --for=condition=Ready --timeout=180s
+hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-before.json"
+hk -n replica-lab wait clusterreplica/ttl --for=jsonpath='{.status.phase}'=Expired --timeout=420s
+hk -n replica-lab annotate clusterreplica ttl e2e-after-expiry=yes
+sleep 15
+[[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
+[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
+hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation"]}
+{"result":"passed","scenarios":["embedded-installer","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup"]}
 JSON

@@ -40,7 +40,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctrl.Resu
 	if err := r.Get(ctx, key.NamespacedName, obj); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if obj.Spec.GrantRef != "" || obj.Spec.Replication != nil || obj.Spec.Target != nil || obj.Spec.CleanupPolicy == "DeleteOwned" {
+	if obj.Spec.Profile == catalog.PersistentProfile || obj.Spec.GrantRef != "" || obj.Spec.Replication != nil || obj.Spec.Target != nil || obj.Spec.CleanupPolicy == "DeleteOwned" {
 		if r.Workflow == nil {
 			return r.report(ctx, obj, "Blocked", "ReplicaWorkflowDisabled", "Configure an administrator-only state namespace to enable replication.", false, pollInterval)
 		}

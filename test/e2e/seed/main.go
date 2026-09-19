@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/nimeshbuilds/cluster-replica/internal/runtime/helm"
-	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/loader"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
@@ -27,7 +26,7 @@ func main() {
 	if err != nil {
 		panic("test chart unavailable")
 	}
-	install := action.NewInstall(configuration)
+	install := helm.NewInstall(configuration)
 	install.ReleaseName = os.Args[3]
 	install.Namespace = os.Args[2]
 	install.DisableHooks = true

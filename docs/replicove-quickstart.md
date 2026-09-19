@@ -48,7 +48,7 @@ Object intent is persisted before creation. Completed writes pin target UIDs. Na
 
 TTL starts at request creation, including planning and installation. Cleanup revokes access, deletes guest resources in reverse dependency order, respects finalizers, removes the owned runtime, follows UID-based host ownership references, and removes encrypted captures. Failure remains visible with the finalizer in place. Replicove does not forcibly remove finalizers or claim that deleting Kubernetes metadata erases arbitrary external services.
 
-The current `vcluster-0.37.1-lab` control plane uses `emptyDir`. Operator restart is supported; rescheduling the vCluster control-plane pod can lose its state and trigger a pinned-cluster-identity failure. Use it for disposable labs. Durable control-plane storage and cloud cleanup require separate evidence before a production claim.
+The CLI defaults to `vcluster-0.37.1-persistent`: a 1 GiB control-plane PVC using the host default StorageClass and StatefulSet deletion retention set to Delete. Its CI rescheduling and volume cleanup checks are being qualified. The optional `vcluster-0.37.1-lab` control plane uses `emptyDir`. Operator restart is supported; rescheduling the vCluster control-plane pod can lose its state and trigger a pinned-cluster-identity failure. Use it for disposable labs. Cloud cleanup requires separate evidence before a production claim. For inventoried bound volumes, cleanup requires Delete reclaim policy and waits for the exact PersistentVolume UID to disappear; it never deletes arbitrary host PVs directly.
 
 ## Evidence and current scope
 

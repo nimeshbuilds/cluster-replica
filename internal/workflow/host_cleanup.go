@@ -35,6 +35,9 @@ func (w *Engine) inventoryHost(ctx context.Context, st *state.State) error {
 		objects = append(objects, list.Items...)
 	}
 	known := map[string]bool{st.RuntimeRootUID: true}
+	if st.RuntimeWorkloadUID != "" {
+		known[st.RuntimeWorkloadUID] = true
+	}
 	for _, e := range st.HostEntries {
 		known[e.UID] = true
 	}
@@ -61,6 +64,40 @@ func (w *Engine) inventoryHost(ctx context.Context, st *state.State) error {
 			st.HostEntries = append(st.HostEntries, state.Entry{Type: "host", APIVersion: obj.GetAPIVersion(), Kind: obj.GetKind(), Resource: plurals[obj.GetAPIVersion()+"/"+obj.GetKind()], Namespace: obj.GetNamespace(), Name: obj.GetName(), UID: string(obj.GetUID())})
 		}
 	}
+	for _, obj := range objects {
+		if obj.GetKind() != "PersistentVolumeClaim" || !known[string(obj.GetUID())] {
+			continue
+		}
+		name, ok, _ := unstructured.NestedString(obj.Object, "spec", "volumeName")
+		if !ok || name == "" {
+			continue
+		}
+		pv := &unstructured.Unstructured{}
+		pv.SetAPIVersion("v1")
+		pv.SetKind("PersistentVolume")
+		if err := w.Client.Get(ctx, client.ObjectKey{Name: name}, pv); err != nil {
+			return failure("VolumeInventoryUnavailable", "Cannot inspect a bound replica PersistentVolume before cleanup.")
+		}
+		claimUID, _, _ := unstructured.NestedString(pv.Object, "spec", "claimRef", "uid")
+		if claimUID != string(obj.GetUID()) {
+			return failure("VolumeOwnershipConflict", "A bound volume points to a different claim UID.")
+		}
+		reclaim, _, _ := unstructured.NestedString(pv.Object, "spec", "persistentVolumeReclaimPolicy")
+		if reclaim != "Delete" {
+			return failure("VolumeRetained", "A replica volume has Retain reclaim policy; its administrator must resolve retention before cleanup can be verified.")
+		}
+		seen := false
+		for _, volume := range st.Volumes {
+			if volume.UID == string(pv.GetUID()) {
+				seen = true
+			}
+		}
+		if !seen {
+			st.Volumes = append(st.Volumes, state.Volume{Name: name, UID: string(pv.GetUID()), ClaimUID: claimUID})
+			changed = true
+		}
+	}
+
 	if changed {
 		return w.Store.Save(ctx, st)
 	}
@@ -100,6 +137,23 @@ func (w *Engine) hostCleanup(ctx context.Context, st *state.State) (bool, error)
 			return false, failure("HostCleanupPending", "A host object could not be removed; finalizers remain in effect.")
 		}
 	}
+	for _, volume := range st.Volumes {
+		pv := &unstructured.Unstructured{}
+		pv.SetAPIVersion("v1")
+		pv.SetKind("PersistentVolume")
+		err := w.Client.Get(ctx, client.ObjectKey{Name: volume.Name}, pv)
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return false, failure("VolumeCleanupUnavailable", "Cannot verify PersistentVolume deletion.")
+		}
+		if string(pv.GetUID()) != volume.UID {
+			return false, failure("VolumeOwnershipConflict", "A volume name was reused; it was preserved.")
+		}
+		done = false
+	}
+
 	if err := w.Store.Save(ctx, st); err != nil {
 		return false, err
 	}

@@ -7,7 +7,7 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // +kubebuilder:validation:XValidation:rule="self == oldSelf",message="spec is immutable; create a new ClusterReplica"
 type ClusterReplicaSpec struct {
 	// Profile selects an exact, experimental runtime configuration. No profile is certified yet.
-	// +kubebuilder:validation:Enum=vcluster-0.37.1-lab
+	// +kubebuilder:validation:Enum=vcluster-0.37.1-lab;vcluster-0.37.1-persistent
 	Profile string `json:"profile"`
 	// TTL starts at the resource's creation time, including provisioning time.
 	// +kubebuilder:validation:Pattern=`^([1-9][0-9]{0,3}m|[1-9][0-9]{0,2}h)$`

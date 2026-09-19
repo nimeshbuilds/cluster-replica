@@ -29,6 +29,7 @@ type Reader struct {
 type candidate struct {
 	object             state.Object
 	selected, excluded bool
+	fromChart          bool
 }
 type resource struct {
 	gvr        schema.GroupVersionResource
@@ -105,16 +106,19 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 		}
 		id := planner.ObjectID(desired)
 		if previous, ok := pool[id]; ok {
-			if previous.object.SourceUID != string(source.GetUID()) || fromChart {
+			if !fromChart || previous.fromChart {
 				return failed("DuplicateTarget", "More than one source maps to %s.", id)
 			}
-			return nil
+			// Embedded chart CRDs may lack Helm ownership annotations in the source.
+			// An explicitly selected chart supplies their authoritative desired state.
+		} else {
+			count++
+			if count > scope.MaxObjects {
+				return failed("CaptureLimit", "Source capture exceeds the object limit in the grant; narrow its scope.")
+			}
 		}
-		count++
-		if count > scope.MaxObjects {
-			return failed("CaptureLimit", "Source capture exceeds the object limit in the grant; narrow its scope.")
-		}
-		pool[id] = candidate{object: state.Object{ID: id, APIVersion: desired.GetAPIVersion(), Kind: res.kind, Resource: res.gvr.Resource, SourceNamespace: source.GetNamespace(), SourceName: source.GetName(), SourceUID: string(source.GetUID()), SourceVersion: source.GetResourceVersion(), Namespace: desired.GetNamespace(), Name: desired.GetName(), Desired: desired.Object, Dependencies: planner.Dependencies(desired)}, selected: selected, excluded: excluded}
+
+		pool[id] = candidate{object: state.Object{ID: id, APIVersion: desired.GetAPIVersion(), Kind: res.kind, Resource: res.gvr.Resource, SourceNamespace: source.GetNamespace(), SourceName: source.GetName(), SourceUID: string(source.GetUID()), SourceVersion: source.GetResourceVersion(), Namespace: desired.GetNamespace(), Name: desired.GetName(), Desired: desired.Object, Dependencies: planner.Dependencies(desired)}, selected: selected, excluded: excluded, fromChart: fromChart}
 		return nil
 	}
 	for _, res := range ordered {
@@ -288,6 +292,22 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 	for _, id := range ids {
 		plan.Objects = append(plan.Objects, pool[id].object)
 	}
+	for _, check := range request.Spec.Replication.Checks {
+		found := false
+		for _, obj := range plan.Objects {
+			if check.APIVersion == obj.APIVersion && check.Kind == obj.Kind && check.Namespace == obj.SourceNamespace && check.Name == obj.SourceName {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, failed("ReadinessTargetMissing", "A readiness check references an object outside the captured plan.")
+		}
+		if (check.Condition == "" && check.Field == "") || (check.Condition != "" && check.Field != "") || (check.Field != "" && !strings.HasPrefix(check.Field, "status.")) {
+			return nil, failed("InvalidReadinessCheck", "Use one condition or a status field for each readiness check.")
+		}
+	}
+
 	if err := planner.Order(plan); err != nil {
 		return nil, err
 	}

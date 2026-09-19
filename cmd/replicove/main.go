@@ -23,7 +23,6 @@ import (
 	"github.com/nimeshbuilds/cluster-replica/internal/target"
 	"github.com/nimeshbuilds/cluster-replica/internal/workflow"
 	"github.com/spf13/cobra"
-	"helm.sh/helm/v4/pkg/action"
 	"helm.sh/helm/v4/pkg/chart/loader/archive"
 	"helm.sh/helm/v4/pkg/chart/v2/loader"
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +71,7 @@ func command() *cobra.Command {
 	root.PersistentFlags().StringVarP(&c.Namespace, "namespace", "n", "replica-lab", "Administrator-granted destination namespace")
 	root.PersistentFlags().StringVar(&c.Kubeconfig, "kubeconfig", "", "Host kubeconfig path")
 	root.PersistentFlags().StringVar(&c.Context, "context", "", "Host kubeconfig context")
-	var grant, ttl, from, replicationFile string
+	var grant, ttl, from, replicationFile, profile string
 	var manual bool
 	create := &cobra.Command{Use: "create NAME", Short: "Capture the granted toolset and provision an ephemeral replica", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		k, _, err := c.clients()
@@ -96,7 +95,7 @@ func command() *cobra.Command {
 		if manual {
 			approval = "Manual"
 		}
-		obj := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Name: args[0], Namespace: c.Namespace}, Spec: api.ClusterReplicaSpec{Profile: catalog.Profile, TTL: ttl, CleanupPolicy: "DeleteOwned", GrantRef: grant, Replication: spec, Approval: approval}}
+		obj := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Name: args[0], Namespace: c.Namespace}, Spec: api.ClusterReplicaSpec{Profile: profile, TTL: ttl, CleanupPolicy: "DeleteOwned", GrantRef: grant, Replication: spec, Approval: approval}}
 		if err := k.Create(cmd.Context(), obj); err != nil {
 			return errors.New("cannot create ClusterReplica; verify namespace access, grant, name, and spec")
 		}
@@ -105,6 +104,7 @@ func command() *cobra.Command {
 	}}
 	create.Flags().StringVar(&grant, "grant", "", "Administrator ReplicaGrant name")
 	_ = create.MarkFlagRequired("grant")
+	create.Flags().StringVar(&profile, "profile", catalog.PersistentProfile, "Pinned vCluster runtime profile")
 	create.Flags().StringVar(&ttl, "ttl", "2h", "Lifetime including provisioning")
 	create.Flags().StringVar(&from, "from", "", "Comma-separated granted source namespaces")
 	create.Flags().StringVar(&replicationFile, "replication-file", "", "YAML ReplicationSpec with selectors, mappings, and overrides")
@@ -219,7 +219,7 @@ func (c *cli) installCommand() *cobra.Command {
 		if err != nil {
 			return errors.New("cannot initialize installer")
 		}
-		install := action.NewInstall(configuration)
+		install := helmprovider.NewInstall(configuration)
 		install.ReleaseName = "replicove"
 		install.Namespace = system
 		install.CreateNamespace = false
@@ -286,16 +286,18 @@ func (c *cli) accessCommand(tunnel bool) *cobra.Command {
 		}
 		data := secret.Data["config"]
 		var stop func()
+		var tunnelDone <-chan error
 		if tunnel {
 			if obj.Status.Runtime == nil {
 				return errors.New("existing targets require their configured network route; use access instead")
 			}
-			forwarded, close, err := forward(cmd.Context(), cfg, obj, data)
+			forwarded, close, done, err := forward(cmd.Context(), cfg, obj, data)
 			if err != nil {
 				return err
 			}
 			data = forwarded
 			stop = close
+			tunnelDone = done
 			defer stop()
 		}
 		if output == "" {
@@ -314,6 +316,8 @@ func (c *cli) accessCommand(tunnel bool) *cobra.Command {
 			select {
 			case <-cmd.Context().Done():
 			case <-timer.C:
+			case <-tunnelDone:
+				return errors.New("guest tunnel closed; run connect again to establish a new session")
 			}
 			return nil
 		}
@@ -348,37 +352,37 @@ func writeCredential(path string, data []byte) (func(), error) {
 	}
 	return cleanup, nil
 }
-func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, data []byte) ([]byte, func(), error) {
+func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, data []byte) ([]byte, func(), <-chan error, error) {
 	k, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return nil, nil, errors.New("cannot initialize host tunnel")
+		return nil, nil, nil, errors.New("cannot initialize host tunnel")
 	}
 	pods, err := k.CoreV1().Pods(obj.Namespace).List(ctx, metav1.ListOptions{LabelSelector: catalog.OwnerLabel + "=" + string(obj.UID)})
 	if err != nil {
-		return nil, nil, errors.New("cannot list owned vCluster pods")
+		return nil, nil, nil, errors.New("cannot list owned vCluster pods")
 	}
 	pod := ""
 	for _, p := range pods.Items {
 		if p.Status.Phase == corev1.PodRunning && p.DeletionTimestamp == nil {
 			if pod != "" {
-				return nil, nil, errors.New("more than one runtime pod is running; retry after rollout")
+				return nil, nil, nil, errors.New("more than one runtime pod is running; retry after rollout")
 			}
 			pod = p.Name
 		}
 	}
 	if pod == "" {
-		return nil, nil, errors.New("no running vCluster pod is available")
+		return nil, nil, nil, errors.New("no running vCluster pod is available")
 	}
 	transport, upgrader, err := spdy.RoundTripperFor(cfg)
 	if err != nil {
-		return nil, nil, errors.New("cannot initialize authenticated port forwarding")
+		return nil, nil, nil, errors.New("cannot initialize authenticated port forwarding")
 	}
 	url := k.CoreV1().RESTClient().Post().Resource("pods").Namespace(obj.Namespace).Name(pod).SubResource("portforward").URL()
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 	stop, ready := make(chan struct{}), make(chan struct{})
 	forwarder, err := portforward.NewOnAddresses(dialer, []string{"127.0.0.1"}, []string{"0:8443"}, stop, ready, io.Discard, io.Discard)
 	if err != nil {
-		return nil, nil, errors.New("cannot initialize local tunnel")
+		return nil, nil, nil, errors.New("cannot initialize local tunnel")
 	}
 	result := make(chan error, 1)
 	go func() { result <- forwarder.ForwardPorts() }()
@@ -387,20 +391,20 @@ func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, dat
 	case <-ready:
 	case <-ctx.Done():
 		closeTunnel()
-		return nil, nil, ctx.Err()
+		return nil, nil, nil, ctx.Err()
 	case <-result:
 		closeTunnel()
-		return nil, nil, errors.New("host port-forward failed")
+		return nil, nil, nil, errors.New("host port-forward failed")
 	}
 	ports, err := forwarder.GetPorts()
 	if err != nil || len(ports) != 1 {
 		closeTunnel()
-		return nil, nil, errors.New("cannot determine tunnel port")
+		return nil, nil, nil, errors.New("cannot determine tunnel port")
 	}
 	raw, err := clientcmd.Load(data)
 	if err != nil {
 		closeTunnel()
-		return nil, nil, errors.New("invalid guest kubeconfig")
+		return nil, nil, nil, errors.New("invalid guest kubeconfig")
 	}
 	for _, cluster := range raw.Clusters {
 		cluster.Server = fmt.Sprintf("https://127.0.0.1:%d", ports[0].Local)
@@ -408,7 +412,7 @@ func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, dat
 	output, err := clientcmd.Write(*raw)
 	if err != nil {
 		closeTunnel()
-		return nil, nil, errors.New("cannot encode tunneled kubeconfig")
+		return nil, nil, nil, errors.New("cannot encode tunneled kubeconfig")
 	}
-	return output, closeTunnel, nil
+	return output, closeTunnel, result, nil
 }

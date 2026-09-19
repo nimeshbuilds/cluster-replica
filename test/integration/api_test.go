@@ -5,6 +5,7 @@ package integration
 import (
 	"context"
 	"errors"
+	chartloader "helm.sh/helm/v4/pkg/chart/loader"
 	"os"
 	"path/filepath"
 	"testing"
@@ -238,4 +239,48 @@ func TestAPIServerContract(t *testing.T) {
 			t.Fatalf("history not purged after manifest absence: %v", err)
 		}
 	})
+}
+
+func TestOperatorInstallationChart(t *testing.T) {
+	environment := &envtest.Environment{}
+	config, err := environment.Start()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer environment.Stop()
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+	c, err := client.New(config, client.Options{Scheme: scheme})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	for _, name := range []string{"replicove-system", "replica-lab", "source-dev"} {
+		if err := c.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ch, err := chartloader.Load(filepath.Join("..", "..", "charts", "replicove"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := helmprovider.Configuration(config, "replicove-system")
+	if err != nil {
+		t.Fatal(err)
+	}
+	install := helmprovider.NewInstall(cfg)
+	install.ReleaseName = "replicove"
+	install.Namespace = "replicove-system"
+	install.Timeout = 30 * time.Second
+	values := map[string]any{"image": map[string]any{"repository": "test", "tag": "test"}, "sources": []any{map[string]any{"namespace": "source-dev", "rules": []any{map[string]any{"apiGroups": []any{""}, "resources": []any{"configmaps"}, "verbs": []any{"get", "list"}}}}}}
+	if _, err := install.RunWithContext(ctx, ch, values); err != nil {
+		t.Fatal(err)
+	}
+	key := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: "replicove-system", Name: "replicove-state-key"}, key); err != nil {
+		t.Fatal(err)
+	}
+	if len(key.Data["key"]) != 32 || key.Immutable == nil || !*key.Immutable {
+		t.Fatal("state key is not immutable AES-256 material")
+	}
 }

@@ -19,6 +19,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -117,7 +118,7 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	obj.Status.ExpiresAt = &metav1.Time{Time: expires}
 	obj.Status.SourceVersion = st.Plan.SourceVersion
 	if st.Provider == "helm" {
-		resolved := catalog.Resolve(st.OwnerUID)
+		resolved := catalog.ResolveProfile(st.OwnerUID, obj.Spec.Profile)
 		if obj.Status.Runtime != nil && *obj.Status.Runtime != resolved {
 			return w.report(ctx, obj, "Blocked", failure("ProfileMismatch", "Runtime identity no longer matches the pinned profile."), false)
 		}
@@ -148,6 +149,24 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		if err := w.Client.Get(ctx, client.ObjectKey{Namespace: obj.Namespace, Name: obj.Status.Runtime.ReleaseName}, svc); err != nil {
 			return w.report(ctx, obj, "Provisioning", target.ErrUnavailable, false)
 		}
+		workload := &unstructured.Unstructured{}
+		workload.SetAPIVersion("apps/v1")
+		workload.SetKind("Deployment")
+		if obj.Spec.Profile == catalog.PersistentProfile {
+			workload.SetKind("StatefulSet")
+		}
+		if err := w.Client.Get(ctx, client.ObjectKey{Namespace: obj.Namespace, Name: obj.Status.Runtime.ReleaseName}, workload); err != nil {
+			return w.report(ctx, obj, "Provisioning", target.ErrUnavailable, false)
+		}
+		if st.RuntimeWorkloadUID == "" {
+			st.RuntimeWorkloadUID = string(workload.GetUID())
+			if err := w.Store.Save(ctx, st); err != nil {
+				return w.report(ctx, obj, "Blocked", err, false)
+			}
+		} else if st.RuntimeWorkloadUID != string(workload.GetUID()) {
+			return w.report(ctx, obj, "Blocked", target.ErrUnsafe, false)
+		}
+
 		if st.RuntimeRootUID == "" {
 			st.RuntimeRootUID = string(svc.UID)
 			if err := w.Store.Save(ctx, st); err != nil {
@@ -348,6 +367,11 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 	}
 	if pending {
 		return w.report(ctx, obj, "Deleting", nil, false)
+	}
+	if st.Provider == "helm" {
+		if err := w.inventoryHost(ctx, st); err != nil {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
 	}
 	if !st.GuestCleaned {
 		remaining := false

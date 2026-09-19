@@ -77,6 +77,7 @@ spec:
                   No profile is certified yet.
                 enum:
                 - vcluster-0.37.1-lab
+                - vcluster-0.37.1-persistent
                 type: string
               replication:
                 properties:

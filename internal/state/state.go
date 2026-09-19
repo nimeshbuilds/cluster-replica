@@ -21,6 +21,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	kjson "sigs.k8s.io/json"
 )
 
 const (
@@ -89,25 +90,33 @@ type Entry struct {
 	Applied     map[string]any `json:"applied,omitempty"`
 }
 
+type Volume struct {
+	Name     string `json:"name"`
+	UID      string `json:"uid"`
+	ClaimUID string `json:"claimUID"`
+}
+
 type State struct {
-	Version               int     `json:"version"`
-	OwnerUID              string  `json:"ownerUID"`
-	OwnerNamespace        string  `json:"ownerNamespace"`
-	OwnerName             string  `json:"ownerName"`
-	GrantUID              string  `json:"grantUID,omitempty"`
-	GrantVersion          string  `json:"grantVersion,omitempty"`
-	Provider              string  `json:"provider,omitempty"`
-	Plan                  *Plan   `json:"plan,omitempty"`
-	Entries               []Entry `json:"entries,omitempty"`
-	HostEntries           []Entry `json:"hostEntries,omitempty"`
-	TargetClusterUID      string  `json:"targetClusterUID,omitempty"`
-	TargetSecretNamespace string  `json:"targetSecretNamespace,omitempty"`
-	TargetSecretName      string  `json:"targetSecretName,omitempty"`
-	RuntimeRootUID        string  `json:"runtimeRootUID,omitempty"`
-	RefreshToken          string  `json:"refreshToken,omitempty"`
-	AppliedRevision       string  `json:"appliedRevision,omitempty"`
-	CleanupStarted        bool    `json:"cleanupStarted,omitempty"`
-	GuestCleaned          bool    `json:"guestCleaned,omitempty"`
+	Volumes               []Volume `json:"volumes,omitempty"`
+	Version               int      `json:"version"`
+	OwnerUID              string   `json:"ownerUID"`
+	OwnerNamespace        string   `json:"ownerNamespace"`
+	OwnerName             string   `json:"ownerName"`
+	GrantUID              string   `json:"grantUID,omitempty"`
+	GrantVersion          string   `json:"grantVersion,omitempty"`
+	Provider              string   `json:"provider,omitempty"`
+	Plan                  *Plan    `json:"plan,omitempty"`
+	Entries               []Entry  `json:"entries,omitempty"`
+	HostEntries           []Entry  `json:"hostEntries,omitempty"`
+	TargetClusterUID      string   `json:"targetClusterUID,omitempty"`
+	TargetSecretNamespace string   `json:"targetSecretNamespace,omitempty"`
+	TargetSecretName      string   `json:"targetSecretName,omitempty"`
+	RuntimeRootUID        string   `json:"runtimeRootUID,omitempty"`
+	RuntimeWorkloadUID    string   `json:"runtimeWorkloadUID,omitempty"`
+	RefreshToken          string   `json:"refreshToken,omitempty"`
+	AppliedRevision       string   `json:"appliedRevision,omitempty"`
+	CleanupStarted        bool     `json:"cleanupStarted,omitempty"`
+	GuestCleaned          bool     `json:"guestCleaned,omitempty"`
 	// resourceVersion is an optimistic concurrency token, never part of the payload.
 	AccessExpiresAt     time.Time `json:"accessExpiresAt,omitempty"`
 	CredentialSecretUID string    `json:"credentialSecretUID,omitempty"`
@@ -241,7 +250,7 @@ func (s *Store) Load(ctx context.Context, uid string) (*State, error) {
 		return nil, err
 	}
 	value := &State{}
-	if err := json.Unmarshal(data, value); err != nil {
+	if err := kjson.UnmarshalCaseSensitivePreserveInts(data, value); err != nil {
 		return nil, ErrIntegrity
 	}
 	if value.OwnerUID != uid || value.Version != SchemaVersion {

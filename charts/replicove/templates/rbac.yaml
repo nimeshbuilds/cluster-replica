@@ -59,6 +59,9 @@ rules:
     resources: [namespaces]
     resourceNames: [kube-system]
     verbs: [get]
+  - apiGroups: [""]
+    resources: [persistentvolumes]
+    verbs: [get]
   {{- with .Values.clusterReadRules }}
   {{- toYaml . | nindent 2 }}
   {{- end }}

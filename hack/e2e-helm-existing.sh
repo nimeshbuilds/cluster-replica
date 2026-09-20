@@ -43,6 +43,9 @@ helm install preexisting .cache/vcluster-0.37.1.tgz --namespace preexisting --cr
  --set-string controlPlane.statefulSet.persistence.volumeClaim.size=1Gi \
  --wait --timeout 5m
 runtime_uid=$(hk -n preexisting get statefulset preexisting -o jsonpath='{.metadata.uid}')
+# Workload readiness does not imply that vCluster has exported its credential.
+hk -n preexisting wait secret/vc-preexisting --for=create --timeout=120s
+hk -n preexisting wait secret/vc-preexisting --for=jsonpath='{.data.config}' --timeout=60s
 hk -n preexisting get secret vc-preexisting -o json | python3 -c 'import base64,json,sys;open(sys.argv[1],"wb").write(base64.b64decode(json.load(sys.stdin)["data"]["config"]))' "$work/target.kubeconfig"
 python3 - "$work/target.kubeconfig" "$work/guest.kubeconfig" <<'PY'
 import json,subprocess,sys

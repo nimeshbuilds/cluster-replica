@@ -41,7 +41,7 @@ apiVersion: replica.nimeshbuilds.dev/v1alpha1
 kind: ClusterReplica
 metadata: {name: before-mirrors, namespace: replica-lab}
 spec:
-  profile: vcluster-0.37.1-lab
+  profile: vcluster-0.37.1-persistent
   ttl: 2h
   cleanupPolicy: DeleteOwned
   approval: Automatic

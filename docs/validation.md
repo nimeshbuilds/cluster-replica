@@ -8,6 +8,8 @@ Each path passed 11 transition checks and the full 25-scenario mirror lifecycle.
 
 The same local API regression caught and now covers exclusion of the mirror source RoleBinding during broad application capture. Chart contracts require infrastructure labels on all bundled mirror resources. The [upgrade guide](guides/enable-mirroring.md) records CRD ordering, image selection, value preservation, source authorization and cleanup requirements.
 
+An additional local Helm/API regression covers opt-in `stateKey.bootstrap: true`: changing the Job image is rejected as immutable, explicitly removing the old Job permits the upgrade, and Helm preserves the retained key's UID and bytes. This API test has no Job controller; actual bootstrap execution and completed-Job replacement are covered by the native live path above.
+
 These live paths use the mirror fixture's Kubernetes 1.36.4 host, vCluster 0.37.1/guest 1.36.0, CSI host-path and Calico. They do not certify arbitrary GitOps pruning, cloud drivers, application-consistent databases or production scale. The alpha release workflow requires all three paths again against the published target image, OCI chart and CLI; the [0.2.0-alpha.2 release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) links that separate artifact-verification run.
 
 ## Workload mirror release qualification

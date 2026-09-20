@@ -545,4 +545,46 @@ func TestOperatorInstallationChart(t *testing.T) {
 		t.Fatalf("full fixture has %d objects", len(plan.Objects))
 	}
 
+	// Helm users can also opt into in-cluster bootstrap. Kubernetes rejects a
+	// changed Job template: after the real Job completes, delete only that Job
+	// before upgrading its image. The native live fixture exercises execution;
+	// envtest has no Job controller and checks the Helm/API/key ownership path.
+	bootstrapUpgrade := func(overrides map[string]any) error {
+		u := action.NewUpgrade(cfg)
+		u.Namespace = "replicove-system"
+		u.WaitStrategy = kube.HookOnlyStrategy
+		u.Timeout = 30 * time.Second
+		u.ResetThenReuseValues = true
+		_, err := u.RunWithContext(ctx, "replicove", ch, overrides)
+		return err
+	}
+	if err := bootstrapUpgrade(map[string]any{"stateKey": map[string]any{"bootstrap": true}}); err != nil {
+		t.Fatal(err)
+	}
+	jobs := kubeClient.BatchV1().Jobs("replicove-system")
+	originalJob, err := jobs.Get(ctx, "replicove-bootstrap", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	imageUpgrade := map[string]any{"image": map[string]any{"repository": "test", "tag": "new-bootstrap-image", "digest": ""}}
+	if err := bootstrapUpgrade(imageUpgrade); err == nil || !strings.Contains(err.Error(), "immutable") {
+		t.Fatalf("expected immutable Job template rejection, got %v", err)
+	}
+	background := metav1.DeletePropagationBackground
+	if err := jobs.Delete(ctx, originalJob.Name, metav1.DeleteOptions{PropagationPolicy: &background, Preconditions: &metav1.Preconditions{UID: &originalJob.UID}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := jobs.Get(ctx, originalJob.Name, metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("bootstrap Job must be absent before Helm upgrade: %v", err)
+	}
+	if err := bootstrapUpgrade(imageUpgrade); err != nil {
+		t.Fatalf("Helm cannot recreate the bootstrap Job after explicit removal: %v", err)
+	}
+	recreatedJob, err := jobs.Get(ctx, "replicove-bootstrap", metav1.GetOptions{})
+	if err != nil || recreatedJob.UID == originalJob.UID || recreatedJob.Spec.Template.Spec.Containers[0].Image != "test:new-bootstrap-image" {
+		t.Fatal("Helm did not recreate the bootstrap Job with the target image")
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(key), key); err != nil || key.UID != originalKeyUID || !bytes.Equal(key.Data["key"], originalKey) {
+		t.Fatal("Helm bootstrap transition replaced the retained state key")
+	}
 }

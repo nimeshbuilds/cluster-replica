@@ -135,6 +135,8 @@ If the rollout fails, retain the existing key, state, destination and CRDs. Insp
 
 Before setting `mirrors.enabled: false`, delete all `ReplicaMirror` requests and wait for their finalizers, generated replicas, sessions and recorded snapshots/volumes to finish cleanup. Keep source snapshot permissions and the responsible storage controllers available until that completes. Disabling the module is not a pause button; use `spec.suspend` to stop scheduling new work. Only then disable it with another values-preserving upgrade. See [cleanup](cleanup.md#remove-the-operator) for operator removal and retained CRDs/key behavior.
 
+The bundled snapshot controller serves cluster-wide snapshot APIs. If other operators or applications reuse it, arrange an administrator-managed replacement or complete their snapshot lifecycles before removing it. Removing this release's controller while other consumers still depend on it can interrupt them. Retaining snapshot CRDs alone does not retain a functioning snapshot system.
+
 ## Verification scope
 
 The [disposable mirror suite](../../hack/e2e-mirror.sh) starts with mirroring disabled, provisions an ordinary guest, changes guest data, and then enables the module. It has published-0.2.0-alpha.1 and published-0.1.0-alpha.1 Helm starting points and a rendered 0.2.0-alpha.1 native YAML starting point. It checks installation settings, key/namespace/runtime identity, original TTL, existing access and newly issued access before explicitly cleaning that fixture and running the full mirror lifecycle suite. Results and tested versions belong in the [validation record](../validation.md); fixture presence alone is not a passing result.

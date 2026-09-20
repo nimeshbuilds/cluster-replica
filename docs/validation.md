@@ -1,5 +1,15 @@
 # Validation record
 
+## Enabling mirrors after installation
+
+[CI run 35520786306](https://github.com/nimeshbuilds/replicove/actions/runs/35520786306) passed all **13 jobs** at `36947dd`. The [saved transition and lifecycle reports](validation/2026-09-20-enable-mirroring.json) cover three starting points: published 0.1.0-alpha.1 Helm, published 0.2.0-alpha.1 Helm, and rendered 0.2.0-alpha.1 native YAML, all initially without mirroring enabled. The target chart/image was built from the 0.2.0-alpha.2 source in that revision.
+
+Each path passed 11 transition checks and the full 25-scenario mirror lifecycle. A persistent ordinary replica kept its runtime/guest identity, changed guest configuration, original TTL, encryption key, destination, installation settings and existing access across enablement. A fresh guest session verified that the upgraded operator could read its earlier encrypted state. The native path also replaced its completed bootstrap Job and reused the key without creating a Helm release. The fixture explicitly cleaned this ordinary replica only after those assertions to free the one-runtime destination for the subsequent mirror suite.
+
+The same local API regression caught and now covers exclusion of the mirror source RoleBinding during broad application capture. Chart contracts require infrastructure labels on all bundled mirror resources. The [upgrade guide](guides/enable-mirroring.md) records CRD ordering, image selection, value preservation, source authorization and cleanup requirements.
+
+These live paths use the mirror fixture's Kubernetes 1.36.4 host, vCluster 0.37.1/guest 1.36.0, CSI host-path and Calico. They do not certify arbitrary GitOps pruning, cloud drivers, application-consistent databases or production scale. The alpha release workflow requires all three paths again against the published target image, OCI chart and CLI; the [0.2.0-alpha.2 release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) links that separate artifact-verification run.
+
 ## Workload mirror release qualification
 
 [CI run 35513679668](https://github.com/nimeshbuilds/replicove/actions/runs/35513679668) passed all 11 jobs at `6c08d5c`, merged as `35e40ee`. Its live mirror job passed all 25 scenarios in the [saved mirror report](validation/2026-09-20-mirrors.json), including copied file contents, latest/saved/scheduled resets, guest isolation and complete owned cleanup with source identity and data preserved. Subsequent main and published-artifact runs must pass independently before release.

@@ -18,7 +18,7 @@ case "$os/$arch" in
 esac
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
-curl --fail --silent --show-error --location --retry 3 \
+curl --fail --silent --show-error --location --retry 3 --retry-all-errors --connect-timeout 15 --max-time 180 \
   "https://get.helm.sh/helm-v4.3.0-$os-$arch.tar.gz" -o "$stage/helm.tgz"
 [[ "$(shasum -a 256 "$stage/helm.tgz" | cut -d ' ' -f 1)" == "$checksum" ]] || {
   echo 'Helm archive checksum mismatch' >&2; exit 1;

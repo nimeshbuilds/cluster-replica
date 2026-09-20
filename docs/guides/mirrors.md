@@ -7,7 +7,7 @@ This module is included in **v0.2.0-alpha.1**. Use the operator, CLI, CRDs and c
 ## Behavior
 
 ```mermaid
-flowchart LR
+flowchart TB
   Source[Granted host workload and PVCs] --> Capture[Configuration and CSI snapshots]
   Capture --> Lease[Wait for test lease]
   Lease --> Replace[Managed target: retire old runtime]

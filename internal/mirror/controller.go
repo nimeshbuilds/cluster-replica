@@ -423,6 +423,11 @@ func (r *Reconciler) syncRunStatus(ctx context.Context, run *api.ReplicaMirrorRu
 	before := run.DeepCopy()
 	run.Status.Phase = st.MirrorRun.Phase
 	run.Status.Message = "Per-volume crash-consistent capture. Processes restart; external services are not cloned."
+	if st.MirrorRun.Phase == "AwaitingReplacement" {
+		run.Status.Message = "Capture is ready. The test lease preserves the active runtime; release it to start replacement with an interruption."
+	} else if st.MirrorRun.Phase == "Replacing" {
+		run.Status.Message = "Cleaning the previous owned runtime before starting its replacement; vCluster permits one runtime per host namespace."
+	}
 	if st.MirrorRun.Child.UID != "" {
 		run.Status.ReplicaRef = &api.MirrorObjectRef{Name: st.MirrorRun.Child.Name, UID: st.MirrorRun.Child.UID}
 	}

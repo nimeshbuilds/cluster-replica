@@ -160,6 +160,9 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	if st.Provider == "helm" {
 		observed, err := w.Runtime.Ensure(ctx, runtimeprovider.Request{Namespace: obj.Namespace, OwnerUID: st.OwnerUID, Reference: *obj.Status.Runtime})
 		if err != nil {
+			if errors.Is(err, runtimeprovider.ErrNamespaceInUse) {
+				return w.report(ctx, obj, "Blocked", failure("RuntimeNamespaceInUse", "vCluster permits one runtime per host namespace. Use a registered existing target or another administrator-granted destination."), false)
+			}
 			return w.report(ctx, obj, "Blocked", failure("RuntimeOperationFailed", "The pinned vCluster runtime could not be provisioned; inspect its Helm release and namespace permissions."), false)
 		}
 		if !observed.Ready {

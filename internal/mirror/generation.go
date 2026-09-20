@@ -167,10 +167,22 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 	if revision == nil || revision.Plan == nil {
 		return state.ErrUnavailable
 	}
-	if st.MirrorRun.Phase == "Restoring" {
+	if st.MirrorRun.Phase == "Restoring" || st.MirrorRun.Phase == "AwaitingReplacement" || st.MirrorRun.Phase == "Replacing" {
 		done, err := r.importVolumes(ctx, st, revision)
 		if err != nil || !done {
 			return err
+		}
+		if scope.Provider == "helm" && st.MirrorRun.Child.UID == "" {
+			available, err := r.managedReplacement(ctx, parent, st, run)
+			if err != nil || !available {
+				return err
+			}
+		}
+		if st.MirrorRun.Phase != "Restoring" {
+			st.MirrorRun.Phase = "Restoring"
+			if err := r.Store.Save(ctx, st); err != nil {
+				return err
+			}
 		}
 		child, err := r.child(ctx, m, scope, st, expires)
 		if err != nil {
@@ -287,6 +299,42 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 		return r.Store.Save(ctx, parent)
 	}
 	return nil
+}
+
+// vCluster 0.37.1 permits only one runtime in a host namespace. Captures and
+// imports are ready before reaching this boundary; leases protect the old
+// runtime until replacement starts. The next reconciliation must finish collect
+// before it can provision a new child, including after a controller restart.
+func (r *Reconciler) managedReplacement(ctx context.Context, parent, runState *state.State, request *api.ReplicaMirrorRun) (bool, error) {
+	if parent.Mirror.ActiveUID == "" {
+		return true, nil
+	}
+	if !request.Spec.Force && r.now().Before(parent.Mirror.HoldUntil) {
+		if runState.MirrorRun.Phase != "AwaitingReplacement" {
+			runState.MirrorRun.Phase = "AwaitingReplacement"
+			return false, r.Store.Save(ctx, runState)
+		}
+		return false, nil
+	}
+	old, err := r.Store.Load(ctx, parent.Mirror.ActiveUID)
+	if err != nil {
+		return false, err
+	}
+	if old == nil || old.MirrorRun == nil || old.MirrorRun.MirrorUID != parent.OwnerUID {
+		return false, state.ErrUnavailable
+	}
+	runState.MirrorRun.Phase = "Replacing"
+	if err := r.Store.Save(ctx, runState); err != nil {
+		return false, err
+	}
+	old.MirrorRun.Phase = "Retiring"
+	if err := r.Store.Save(ctx, old); err != nil {
+		return false, err
+	}
+	// Clearing the private active pointer immediately prevents new sessions.
+	// collect retires only this mirror's inventoried child, never other runtimes.
+	parent.Mirror.ActiveUID = ""
+	return false, r.Store.Save(ctx, parent)
 }
 
 func validatePlan(plan *state.Plan, volumes []state.MirrorSnapshot, provider string) error {

@@ -280,3 +280,73 @@ func TestQueuedResetPinsSelectedRevision(t *testing.T) {
 		t.Fatal("queued reset lost its selected capture")
 	}
 }
+
+func TestManagedReplacementHonorsLeaseAndRetiresBeforeProvisioning(t *testing.T) {
+	ctx := context.Background()
+	r, m, _ := fixture(t)
+	parent := &state.State{OwnerUID: string(m.UID), Mirror: &state.Mirror{ActiveUID: "old", PendingUID: "next", HoldUntil: r.now().Add(time.Minute), Runs: []state.MirrorRef{{Name: "old", UID: "old"}, {Name: "next", UID: "next"}}}}
+	save(t, r, parent)
+	child := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Name: "old-runtime", Namespace: m.Namespace, Finalizers: []string{"fixture-cleanup"}}}
+	create(t, r, child)
+	old := &state.State{OwnerUID: "old", MirrorRun: &state.MirrorRun{MirrorUID: parent.OwnerUID, RevisionUID: "old", Phase: "Active", Child: state.MirrorRef{Name: child.Name, UID: string(child.UID)}, CapturedAt: r.now()}}
+	next := &state.State{OwnerUID: "next", MirrorRun: &state.MirrorRun{MirrorUID: parent.OwnerUID, RevisionUID: "next", Phase: "Restoring", CapturedAt: r.now()}}
+	save(t, r, old)
+	save(t, r, next)
+	request := &api.ReplicaMirrorRun{}
+	if available, err := r.managedReplacement(ctx, parent, next, request); err != nil || available {
+		t.Fatalf("held runtime slot: %v %v", available, err)
+	}
+	if parent.Mirror.ActiveUID != "old" || next.MirrorRun.Phase != "AwaitingReplacement" || next.MirrorRun.Child.UID != "" {
+		t.Fatal("lease did not preserve the working generation")
+	}
+	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(child), child); err != nil || !child.DeletionTimestamp.IsZero() {
+		t.Fatal("held runtime was deleted")
+	}
+	parent.Mirror.HoldUntil = time.Time{}
+	save(t, r, parent)
+	if available, err := r.managedReplacement(ctx, parent, next, request); err != nil || available {
+		t.Fatalf("replacement must first return through collection: %v %v", available, err)
+	}
+	if parent.Mirror.ActiveUID != "" || next.MirrorRun.Phase != "Replacing" {
+		t.Fatal("replacement did not revoke active selection before retiring the runtime")
+	}
+	if done, err := r.collect(ctx, m, parent, false); err != nil || done {
+		t.Fatalf("terminating runtime was treated as a free slot: %v %v", done, err)
+	}
+	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(child), child); err != nil || child.DeletionTimestamp.IsZero() {
+		t.Fatal("replacement did not begin owned cleanup")
+	}
+	if next.MirrorRun.Child.UID != "" {
+		t.Fatal("created a second runtime before cleanup completed")
+	}
+}
+
+func TestRetiringResetPinsCaptureAfterActivePointerMoves(t *testing.T) {
+	ctx := context.Background()
+	r, m, _ := fixture(t)
+	m.Spec.RetainRevisions = 1
+	child := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Name: "retiring-reset", Namespace: m.Namespace, Finalizers: []string{"fixture-cleanup"}}}
+	create(t, r, child)
+	parent := &state.State{OwnerUID: string(m.UID), Mirror: &state.Mirror{PendingUID: "next", Runs: []state.MirrorRef{{Name: "capture", UID: "capture"}, {Name: "reset", UID: "reset"}, {Name: "next", UID: "next"}}}}
+	save(t, r, parent)
+	for _, id := range []string{"capture", "reset", "next"} {
+		st := &state.State{OwnerUID: id, MirrorRun: &state.MirrorRun{MirrorUID: parent.OwnerUID, RevisionUID: id, CapturedAt: r.now(), Phase: "Retained"}}
+		run := &api.ReplicaMirrorRun{ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: m.Namespace, UID: types.UID(id)}}
+		if id == "reset" {
+			st.MirrorRun.RevisionUID = "capture"
+			st.MirrorRun.Phase = "Retiring"
+			st.MirrorRun.Child = state.MirrorRef{Name: child.Name, UID: string(child.UID)}
+		}
+		if id == "next" {
+			st.MirrorRun.Phase = "Replacing"
+		}
+		create(t, r, run)
+		save(t, r, st)
+	}
+	if done, err := r.collect(ctx, m, parent, false); err != nil || done {
+		t.Fatalf("retirement should wait for the old consumer: %v %v", done, err)
+	}
+	if got, err := r.Store.Load(ctx, "capture"); err != nil || got == nil {
+		t.Fatal("source inventory was deleted while a retiring reset still needed it")
+	}
+}

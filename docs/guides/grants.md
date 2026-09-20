@@ -7,8 +7,8 @@ Two independent controls must allow a source read: the operator's host Kubernete
 | Namespace | Contains | Who should control it |
 | --- | --- | --- |
 | `replicove-system` | Operator, encryption key, captures, ownership and access state | Administrators only |
-| `replica-lab` | Runtime resources, `ClusterReplica`, `ReplicaAccess`, session Secrets | Carefully scoped users and the operator |
-| `source-dev` | Original workloads and configuration | Source owners; Replicove receives read-only permissions |
+| `replica-lab` | Runtime resources, replica/mirror/access requests, session Secrets | Carefully scoped users and the operator |
+| `source-dev` | Original workloads and configuration; optional owned snapshots | Source owners; workload/data reads plus explicitly delegated snapshot operations |
 | `integration` inside the guest | Recreated application resources | Authorized guest users and workloads |
 
 The operator watches one destination namespace. The protected namespace must differ from destination and source namespaces. Source selection rejects protected/system boundaries; a namespace map cannot route objects into `kube-*` guest namespaces.
@@ -39,7 +39,7 @@ spec:
 
 For cluster-scoped inputs, also populate `clusterResources` and install matching read-only ClusterRole rules. Examples include selected CRDs, ClusterRoles, and admission policies. This does not authorize host cluster-scoped writes. Nodes, PVs, API authorization reviews, and reserved control-plane resources are not cloneable inputs.
 
-Secrets, Helm releases, and existing targets each require their own named grants. See [secrets](secrets-storage.md), [operators](operators.md), and [existing targets](existing.md).
+Secrets, Helm releases, and existing targets each require their own named grants. See [secrets](secrets-storage.md), [operators](operators.md), and [existing targets](existing.md). Volume-data mirrors additionally require exact PVC names and approved snapshot/storage classes in `spec.mirror`; ordinary resource reads and empty-volume permission do not authorize source data capture. See [mirror grants](mirrors.md#grant-access-to-data).
 
 ## Let a user or agent create requests
 
@@ -58,6 +58,34 @@ rules:
 ```
 
 Administrators choose the RoleBinding subjects. Do not grant users write access to `ReplicaGrant`, the protected namespace, or runtime administrative credentials. Request creation is delegated at **namespace scope**, not per-user scope: authorized users in a shared destination namespace can act within that namespace's grants. Separate trust groups accordingly.
+
+For mirror consumers, add this rule to the same Role. They also need the original `clusterreplicas` and `replicaaccesses` rule to resolve the active generation and request credentials:
+
+```yaml
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicamirrors, replicamirrorruns]
+    verbs: [get, list, watch, create, patch, update, delete]
+```
+
+For example, bind that Role to an existing in-cluster integration agent:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: integration-runner-requests
+  namespace: replica-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: replicove-requester
+subjects:
+  - kind: ServiceAccount
+    namespace: ci
+    name: integration-runner
+```
+
+Mirror request permission does not grant source PVC access, snapshot-controller access, or permission to modify the host's source workloads. The operator performs only operations permitted by the administrator's separate volume-data grant.
 
 Credential retrieval is a separate operation. Configure grant `accessSubjects` so Replicove creates exact-name Secret-get permissions per session, or have an administrator supply that binding. [Access](access.md) describes both host authentication and guest authorization.
 

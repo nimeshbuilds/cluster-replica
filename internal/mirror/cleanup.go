@@ -94,7 +94,10 @@ func (r *Reconciler) collect(ctx context.Context, m *api.ReplicaMirror, parent *
 			active := id == parent.Mirror.ActiveUID
 			pending := id == parent.Mirror.PendingUID && run != nil && run.DeletionTimestamp.IsZero()
 			queued := st.MirrorRun.Phase == "Queued" && run != nil && run.DeletionTimestamp.IsZero()
-			if !active && !pending && !queued {
+			// Retiring/cancelled consumers still need the source inventory for
+			// their volume cleanup, even after the active pointer changes.
+			consumer := st.MirrorRun.Child.UID != "" && st.MirrorRun.Phase != "Retained"
+			if !active && !pending && !queued && !consumer {
 				continue
 			}
 			revision := st.MirrorRun.RevisionUID

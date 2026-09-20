@@ -11,6 +11,8 @@ Replicove compatibility depends on Kubernetes APIs, vCluster profile, storage, a
 
 The pinned chart archive SHA-256 is `afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969`. Runtime catalog provenance is recorded in [upstream notes](../upstream.md) and [`internal/catalog`](../../internal/catalog/). Images are not all digest-locked; that work remains tracked in [issue #6](https://github.com/nimeshbuilds/replicove/issues/6).
 
+vCluster 0.37.1 permits one runtime per host namespace. New managed requests block when another runtime occupies the destination; use a registered existing target or another administrator-granted destination. Managed mirror resets retire their old runtime before provisioning a replacement and therefore have downtime. Replicove never removes unrelated runtimes to make room.
+
 ## What has been tested
 
 | Dimension | Evidence |

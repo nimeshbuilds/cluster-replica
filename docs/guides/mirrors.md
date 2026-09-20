@@ -1,6 +1,6 @@
 # Workload mirrors and scheduled data resets
 
-A `ReplicaMirror` creates an independent writable copy of selected workloads and their granted PVC data. Tests can change the copy. A manual or scheduled sync captures current source state and replaces the test generation after it becomes ready. A reset to a retained revision reproduces that revision's configuration and volume recovery points.
+A `ReplicaMirror` creates an independent writable copy of selected workloads and their granted PVC data. Tests can change the copy. A manual or scheduled sync captures current source state and replaces the test generation. A reset to a retained revision reproduces that revision's configuration and volume recovery points. Access to a new generation starts only after readiness checks pass.
 
 This module is included in **v0.2.0-alpha.1**. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
 
@@ -9,9 +9,14 @@ This module is included in **v0.2.0-alpha.1**. Use the operator, CLI, CRDs and c
 ```mermaid
 flowchart LR
   Source[Granted host workload and PVCs] --> Capture[Configuration and CSI snapshots]
-  Capture --> Candidate[New writable generation]
+  Capture --> Lease[Wait for test lease]
+  Lease --> Replace[Managed target: retire old runtime]
+  Replace --> Candidate[New writable generation]
+  Capture --> Existing[Existing target: separate guest namespace]
+  Existing --> Candidate
   Candidate --> Checks[Readiness, volume identity, isolation]
-  Checks --> Active[Active test generation]
+  Checks --> ActivationLease[Check activation lease]
+  ActivationLease --> Active[Active test generation]
   Active --> Experiments[Guest changes]
   Experiments --> Reset[Manual or scheduled reset]
   Reset --> Capture
@@ -106,7 +111,9 @@ replicove mirror connect orders --role deployer --output ./orders.kubeconfig
 
 The template and selected PVC list are immutable. Interval, suspend, retention within the grant, and the bounded test lease can change. Template TTL bounds the **whole mirror**, including capture and every replacement; resetting does not renew it. All captured PVCs must be listed. StatefulSets require every current ordinal's PVC, including controller-owned claims, to be explicitly granted. CronJobs are suspended in copies. One-shot Jobs require a future replay adapter.
 
-Managed mirrors provision a dedicated vCluster for each generation and preserve selected guest namespace names. Existing-target mirrors create new, exclusively owned guest namespaces. They currently require namespaced resources and an administrator-qualified `existingTargets[].mirrorReleaseName` for a vCluster 0.37.1 single-namespace runtime in the destination host namespace, using its default separate CoreDNS deployment (`k8s-app: vcluster-kube-dns`, backend port 1053). Custom/embedded DNS and alternative label translation require separate qualification. Shared operators/schemas must already be available, or use a dedicated runtime. Namespace names and references can change; arbitrary configuration strings and external endpoints are never guessed.
+Managed mirrors provision a dedicated vCluster for each generation and preserve selected guest namespace names. **vCluster 0.37.1 permits one runtime per host namespace.** A managed reset captures and validates its recovery points first, waits for the test lease, cleans the previous owned runtime, then provisions its replacement. This causes an interruption while the new runtime and volumes become ready. Use another administrator-granted destination for a separate concurrent managed cluster, or register an existing target. Replicove does not delete unrelated runtimes to make room.
+
+Existing-target mirrors create new, exclusively owned guest namespaces inside the registered runtime, so they can prepare a replacement before retiring the old generation. They currently require namespaced resources and an administrator-qualified `existingTargets[].mirrorReleaseName` for a vCluster 0.37.1 single-namespace runtime in the destination host namespace, using its default separate CoreDNS deployment (`k8s-app: vcluster-kube-dns`, backend port 1053). Custom/embedded DNS and alternative label translation require separate qualification. Shared operators/schemas must already be available, or use a dedicated runtime. Namespace names and references can change; arbitrary configuration strings and external endpoints are never guessed.
 
 ## Sync latest data, or reset to a saved capture
 
@@ -151,13 +158,13 @@ replicove mirror suspend orders
 replicove mirror resume orders
 ```
 
-Only one candidate modifies a mirror at a time; missed intervals coalesce. The lease defers activation while the current test copy remains active. Each lease extension is at most 30 minutes. This is shared namespace delegation, not per-agent lease ownership. Suspension stops new automatic scheduling; already queued manual or automatic work continues. Use `mirror cancel RUN` to cancel a candidate. An active run or a capture needed by an active generation remains protected until it is no longer used or the mirror itself is deleted.
+Only one candidate modifies a mirror at a time; missed intervals coalesce. Acquire the lease before submitting a reset. Managed runs report `AwaitingReplacement` while a lease preserves the current runtime; after release they enter `Replacing` and retire it before provisioning. Existing-target candidates can become ready in separate namespaces and report `AwaitingActivation` until the lease is released. Each lease extension is at most 30 minutes. This is shared namespace delegation, not per-agent lease ownership. Suspension stops new automatic scheduling; already queued manual or automatic work continues. Use `mirror cancel RUN` to cancel a candidate. An active run or a capture needed by an active or retiring generation remains protected until it is no longer used or the mirror itself is deleted.
 
 `--force` bypasses a lease only when `allowForcedReset` is enabled in the administrator grant. A reset discards guest changes within the mirror's owned scope. It is intentionally disruptive to tests using that generation.
 
 ## Failures and isolation
 
-Capture/restore failures preserve the active generation and report `Blocked` with a reason. Transient dependency failures are retried. A source identity/configuration change during capture requires cancelling that run and starting a new sync. Grant UID/version changes block new work instead of widening authorization in place. Delete and recreate the mirror after reviewing a changed grant.
+Capture failures preserve the active generation and report `Blocked` with a reason. Existing-target restore failures also preserve its previous generation. For a managed target, once `Replacing` starts the old runtime is retired; a later provisioning/restore failure leaves no active session until recovery succeeds. Retained captures remain available for retry or an explicit reset, but there is no automatic rollback. Cancelling after replacement starts does not recreate the old runtime. Transient dependency failures are retried. A source identity/configuration change during capture requires cancelling that run and starting a new sync. Grant UID/version changes block new work instead of widening authorization in place. Delete and recreate the mirror after reviewing a changed grant.
 
 The host policy permits traffic among the generation's workload namespaces, its guest DNS, and its virtual API. Other egress is denied by the qualified host CNI. This adapter does not expose arbitrary egress exceptions. Provide test-side dependencies in the copied scope. Kubernetes policies are additive: host administrators must ensure another policy does not permit production egress for the same Pods. Shared-node vClusters are not independent kernels or protection against hostile privileged workloads.
 

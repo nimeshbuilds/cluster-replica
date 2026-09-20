@@ -134,11 +134,20 @@ REPLICOVE_HELM_RELEASE=mirror-probe REPLICOVE_HELM_NAMESPACE=mirror-probe-system
 helm uninstall mirror-probe --namespace mirror-probe-system --wait --timeout 120s
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
 
-# Exercise two concurrent dedicated runtimes before the slower real TTL wait.
-# A fully prepared but leased candidate can be cancelled without changing active data.
+# A separate managed request reports the occupied namespace without installing
+# a second vCluster or adopting/deleting the working mirror runtime.
+hk -n replica-lab get clusterreplica "$first_replica" -o json | python3 -c 'import json,sys;r=json.load(sys.stdin);r["metadata"]={"namespace":"replica-lab","name":"occupied-runtime"};r.pop("status",None);json.dump(r,sys.stdout)' | hk apply -f -
+hk -n replica-lab wait clusterreplica/occupied-runtime --for=jsonpath='{.status.conditions[0].reason}'=RuntimeNamespaceInUse --timeout=120s
+[[ "$(hk -n replica-lab get statefulsets -l app=vcluster -o name | wc -l | tr -d ' ')" == 1 ]]
+hk -n replica-lab delete clusterreplica occupied-runtime --wait=true --timeout=120s
+[[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
+
+# Captures can be prepared while leased. Managed replacement must keep the old
+# runtime until release, then retire it before starting the next runtime.
 bin/replicove mirror hold orders --duration 15m
 bin/replicove mirror sync orders --run-name cancel-candidate
-wait_phase cancel-candidate AwaitingActivation
+wait_phase cancel-candidate AwaitingReplacement
+[[ -z "$(hk -n replica-lab get replicamirrorrun cancel-candidate -o jsonpath='{.status.replicaRef.name}')" ]]
 bin/replicove mirror cancel cancel-candidate
 hk -n replica-lab wait replicamirrorrun/cancel-candidate --for=delete --timeout=300s
 [[ "$first_replica" == "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeReplica.name}')" ]]
@@ -176,6 +185,18 @@ PYACCESS
 [[ "$(kubectl --kubeconfig "$work/shared.kubeconfig" auth can-i create deployments -n "$shared_ns")" == yes ]]
 if kubectl --kubeconfig "$work/shared.kubeconfig" auth can-i get secrets -n orders; then exit 1; fi
 if kubectl --kubeconfig "$work/shared.kubeconfig" auth can-i create namespaces; then exit 1; fi
+# Existing-target candidates can restore into a separate namespace before the
+# switch. Cancelling that restored candidate must remove its data and namespace.
+bin/replicove mirror hold shared --duration 15m
+bin/replicove mirror sync shared --run-name shared-cancel
+wait_phase shared-cancel AwaitingActivation
+cancelled_child=$(hk -n replica-lab get replicamirrorrun shared-cancel -o jsonpath='{.status.replicaRef.name}')
+cancelled_ns=$(hk -n replica-lab get clusterreplica "$cancelled_child" -o jsonpath='{.spec.replication.namespaceMap.source-dev}')
+[[ "$(gk -n "$cancelled_ns" exec deployment/orders -- cat /data/revision)" == host-A ]]
+bin/replicove mirror cancel shared-cancel
+hk -n replica-lab wait replicamirrorrun/shared-cancel --for=delete --timeout=300s
+[[ -z "$(gk get namespace "$cancelled_ns" --ignore-not-found -o name)" ]]
+[[ "$shared_child" == "$(hk -n replica-lab get replicamirror shared -o jsonpath='{.status.activeReplica.name}')" ]]
 bin/replicove mirror delete shared
 hk -n replica-lab wait replicamirror/shared --for=delete --timeout=240s
 [[ -z "$(gk get namespace "$shared_ns" --ignore-not-found -o name)" ]]
@@ -207,7 +228,7 @@ spec:
 YAML
 bin/replicove mirror sync orders --run-name sync-b
 bin/replicove mirror sync orders --run-name sync-b
-wait_phase sync-b AwaitingActivation
+wait_phase sync-b AwaitingReplacement
 [[ "$first_replica" == "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeReplica.name}')" ]]
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
 bin/replicove mirror release orders
@@ -223,8 +244,8 @@ connect
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
 # A periodic request is coalesced, never a second concurrent restore.
 hk -n replica-lab patch replicamirror orders --type=merge -p '{"spec":{"interval":"1m"}}'
-for i in $(seq 1 150); do active=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeRun.name}'); if [[ "$active" != reset-a ]]; then break; fi; sleep 3; done
-[[ "$active" != reset-a ]]
+for i in $(seq 1 150); do active=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeRun.name}'); if [[ -n "$active" && "$active" != reset-a ]]; then break; fi; sleep 3; done
+[[ -n "$active" && "$active" != reset-a ]]
 bin/replicove mirror suspend orders
 connect
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == host-B ]]
@@ -248,5 +269,5 @@ replicove_helm_install test/mirror/values.yaml
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
 [[ "$state_key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
+{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","cancelled-restored-namespace-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","one-runtime-per-host-namespace","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
 JSON

@@ -14,6 +14,8 @@ The optional mirror module uses the same image and Helm deployment. It installs 
 
 This provides per-volume crash-consistent recovery points. Database consistency, atomic multi-volume state, cloud CSI certification and external-service cloning remain separate work. The proposed MCP/certificate identity service and dashboard are not part of this release.
 
+Managed replacements require downtime: the pinned vCluster permits one runtime per host namespace. Existing-target mirrors can prepare separate generation namespaces within that runtime. Separate concurrent managed clusters need separate administrator-granted destinations.
+
 ## YAML and developer documentation
 
 A [native YAML quickstart](getting-started/yaml.md) installs the operator and creates, accesses, and cleans up a replica through Kubernetes manifests and kubectl. The generated installer shares its chart/RBAC with the CLI and initializes its immutable state key inside the cluster. The [YAML lifecycle CI job](https://github.com/nimeshbuilds/replicove/actions/runs/35477718800/job/105989750205) passed at `b615d8a`; see [validation](validation.md).

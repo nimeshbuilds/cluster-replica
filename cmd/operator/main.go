@@ -87,6 +87,7 @@ func main() {
 		if mirrors {
 			mr := &mirror.Reconciler{Client: uncached, Store: engine.Store, Engine: engine, Namespace: namespace, NetworkPolicyEnforced: mirrorNetworkPolicyEnforced}
 			engine.MirrorPreparation = mr.Prepare
+			engine.MirrorCleanup = mr.CleanupGeneration
 			check(mr.SetupWithManager(mgr))
 		}
 		check((&workflow.AccessReconciler{Engine: engine, Namespace: namespace}).SetupWithManager(mgr))

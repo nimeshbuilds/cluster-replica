@@ -23,6 +23,9 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 	if !run.DeletionTimestamp.IsZero() {
 		return nil
 	}
+	if run.Spec.Action == "Sync" && run.Spec.RevisionRef != nil {
+		return problem("InvalidRun", "Sync cannot reference a saved revision; use Reset.")
+	}
 	if st.MirrorRun.Phase == "Queued" {
 		if expires.Sub(r.now()) < 5*time.Minute {
 			return problem("MirrorExpiring", "Fewer than five minutes remain; no new generation can be provisioned.")
@@ -132,7 +135,7 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 			return err
 		}
 		// Reject a mixed configuration capture instead of claiming an atomic
-		// Kubernetes-plus-storage transaction. Status-only changes also retry.
+		// Kubernetes-plus-storage transaction. Status-only changes are ignored.
 		for _, o := range st.Plan.Objects {
 			if o.SourceUID == "" {
 				continue
@@ -143,7 +146,7 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: o.SourceNamespace, Name: o.SourceName}, live); err != nil || string(live.GetUID()) != o.SourceUID {
 				return problem("SourceConfigurationChanged", "Source identity changed during capture. Cancel this run and sync again; the active generation is preserved.")
 			}
-			desired, err := planner.Transform(live, m.Spec.Template.Replication)
+			desired, err := planner.Transform(live, mirrorTemplate(m).Spec.Replication)
 			if err != nil || !reflect.DeepEqual(desired.Object, o.Desired) {
 				return problem("SourceConfigurationChanged", "Source desired configuration changed during capture. Cancel this run and sync again; the active generation is preserved.")
 			}
@@ -211,6 +214,10 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 		if cs.MirrorRunUID != st.OwnerUID {
 			return state.ErrIntegrity
 		}
+		// Inventory any bound copies even while application readiness is pending.
+		if err := r.inventoryVolumes(ctx, st, revision, cs, false); err != nil {
+			return err
+		}
 		if !meta.IsStatusConditionTrue(child.Status.Conditions, "Ready") {
 			return nil
 		}
@@ -223,6 +230,32 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 	if st.MirrorRun.Phase == "AwaitingActivation" {
 		if !run.Spec.Force && r.now().Before(parent.Mirror.HoldUntil) {
 			return nil
+		}
+		child := &api.ClusterReplica{}
+		if err := r.Client.Get(ctx, client.ObjectKey{Namespace: st.OwnerNamespace, Name: st.MirrorRun.Child.Name}, child); err != nil || string(child.UID) != st.MirrorRun.Child.UID || !child.DeletionTimestamp.IsZero() || !meta.IsStatusConditionTrue(child.Status.Conditions, "Ready") {
+			return problem("CandidateUnavailable", "The prepared generation is no longer Ready with its recorded identity.")
+		}
+		cs, err := r.Store.Load(ctx, st.MirrorRun.Child.UID)
+		if err != nil {
+			return err
+		}
+		if cs == nil {
+			return state.ErrUnavailable
+		}
+		if _, err := r.Prepare(ctx, child, cs, nil); err != nil {
+			return err
+		}
+		// Prepare can journal a policy on the same run: refresh the concurrency token.
+		fresh, err := r.Store.Load(ctx, st.OwnerUID)
+		if err != nil {
+			return err
+		}
+		if fresh == nil {
+			return state.ErrUnavailable
+		}
+		*st = *fresh
+		if err := r.verifyVolumes(ctx, st, revision, cs); err != nil {
+			return err
 		}
 		if parent.Mirror.ActiveUID != "" && parent.Mirror.ActiveUID != st.OwnerUID {
 			old, err := r.Store.Load(ctx, parent.Mirror.ActiveUID)
@@ -305,36 +338,51 @@ func validatePlan(plan *state.Plan, volumes []state.MirrorSnapshot, provider str
 
 func (r *Reconciler) child(ctx context.Context, m *api.ReplicaMirror, scope policy.Resolution, st *state.State, expires time.Time) (*api.ClusterReplica, error) {
 	name := shortName("generation", st.OwnerUID, 0)
-	child := &api.ClusterReplica{}
-	err := r.Client.Get(ctx, client.ObjectKey{Namespace: m.Namespace, Name: name}, child)
-	if apierrors.IsNotFound(err) {
-		if st.MirrorRun.Child.UID != "" {
-			return nil, problem("GenerationMissing", "The recorded candidate generation was deleted; cancel this run and create another.")
-		}
+	if st.MirrorRun.ChildOperation == "" {
 		remaining := int(expires.Sub(r.now()) / time.Minute)
 		if remaining < 5 {
 			return nil, problem("MirrorExpiring", "Insufficient lifetime remains for a generation.")
 		}
-		child = mirrorTemplate(m)
-		child.Name = name
-		child.Spec.TTL = fmt.Sprintf("%dm", remaining)
-		child.Annotations = map[string]string{RunAnnotation: st.OwnerUID}
-		if scope.Provider == "existing" {
-			child.Spec.Replication.NamespaceMap = map[string]string{}
-			for i, ns := range scope.Namespaces {
-				child.Spec.Replication.NamespaceMap[ns] = shortName("guest", st.OwnerUID, i)
-			}
-		}
-		if err := controllerutil.SetControllerReference(m, child, r.Client.Scheme()); err != nil {
+		op, err := state.OperationID()
+		if err != nil {
 			return nil, err
 		}
-		if err = r.Client.Create(ctx, child); err != nil {
+		st.MirrorRun.ChildOperation = op
+		st.MirrorRun.ChildTTL = fmt.Sprintf("%dm", remaining)
+		if remaining > 9999 {
+			st.MirrorRun.ChildTTL = fmt.Sprintf("%dh", remaining/60)
+		}
+		if err := r.Store.Save(ctx, st); err != nil {
+			return nil, err
+		}
+	}
+	desired := mirrorTemplate(m)
+	desired.Name = name
+	desired.Spec.TTL = st.MirrorRun.ChildTTL
+	desired.Annotations = map[string]string{RunAnnotation: st.OwnerUID, operationKey: st.MirrorRun.ChildOperation}
+	if scope.Provider == "existing" {
+		desired.Spec.Replication.NamespaceMap = map[string]string{}
+		for i, ns := range scope.Namespaces {
+			desired.Spec.Replication.NamespaceMap[ns] = shortName("guest", st.OwnerUID, i)
+		}
+	}
+	if err := controllerutil.SetControllerReference(m, desired, r.Client.Scheme()); err != nil {
+		return nil, err
+	}
+	child := &api.ClusterReplica{}
+	err := r.Client.Get(ctx, client.ObjectKeyFromObject(desired), child)
+	if apierrors.IsNotFound(err) {
+		if st.MirrorRun.Child.UID != "" {
+			return nil, problem("GenerationMissing", "The recorded candidate generation was deleted; cancel this run and create another.")
+		}
+		if err := r.Client.Create(ctx, desired); err != nil {
 			return nil, problem("GenerationCreateFailed", "Cannot create the independently owned generation request.")
 		}
+		child = desired
 	} else if err != nil {
 		return nil, problem("GenerationUnavailable", "Cannot inspect the generation request.")
 	}
-	if child.Annotations[RunAnnotation] != st.OwnerUID || !target.OwnedBy(child.OwnerReferences, string(m.UID)) || (st.MirrorRun.Child.UID != "" && st.MirrorRun.Child.UID != string(child.UID)) {
+	if child.Annotations[RunAnnotation] != st.OwnerUID || child.Annotations[operationKey] != st.MirrorRun.ChildOperation || !target.OwnedBy(child.OwnerReferences, string(m.UID)) || (st.MirrorRun.Child.UID != "" && st.MirrorRun.Child.UID != string(child.UID)) {
 		return nil, problem("GenerationOwnershipConflict", "The generation name belongs to another identity.")
 	}
 	if st.MirrorRun.Child.UID == "" {
@@ -348,11 +396,17 @@ func (r *Reconciler) child(ctx context.Context, m *api.ReplicaMirror, scope poli
 
 func generationPlan(base *state.Plan, snapshots []state.MirrorSnapshot, imports []state.MirrorImport, child *api.ClusterReplica, provider string) (*state.Plan, error) {
 	plan := &state.Plan{CapturedAt: base.CapturedAt, SourceVersion: base.SourceVersion, Packages: base.Packages, Notes: base.Notes}
+	namespaceMap := map[string]string{}
+	for _, o := range base.Objects {
+		if o.Namespace != "" {
+			namespaceMap[o.Namespace] = policy.Namespace(child.Spec.Replication, o.SourceNamespace)
+		}
+	}
 	for _, original := range base.Objects {
 		o := original
 		u := (&unstructured.Unstructured{Object: original.Desired}).DeepCopy()
 		if provider == "existing" && o.Namespace != "" {
-			spec := &api.ReplicationSpec{Data: "EmptyVolumes", NamespaceMap: map[string]string{o.Namespace: policy.Namespace(child.Spec.Replication, o.SourceNamespace)}}
+			spec := &api.ReplicationSpec{Data: "EmptyVolumes", NamespaceMap: namespaceMap}
 			var err error
 			u, err = planner.Transform(u, spec)
 			if err != nil {
@@ -384,12 +438,13 @@ func generationPlan(base *state.Plan, snapshots []state.MirrorSnapshot, imports 
 			_ = unstructured.SetNestedField(u.Object, true, "spec", "suspend")
 		}
 		if o.Kind == "StatefulSet" {
+			start, _, _ := unstructured.NestedInt64(u.Object, "spec", "ordinals", "start")
 			claims, _, _ := unstructured.NestedSlice(u.Object, "spec", "volumeClaimTemplates")
 			for _, claim := range claims {
 				c := claim.(map[string]any)
 				name, _, _ := unstructured.NestedString(c, "metadata", "name")
 				for _, s := range snapshots {
-					if s.Namespace == o.SourceNamespace && s.PVCName == fmt.Sprintf("%s-%s-0", name, o.SourceName) {
+					if s.Namespace == o.SourceNamespace && s.PVCName == fmt.Sprintf("%s-%s-%d", name, o.SourceName, start) {
 						_ = unstructured.SetNestedField(c, s.StorageClass, "spec", "storageClassName")
 						break
 					}

@@ -49,8 +49,12 @@ type ReplicaMirrorSpec struct {
 }
 
 type MirrorObjectRef struct {
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=253
 	Name string `json:"name"`
-	UID  string `json:"uid"`
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=128
+	UID string `json:"uid"`
 }
 
 type ReplicaMirrorStatus struct {
@@ -88,6 +92,7 @@ type ReplicaMirrorList struct {
 	Items           []ReplicaMirror `json:"items"`
 }
 
+// +kubebuilder:validation:XValidation:rule="(self.action == 'Reset') == has(self.revisionRef)",message="only Reset requires a revisionRef"
 type ReplicaMirrorRunSpec struct {
 	MirrorRef MirrorObjectRef `json:"mirrorRef"`
 	// Sync captures current host state. Reset reuses a retained Sync run's revision.

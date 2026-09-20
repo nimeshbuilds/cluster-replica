@@ -60,8 +60,12 @@ spec:
               mirrorRef:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name
@@ -70,8 +74,12 @@ spec:
               revisionRef:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name
@@ -84,6 +92,8 @@ spec:
             x-kubernetes-validations:
             - message: mirror run is immutable
               rule: self == oldSelf
+            - message: only Reset requires a revisionRef
+              rule: (self.action == 'Reset') == has(self.revisionRef)
           status:
             properties:
               activatedAt:
@@ -99,8 +109,12 @@ spec:
               replicaRef:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name
@@ -109,8 +123,12 @@ spec:
               revisionRef:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name

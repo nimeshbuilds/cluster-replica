@@ -52,7 +52,11 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func mirrorTemplate(m *api.ReplicaMirror) *api.ClusterReplica {
-	return &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Namespace: m.Namespace}, Spec: *m.Spec.Template.DeepCopy()}
+	obj := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Namespace: m.Namespace}, Spec: *m.Spec.Template.DeepCopy()}
+	if obj.Spec.Replication != nil {
+		obj.Spec.Replication.Data = "EmptyVolumes"
+	}
+	return obj
 }
 func (r *Reconciler) authorize(m *api.ReplicaMirror, g *api.ReplicaGrant) (policy.Resolution, error) {
 	scope, err := policy.Resolve(g, mirrorTemplate(m), r.Store.Namespace)
@@ -71,8 +75,8 @@ func (r *Reconciler) authorize(m *api.ReplicaMirror, g *api.ReplicaGrant) (polic
 	if m.Spec.Template.Approval == "Manual" {
 		return scope, problem("MirrorApprovalRequired", "Mirrors require Automatic approval within an explicit administrator volume grant; manual per-plan approval is not supported.")
 	}
-	if m.Spec.Template.Replication == nil || m.Spec.Template.Replication.Data != "EmptyVolumes" || m.Spec.Template.Replication.Secrets == "Follow" {
-		return scope, problem("InvalidMirrorTemplate", "Use explicit replication with data: EmptyVolumes as the base reconstruction mode and pinned, non-Follow Secrets. Mirror grants authorize replacing those empty volumes with snapshots.")
+	if m.Spec.Template.Replication == nil || m.Spec.Template.Replication.Secrets == "Follow" {
+		return scope, problem("InvalidMirrorTemplate", "Use explicit replication and pinned, non-Follow Secrets. Each selected volume requires a separate data-capture grant.")
 	}
 	if m.Spec.Consistency != "" && m.Spec.Consistency != "CrashConsistent" {
 		return scope, problem("ConsistencyUnsupported", "This CSI adapter provides per-volume crash consistency only.")
@@ -317,7 +321,7 @@ func (r *Reconciler) enrollRuns(ctx context.Context, m *api.ReplicaMirror, st *s
 		if found {
 			continue
 		}
-		if !run.DeletionTimestamp.IsZero() {
+		if !run.DeletionTimestamp.IsZero() && !controllerutil.ContainsFinalizer(run, Finalizer) {
 			continue
 		}
 		if len(st.Mirror.Runs) >= 32 {

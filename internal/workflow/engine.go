@@ -38,6 +38,7 @@ type Engine struct {
 	Reader            Capturer
 	Runtime           runtimeprovider.Provider
 	Now               func() time.Time
+	MirrorCleanup     func(context.Context, *state.State, bool) (bool, error)
 	MirrorPreparation func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
 }
 
@@ -54,11 +55,6 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	if obj.Status.Phase == "Expired" && obj.DeletionTimestamp.IsZero() && st == nil {
 		return ctrl.Result{}, nil
 	}
-	// Generation plans are prepared by the mirror controller, never captured by
-	// racing child reconciliation. A user annotation cannot supply protected state.
-	if obj.Annotations["replicove.nimeshbuilds.dev/mirror-run"] != "" && st == nil && obj.DeletionTimestamp.IsZero() {
-		return w.report(ctx, obj, "Preparing", failure("MirrorPreparationPending", "Waiting for the mirror controller's protected generation plan."), false)
-	}
 	ttl, err := catalog.Validate(api.ClusterReplicaSpec{Profile: obj.Spec.Profile, TTL: obj.Spec.TTL, CleanupPolicy: "HelmReleaseOnly"})
 	if err != nil {
 		return w.report(ctx, obj, "Rejected", failure("InvalidSpec", err.Error()), false)
@@ -66,6 +62,11 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	expires := obj.CreationTimestamp.Add(ttl)
 	if !obj.DeletionTimestamp.IsZero() || !now.Before(expires) {
 		return w.cleanup(ctx, obj, st)
+	}
+	// Generation plans are prepared by the mirror controller, never captured by
+	// racing child reconciliation. A user annotation cannot supply protected state.
+	if obj.Annotations["replicove.nimeshbuilds.dev/mirror-run"] != "" && st == nil && obj.DeletionTimestamp.IsZero() {
+		return w.report(ctx, obj, "Preparing", failure("MirrorPreparationPending", "Waiting for the mirror controller's protected generation plan."), false)
 	}
 	grant := &api.ReplicaGrant{}
 	if err := w.Client.Get(ctx, client.ObjectKey{Name: obj.Spec.GrantRef}, grant); err != nil {
@@ -413,6 +414,14 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
+	if st.MirrorRunUID != "" && !st.GuestCleaned {
+		if w.MirrorCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("MirrorsDisabled", "Enable the mirror module to clean up owned snapshots and restored volumes."), false)
+		}
+		if done, err := w.MirrorCleanup(ctx, st, false); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+	}
 	if !st.GuestCleaned {
 		remaining := false
 		for _, e := range st.Entries {
@@ -460,6 +469,14 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 		}
 		if !done {
 			return w.report(ctx, obj, "Deleting", nil, false)
+		}
+	}
+	if st.MirrorRunUID != "" {
+		if w.MirrorCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("MirrorsDisabled", "Enable the mirror module to finish restored volume cleanup."), false)
+		}
+		if done, err := w.MirrorCleanup(ctx, st, true); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
 	terminal := "Expired"

@@ -90,6 +90,9 @@ func (r *Reconciler) ensurePolicies(ctx context.Context, run, child *state.State
 }
 
 func (r *Reconciler) verifyVolumes(ctx context.Context, run, revision, child *state.State) error {
+	return r.inventoryVolumes(ctx, run, revision, child, true)
+}
+func (r *Reconciler) inventoryVolumes(ctx context.Context, run, revision, child *state.State, requireBound bool) error {
 	claims := &corev1.PersistentVolumeClaimList{}
 	if err := r.Client.List(ctx, claims, client.InNamespace(run.OwnerNamespace)); err != nil {
 		return problem("VolumeVerificationUnavailable", "Cannot inspect restored host PVCs.")
@@ -112,15 +115,33 @@ func (r *Reconciler) verifyVolumes(ctx context.Context, run, revision, child *st
 				found = p
 			}
 		}
-		if found == nil || found.Status.Phase != corev1.ClaimBound || found.Spec.VolumeName == "" {
-			return problem("RestoredVolumePending", "Waiting for each restored guest PVC to bind to independent host storage.")
+		if found == nil || found.Spec.VolumeName == "" {
+			if requireBound {
+				return problem("RestoredVolumePending", "Waiting for each restored guest PVC to bind to independent host storage.")
+			}
+			continue
+		}
+		validSource := false
+		for i, snap := range revision.MirrorRun.Snapshots {
+			if snap.PVCUID == s.PVCUID && i < len(run.MirrorRun.Imports) && found.Spec.DataSource != nil && found.Spec.DataSource.APIGroup != nil && *found.Spec.DataSource.APIGroup == "snapshot.storage.k8s.io" && found.Spec.DataSource.Kind == "VolumeSnapshot" && found.Spec.DataSource.Name == run.MirrorRun.Imports[i].Name {
+				validSource = true
+			}
+		}
+		if !validSource {
+			return problem("RestoreSourceChanged", "The restored host claim no longer references its recorded snapshot import.")
 		}
 		if string(found.UID) == s.PVCUID || found.Spec.VolumeName == s.PVName {
 			return problem("SourceVolumeReuseDenied", "A restored claim resolves to source storage; activation is denied.")
 		}
 		pv := &corev1.PersistentVolume{}
 		if err := r.Client.Get(ctx, client.ObjectKey{Name: found.Spec.VolumeName}, pv); err != nil {
+			if !requireBound && apierrors.IsNotFound(err) {
+				continue
+			}
 			return problem("VolumeVerificationUnavailable", "Cannot verify the new backing volume.")
+		}
+		if found.Spec.StorageClassName == nil || *found.Spec.StorageClassName != s.StorageClass {
+			return problem("StorageContractMismatch", "The restored storage class changed.")
 		}
 		if pv.Spec.CSI == nil || pv.Spec.CSI.Driver != s.Driver || pv.Spec.CSI.VolumeHandle == s.SourceHandle || pv.Spec.ClaimRef == nil || pv.Spec.ClaimRef.UID != found.UID || pv.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimDelete {
 			return problem("SourceVolumeReuseDenied", "The restored volume does not satisfy independent ownership and deletion requirements.")

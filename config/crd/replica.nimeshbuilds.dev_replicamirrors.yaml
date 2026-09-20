@@ -420,8 +420,12 @@ spec:
               activeReplica:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name
@@ -430,8 +434,12 @@ spec:
               activeRun:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name
@@ -511,8 +519,12 @@ spec:
               pendingRun:
                 properties:
                   name:
+                    maxLength: 253
+                    minLength: 1
                     type: string
                   uid:
+                    maxLength: 128
+                    minLength: 1
                     type: string
                 required:
                 - name

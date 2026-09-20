@@ -20,6 +20,8 @@ type Mirror struct {
 type MirrorRun struct {
 	MirrorUID      string           `json:"mirrorUID"`
 	RevisionUID    string           `json:"revisionUID"`
+	ChildOperation string           `json:"childOperation,omitempty"`
+	ChildTTL       string           `json:"childTTL,omitempty"`
 	Child          MirrorRef        `json:"child,omitempty"`
 	Phase          string           `json:"phase"`
 	Snapshots      []MirrorSnapshot `json:"snapshots,omitempty"`

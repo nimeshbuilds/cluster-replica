@@ -53,6 +53,7 @@ def prepare():
     shutil.copytree(ROOT / 'docs/stylesheets', STAGE / 'stylesheets')
     # Publish fixture downloads without credentials or private build artifacts.
     shutil.copytree(ROOT / 'examples/yaml', STAGE / 'examples/yaml')
+    shutil.copytree(ROOT / 'examples/mirror', STAGE / 'examples/mirror')
 
     def rewrite_link(target, source, destination):
         parts = urlsplit(target)
@@ -167,7 +168,9 @@ def generate_api():
 
 def generate_cli():
     commands = ['', 'install', 'create', 'plan', 'approve', 'status', 'refresh', 'access', 'connect', 'delete',
-                'completion', 'completion bash', 'completion fish', 'completion powershell', 'completion zsh']
+                'mirror', 'mirror create', 'mirror status', 'mirror sync', 'mirror reset', 'mirror revisions',
+                'mirror suspend', 'mirror resume', 'mirror hold', 'mirror release', 'mirror cancel', 'mirror delete',
+                'mirror access', 'mirror connect', 'completion', 'completion bash', 'completion fish', 'completion powershell', 'completion zsh']
     lines = ['# CLI reference', '',
              'Generated from the built `bin/replicove` help output. The alpha is built from source; '
              '[start with the CLI walkthrough](../quickstart.md) or use the [YAML API](../getting-started/yaml.md).', '',

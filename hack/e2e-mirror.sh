@@ -70,9 +70,9 @@ first_replica=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status
 connect(){
  if [[ -n "$tunnel_pid" ]]; then kill "$tunnel_pid" 2>/dev/null || true; wait "$tunnel_pid" 2>/dev/null || true; fi
  rm -f "$work/guest.kubeconfig"
- bin/replicove mirror connect orders --role admin --duration-seconds 3600 --output "$work/guest.kubeconfig" > "$work/connect.log" 2>&1 &
+ bin/replicove mirror connect orders --role admin --duration-seconds 3600 --output "$work/guest.kubeconfig" > "$work/artifacts/connect.log" 2>&1 &
  tunnel_pid=$!
- for i in $(seq 1 120); do if [[ -f "$work/guest.kubeconfig" ]]; then return; fi; if ! kill -0 "$tunnel_pid" 2>/dev/null; then cat "$work/connect.log"; return 1; fi; sleep 1; done
+ for i in $(seq 1 120); do if [[ -f "$work/guest.kubeconfig" ]] && gk --request-timeout=5s get --raw=/readyz >/dev/null 2>&1; then return; fi; if ! kill -0 "$tunnel_pid" 2>/dev/null; then cat "$work/artifacts/connect.log"; return 1; fi; sleep 1; done
  return 1
 }
 wait_run(){ hk -n replica-lab wait "replicamirrorrun/$1" --for=jsonpath='{.status.phase}'=Active --timeout=600s; }

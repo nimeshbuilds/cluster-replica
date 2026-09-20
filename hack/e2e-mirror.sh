@@ -264,11 +264,27 @@ hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
 # Reinstall after finalizers finish: retained APIs must not make auto mode
 # incorrectly assume that the removed snapshot controller is still running.
 state_key_uid=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
-helm uninstall replicove --namespace replicove-system --wait --timeout 120s
-hk get crd volumesnapshots.snapshot.storage.k8s.io >/dev/null
-replicove_helm_install test/mirror/values.yaml
+if [[ "$mirror_base" == native ]]; then
+ hk -n replicove-system delete deployment replicove replicove-snapshot-controller --wait=true --timeout=120s
+ hk get crd volumesnapshots.snapshot.storage.k8s.io >/dev/null
+ hk apply -f "$work/native-enabled.yaml"
+else
+ helm uninstall replicove --namespace replicove-system --wait --timeout 120s
+ hk get crd volumesnapshots.snapshot.storage.k8s.io >/dev/null
+ replicove_helm_install test/mirror/values.yaml
+fi
+hk -n replicove-system rollout status deployment/replicove --timeout=180s
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
 [[ "$state_key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 cat > "$work/artifacts/report.json" <<'JSON'
 {"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","cancelled-restored-namespace-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","one-runtime-per-host-namespace","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
 JSON
+if [[ "$mirror_base" == native ]]; then
+ python3 - "$work/artifacts/report.json" <<'PY'
+import json,sys
+p=sys.argv[1];report=json.load(open(p))
+report['scenarios'][:2]=['native-bundled-snapshot-controller','native-reapply-reuse']
+report['scenarios'][3]='native-controller-recreation-with-retained-snapshot-apis'
+with open(p,'w') as f: json.dump(report,f)
+PY
+fi

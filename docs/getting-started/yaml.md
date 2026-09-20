@@ -30,7 +30,7 @@ Keep Terminal A open; subsequent commands use its variables. Stop if any command
 ## 2. Install the operator from manifests
 
 ```bash
-export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.1.0-alpha.1
+export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.2.0-alpha.1
 hk apply -f "$REPLICOVE_RELEASE_URL/replicove-crds.yaml"
 hk wait --for=condition=Established --timeout=60s \
   crd/clusterreplicas.replica.nimeshbuilds.dev \

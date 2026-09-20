@@ -387,7 +387,7 @@ func (r *Reconciler) child(ctx context.Context, m *api.ReplicaMirror, scope poli
 	} else if err != nil {
 		return nil, problem("GenerationUnavailable", "Cannot inspect the generation request.")
 	}
-	if child.Annotations[RunAnnotation] != st.OwnerUID || child.Annotations[operationKey] != st.MirrorRun.ChildOperation || !target.OwnedBy(child.OwnerReferences, string(m.UID)) || (st.MirrorRun.Child.UID != "" && st.MirrorRun.Child.UID != string(child.UID)) {
+	if child.Annotations[RunAnnotation] != st.OwnerUID || child.Annotations[operationKey] != st.MirrorRun.ChildOperation || !reflect.DeepEqual(child.Spec, desired.Spec) || !target.OwnedBy(child.OwnerReferences, string(m.UID)) || (st.MirrorRun.Child.UID != "" && st.MirrorRun.Child.UID != string(child.UID)) {
 		return nil, problem("GenerationOwnershipConflict", "The generation name belongs to another identity.")
 	}
 	if st.MirrorRun.Child.UID == "" {

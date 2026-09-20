@@ -2,7 +2,7 @@
 
 A `ReplicaMirror` creates an independent writable copy of selected workloads and their granted PVC data. Tests can change the copy. A manual or scheduled sync captures current source state and replaces the test generation after it becomes ready. A reset to a retained revision reproduces that revision's configuration and volume recovery points.
 
-This optional module is under qualification on the development branch. **The published v0.1.0-alpha.1 does not include it.** The examples below currently require building the operator and CLI from the matching source revision. Live compatibility evidence belongs on the [validation page](../validation.md); a fixture's presence alone is not evidence that it passed.
+This module is included in **v0.2.0-alpha.1**. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
 
 ## Behavior
 
@@ -40,15 +40,16 @@ Before enabling data mirrors, establish:
 - Host NetworkPolicy enforcement and admission restrictions suitable for the users who can run code in the guest. Set `mirrors.networkPolicyEnforced: true` only after verifying that enforcement.
 - Enough capacity for the active and candidate generations plus retained captures.
 
-Edit the [installation values](../../examples/mirror/values.yaml) for your source namespace. With an image built from this checkout:
+Download the [installation values](../../examples/mirror/values.yaml) and edit the source namespace. The same version is available in the release repository:
 
 ```bash
-helm upgrade --install replicove ./charts/replicove \
+curl -fsSLo mirror-values.yaml \
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.1/examples/mirror/values.yaml
+# Edit mirror-values.yaml for the granted source and qualified host CNI.
+helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
+  --version 0.2.0-alpha.1 \
   --namespace replicove-system --create-namespace \
-  --values examples/mirror/values.yaml \
-  --set image.repository=YOUR_REGISTRY/replicove \
-  --set image.tag=YOUR_BUILD_TAG --set image.digest= \
-  --wait --timeout 5m
+  --values mirror-values.yaml --wait --timeout 5m
 ```
 
 The CLI installer accepts the same values file. YAML installations can use `helm template ... --include-crds` to render the chart, or supply equivalent module flags and RBAC. Helm template cannot discover a live cluster; set snapshot-controller mode explicitly when rendering for GitOps. The default native YAML installer leaves the optional module disabled.
@@ -82,8 +83,13 @@ The operator's normal `sources` rules authorize selected workload/configuration 
 Edit and apply the complete [grant](../../examples/mirror/grant.yaml) and [mirror](../../examples/mirror/mirror.yaml). The example assumes an existing `orders` Deployment in `source-dev` using `orders-data` and selects its dependencies:
 
 ```bash
-kubectl apply -f examples/mirror/grant.yaml
-kubectl apply -f examples/mirror/mirror.yaml
+curl -fsSLo mirror-grant.yaml \
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.1/examples/mirror/grant.yaml
+curl -fsSLo mirror.yaml \
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.1/examples/mirror/mirror.yaml
+# Edit names, selectors, approved classes and grants for your source workload.
+kubectl apply -f mirror-grant.yaml
+kubectl apply -f mirror.yaml
 kubectl -n replica-lab wait replicamirror/orders \
   --for=condition=Ready --timeout=10m
 ```
@@ -91,7 +97,7 @@ kubectl -n replica-lab wait replicamirror/orders \
 Alternatively, create the same request with:
 
 ```bash
-replicove mirror create orders --file examples/mirror/mirror.yaml
+replicove mirror create orders --file mirror.yaml
 replicove mirror status orders
 replicove mirror connect orders --role deployer --output ./orders.kubeconfig
 ```

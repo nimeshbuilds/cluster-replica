@@ -2,6 +2,7 @@ package mirror
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -205,5 +206,29 @@ func TestFiveMinuteMirrorCanCreateBoundedGeneration(t *testing.T) {
 	}
 	if child.Spec.TTL != "5m" {
 		t.Fatalf("invalid minimum child TTL: %s", child.Spec.TTL)
+	}
+}
+
+func TestQueueOverflowCannotBlockOwnedCleanup(t *testing.T) {
+	ctx := context.Background()
+	r, m, _ := fixture(t)
+	parent := &state.State{OwnerUID: string(m.UID), Mirror: &state.Mirror{}}
+	for i := 0; i < 32; i++ {
+		parent.Mirror.Runs = append(parent.Mirror.Runs, state.MirrorRef{Name: fmt.Sprintf("enrolled-%d", i), UID: fmt.Sprintf("uid-%d", i)})
+	}
+	save(t, r, parent)
+	run := &api.ReplicaMirrorRun{ObjectMeta: metav1.ObjectMeta{Name: "overflow", Namespace: m.Namespace}, Spec: api.ReplicaMirrorRunSpec{MirrorRef: api.MirrorObjectRef{Name: m.Name, UID: string(m.UID)}, Action: "Sync"}}
+	create(t, r, run)
+	if err := r.enrollRuns(ctx, m, parent); err != nil {
+		t.Fatal("overflow blocked cleanup:", err)
+	}
+	if len(parent.Mirror.Runs) != 32 {
+		t.Fatal("queue exceeded bound")
+	}
+	if _, err := r.collect(ctx, m, parent, true); err != nil {
+		t.Fatal(err)
+	}
+	if len(parent.Mirror.Runs) != 31 {
+		t.Fatal("cleanup could not progress with overflowing queue")
 	}
 }

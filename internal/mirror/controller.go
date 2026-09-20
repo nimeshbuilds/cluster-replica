@@ -324,8 +324,18 @@ func (r *Reconciler) enrollRuns(ctx context.Context, m *api.ReplicaMirror, st *s
 		if !run.DeletionTimestamp.IsZero() && !controllerutil.ContainsFinalizer(run, Finalizer) {
 			continue
 		}
-		if len(st.Mirror.Runs) >= 32 {
-			return problem("RunLimit", "At most 32 outstanding mirror runs are allowed; remove completed requests before adding more.")
+		if len(st.Mirror.Runs) >= 32 && !controllerutil.ContainsFinalizer(run, Finalizer) {
+			// An overflowing public queue must never prevent collection/TTL of
+			// already owned resources. Recover enrolled finalizers even at cap.
+			if run.Status.Phase != "WaitingForSlot" {
+				before := run.DeepCopy()
+				run.Status.Phase = "WaitingForSlot"
+				run.Status.Message = "The mirror has 32 enrolled requests; this request waits for cleanup to release a slot."
+				if err := r.Client.Status().Patch(ctx, run, client.MergeFrom(before)); err != nil {
+					return err
+				}
+			}
+			continue
 		}
 		before := run.DeepCopy()
 		controllerutil.AddFinalizer(run, Finalizer)

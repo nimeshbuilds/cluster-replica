@@ -6,7 +6,7 @@ from kubernetes-csi/external-snapshotter v8.6.0, commit
 
 Source: https://github.com/kubernetes-csi/external-snapshotter/tree/v8.6.0/client/config/crd
 Copyright: The Kubernetes Authors. Licensed under Apache License 2.0; see the
-upstream LICENSE and this repository's LICENSE (same license terms).
+bundled LICENSE in this directory (same license terms).
 
 The commit and file SHA-256 values are checked by the mirror dependency contract.
 Upgrade these APIs together with the snapshot-controller image only after

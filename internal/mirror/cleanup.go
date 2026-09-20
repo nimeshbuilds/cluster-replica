@@ -76,13 +76,33 @@ func (r *Reconciler) collect(ctx context.Context, m *api.ReplicaMirror, parent *
 			return false, err
 		}
 	}
+	// Retire every consumer before releasing recovery points. A Reset child
+	// needs its source revision's protected record to finish volume cleanup.
+	if all {
+		for _, ref := range parent.Mirror.Runs {
+			if st := states[ref.UID]; st != nil {
+				if done, err := r.retire(ctx, st); err != nil || !done {
+					return false, err
+				}
+			}
+		}
+	}
 	keep := map[string]bool{}
 	if !all {
-		for _, id := range []string{parent.Mirror.ActiveUID, parent.Mirror.PendingUID} {
-			if st := states[id]; st != nil {
-				if run := requests[id]; id == parent.Mirror.ActiveUID || run != nil && run.DeletionTimestamp.IsZero() {
-					keep[st.MirrorRun.RevisionUID] = true
-				}
+		for id, st := range states {
+			run := requests[id]
+			active := id == parent.Mirror.ActiveUID
+			pending := id == parent.Mirror.PendingUID && run != nil && run.DeletionTimestamp.IsZero()
+			queued := st.MirrorRun.Phase == "Queued" && run != nil && run.DeletionTimestamp.IsZero()
+			if !active && !pending && !queued {
+				continue
+			}
+			revision := st.MirrorRun.RevisionUID
+			if queued && run.Spec.Action == "Reset" && run.Spec.RevisionRef != nil {
+				revision = run.Spec.RevisionRef.UID
+			}
+			if capture := states[revision]; capture != nil && !capture.MirrorRun.CapturedAt.IsZero() {
+				keep[revision] = true
 			}
 		}
 		for i := len(parent.Mirror.Runs) - 1; i >= 0 && len(keep) < retained(m); i-- {

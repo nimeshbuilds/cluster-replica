@@ -27,7 +27,7 @@ The same Helm chart and operator image include the mirror controller. No VolSync
 
 | Mode | Behavior |
 | --- | --- |
-| `auto` | Install bundled snapshot APIs/controller when snapshot APIs are absent; reuse an existing installation otherwise. Preserve the bundled Deployment across upgrades. |
+| `auto` | Install bundled snapshot APIs/controller when snapshot APIs are absent; reuse an existing installation otherwise. Preserve the bundled Deployment across upgrades; reinstall it when retained APIs belong to this same Helm release. |
 | `existing` | Reuse host snapshot infrastructure without installing a controller. |
 | `managed` | Explicitly install the bundled controller; use only when the administrator has established that it will not duplicate another controller. |
 
@@ -165,7 +165,7 @@ For existing runtimes, issued mirror access uses namespaced RoleBindings limited
 
 ## Retention, deletion, and TTL
 
-`retainRevisions` keeps bounded source captures, not spare running vClusters. Active and pending revisions are protected during replacement, so a transition can temporarily exceed the retained history count. Old runtimes are cleaned before another candidate starts. Delete the mirror with:
+`retainRevisions` keeps bounded source captures, not spare running vClusters. Active revisions and revisions referenced by queued/in-progress resets are protected during replacement, so a transition can temporarily exceed the retained history count. Old runtimes are cleaned before another candidate starts. Delete the mirror with:
 
 ```bash
 replicove mirror delete orders

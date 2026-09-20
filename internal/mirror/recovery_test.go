@@ -232,3 +232,51 @@ func TestQueueOverflowCannotBlockOwnedCleanup(t *testing.T) {
 		t.Fatal("cleanup could not progress with overflowing queue")
 	}
 }
+
+func TestDeletionRetiresResetConsumersBeforeDeletingRevision(t *testing.T) {
+	ctx := context.Background()
+	r, m, _ := fixture(t)
+	child := &api.ClusterReplica{ObjectMeta: metav1.ObjectMeta{Name: "restored", Namespace: m.Namespace, Finalizers: []string{"fixture-cleanup"}}}
+	create(t, r, child)
+	parent := &state.State{OwnerUID: string(m.UID), Mirror: &state.Mirror{ActiveUID: "reset", Runs: []state.MirrorRef{{Name: "capture", UID: "capture"}, {Name: "reset", UID: "reset"}}}}
+	save(t, r, parent)
+	capture := &state.State{OwnerUID: "capture", MirrorRun: &state.MirrorRun{MirrorUID: parent.OwnerUID, RevisionUID: "capture", CapturedAt: r.now(), Phase: "Retained"}}
+	save(t, r, capture)
+	reset := &state.State{OwnerUID: "reset", MirrorRun: &state.MirrorRun{MirrorUID: parent.OwnerUID, RevisionUID: "capture", Child: state.MirrorRef{Name: child.Name, UID: string(child.UID)}, Phase: "Active"}}
+	save(t, r, reset)
+	if done, err := r.collect(ctx, m, parent, true); err != nil || done {
+		t.Fatalf("active restore retirement: %v %v", done, err)
+	}
+	if got, err := r.Store.Load(ctx, "capture"); err != nil || got == nil {
+		t.Fatal("recovery-point inventory removed before its reset consumer finished cleanup")
+	}
+	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(child), child); err != nil || child.DeletionTimestamp.IsZero() {
+		t.Fatal("cleanup did not start retiring the consumer")
+	}
+}
+
+func TestQueuedResetPinsSelectedRevision(t *testing.T) {
+	ctx := context.Background()
+	r, m, _ := fixture(t)
+	m.Spec.RetainRevisions = 1
+	parent := &state.State{OwnerUID: string(m.UID), Mirror: &state.Mirror{ActiveUID: "newer", Runs: []state.MirrorRef{{Name: "capture", UID: "capture"}, {Name: "newer", UID: "newer"}, {Name: "queued", UID: "queued"}}}}
+	save(t, r, parent)
+	for _, id := range []string{"capture", "newer", "queued"} {
+		st := &state.State{OwnerUID: id, MirrorRun: &state.MirrorRun{MirrorUID: parent.OwnerUID, RevisionUID: id, CapturedAt: r.now(), Phase: "Retained"}}
+		run := &api.ReplicaMirrorRun{ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: m.Namespace, UID: types.UID(id)}, Spec: api.ReplicaMirrorRunSpec{Action: "Sync", MirrorRef: api.MirrorObjectRef{Name: m.Name, UID: string(m.UID)}}}
+		if id == "queued" {
+			st.MirrorRun.Phase = "Queued"
+			st.MirrorRun.CapturedAt = time.Time{}
+			run.Spec.Action = "Reset"
+			run.Spec.RevisionRef = &api.MirrorObjectRef{Name: "capture", UID: "capture"}
+		}
+		create(t, r, run)
+		save(t, r, st)
+	}
+	if _, err := r.collect(ctx, m, parent, false); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := r.Store.Load(ctx, "capture"); err != nil || got == nil {
+		t.Fatal("queued reset lost its selected capture")
+	}
+}

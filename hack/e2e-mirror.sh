@@ -211,6 +211,14 @@ hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
 [[ "$source_pvc_uid" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.metadata.uid}')" ]]
 [[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
+# Reinstall after finalizers finish: retained APIs must not make auto mode
+# incorrectly assume that the removed snapshot controller is still running.
+state_key_uid=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
+helm uninstall replicove --namespace replicove-system --wait --timeout 120s
+hk get crd volumesnapshots.snapshot.storage.k8s.io >/dev/null
+replicove_helm_install test/mirror/values.yaml
+hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
+[[ "$state_key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
+{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
 JSON

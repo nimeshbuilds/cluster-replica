@@ -13,6 +13,17 @@ Kubernetes compatibility follows served APIs and tested minors. A host distribut
 
 Dependabot already groups Kubernetes/controller-runtime/Helm module updates and checks GitHub Actions and base images. These changes go through review and the same CI; dependency updates do not authorize automatic rollout.
 
-`hack/release-artifacts.sh VERSION` produces Linux/macOS binaries for amd64/arm64, an installable chart, and SHA-256 checksums. The manual Release artifacts workflow builds these with read-only repository permissions. Publishing a public release/container and making it the documented default is a separate release action after validation; artifact packaging does not imply publication.
+## Publish an alpha
+
+1. Commit a new `Chart.yaml` version/appVersion and default image tag, update quickstart/release links and `docs/releases/alpha.md`, then run `make generate` and `make docs`.
+2. Merge after CI passes; wait for the exact merged `main` commit to pass all CI jobs too. The workflow enforces that commit gate.
+3. Dispatch **Publish alpha release** from `main` with a new version such as `v0.1.0-alpha.2`. It publishes only explicit alpha tags and refuses an existing operator tag or release. It never moves `latest`.
+4. The workflow builds Linux amd64/arm64 images with source/version/revision labels and OCI SBOM/provenance metadata. It packages a digest-pinned chart and YAML plus four macOS/Linux CLI archives and checksums. The OCI chart is published at `ghcr.io/nimeshbuilds/charts/replicove`.
+5. For the first publication of each GHCR package, set its visibility to **Public** in GitHub package settings. Repository visibility alone does not make a new package public. Anonymous verification waits for this setup and fails if access remains private.
+6. Fresh runners pull without registry login, verify platforms, source commit and checksums, exercise real Helm installation with new/existing vClusters, and start both Linux arm64 binaries. Only then is the GitHub prerelease created with its test-run link.
+
+For local packaging, run `./hack/fetch-helm.sh` then `./hack/release-artifacts.sh vVERSION`. Output goes into a new, empty `dist/vVERSION/` directory. Set `RELEASE_IMAGE_DIGEST` to the verified published image digest when preparing distributable chart/YAML artifacts. The release workflow supplies it automatically.
+
+If verification fails after publication, retain the failed run and rerun **failed jobs** after fixing the external issue. Do not replace an existing version tag. A source change requires a new version and a newly tested commit. OCI build metadata is not a separate signed release attestation; upstream runtime image digest locking remains tracked in issue #6.
 
 For an operator chart upgrade, retain its system namespace and immutable encryption key. Test restoring the key and sealed records before changing storage implementation. Never delete state or force finalizers to make an upgrade appear successful.

@@ -1,0 +1,15 @@
+{{- if .Values.createDestinationNamespace }}
+{{- $ns := lookup "v1" "Namespace" "" .Values.destinationNamespace }}
+{{- $annotations := dig "metadata" "annotations" (dict) $ns }}
+{{- $owned := and (eq (get $annotations "meta.helm.sh/release-name") .Release.Name) (eq (get $annotations "meta.helm.sh/release-namespace") .Release.Namespace) }}
+{{- if or (not $ns) $owned }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.destinationNamespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+{{- end }}

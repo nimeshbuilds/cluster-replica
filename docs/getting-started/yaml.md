@@ -2,9 +2,9 @@
 
 Install Replicove and create a replica using native Kubernetes manifests. The Replicove CLI and Helm CLI are not required. Replicove installs vCluster inside the host cluster for you.
 
-This walkthrough uses a new disposable kind cluster and a locally built image. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
+This walkthrough uses a new disposable kind cluster and the published alpha image. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
 
-## 1. Build and create a disposable host
+## 1. Create a disposable host
 
 In Terminal A:
 
@@ -14,7 +14,6 @@ cd replicove-yaml
 ./hack/fetch-e2e-tools.sh
 export PATH="$PWD/.cache/e2e-tools:$PATH"
 docker info >/dev/null
-docker build --tag replicove:yaml .
 
 umask 077
 mkdir -p .cache/yaml-demo
@@ -23,27 +22,27 @@ export REPLICOVE_YAML_HOST="$PWD/.cache/yaml-demo/host.kubeconfig"
 kind create cluster --name "$REPLICOVE_YAML_CLUSTER" \
   --image kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed \
   --kubeconfig "$REPLICOVE_YAML_HOST" --wait 180s
-kind load docker-image replicove:yaml --name "$REPLICOVE_YAML_CLUSTER"
 hk() { kubectl --kubeconfig "$REPLICOVE_YAML_HOST" --context "kind-$REPLICOVE_YAML_CLUSTER" "$@"; }
 ```
 
-Keep Terminal A open; subsequent commands use its variables. Stop if any command fails. The first image build can take several minutes. An existing checkout can use `git switch main` and `git pull --ff-only` after cleaning up its previous demo.
+Keep Terminal A open; subsequent commands use its variables. Stop if any command fails. The cluster pulls the published image automatically. An existing checkout can use `git switch main` and `git pull --ff-only` after cleaning up its previous demo.
 
 ## 2. Install the operator from manifests
 
 ```bash
-hk apply -f config/crd/
+export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.1.0-alpha.1
+hk apply -f "$REPLICOVE_RELEASE_URL/replicove-crds.yaml"
 hk wait --for=condition=Established --timeout=60s \
   crd/clusterreplicas.replica.nimeshbuilds.dev \
   crd/replicagrants.replica.nimeshbuilds.dev \
   crd/replicaaccesses.replica.nimeshbuilds.dev
-hk apply -k examples/yaml/install
+hk apply -f "$REPLICOVE_RELEASE_URL/replicove-install.yaml"
 hk -n replicove-system wait job/replicove-bootstrap \
   --for=condition=Complete --timeout=180s
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 ```
 
-The [Kustomize overlay](../../examples/yaml/install/kustomization.yaml) selects `replicove:yaml`. The [base manifests](../../config/install/) create `replicove-system`, `replica-lab`, explicit RBAC, the key bootstrap Job, and the operator Deployment. The protected key stays inside the cluster. There is no pre-generated key in Git.
+The versioned release installer pins the operator image digest. It is generated from the [base manifests](../../config/install/) and creates `replicove-system`, `replica-lab`, explicit RBAC, the key bootstrap Job, and the operator Deployment. The protected key stays inside the cluster. There is no pre-generated key in Git.
 
 ## 3. Grant a source
 
@@ -185,4 +184,4 @@ The destination should have no owned runtime resources and the source Deployment
 
 ## Automated verification
 
-[`hack/e2e-yaml.sh`](../../hack/e2e-yaml.sh) exercises these checked-in installation and request manifests in a fresh kind cluster, including idempotent key bootstrap, guest access, configuration checks, access revocation, source preservation, and owned cleanup. It does not use the Replicove or Helm CLI. See the **yaml-workflow** job in [CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml).
+[`hack/e2e-yaml.sh`](../../hack/e2e-yaml.sh) exercises these checked-in installation and request manifests in a fresh kind cluster, including idempotent key bootstrap, guest access, configuration checks, access revocation, source preservation, and owned cleanup. It does not use the Replicove or Helm CLI. The release workflow repeats it with the published digest-pinned YAML and image. See the **yaml-workflow** job in [CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml).

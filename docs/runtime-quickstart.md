@@ -120,6 +120,6 @@ hk -n replica-lab get events --sort-by=.lastTimestamp
 
 Check Terminal A’s operator logs as well. An unknown kind usually means the CRD was not installed in this host context. A readiness timeout needs pod/events inspection; it is not proof of success. For a connection error, verify the release name, CLI version, and control-plane readiness. Do not disable TLS verification or strip a finalizer to hide a failed operation.
 
-For an in-cluster operator, build/push your own image and replace the placeholder in [the Deployment manifest](../config/manager/deployment.yaml) before applying it. No official release image is published yet.
+For a complete in-cluster operator, use the public alpha [Helm installation](getting-started/helm.md) or [native YAML installation](getting-started/yaml.md). The standalone runtime prototype above remains a contributor exercise.
 
 [First replica quickstart](../QUICKSTART.md) · [Project status](project-status.md) · [Testing](testing.md) · [Support](../SUPPORT.md)

@@ -28,7 +28,7 @@ The repository now has separate full-workflow and workload suites:
 
 - `hack/e2e-replication.sh`: embedded installer; operator namespace isolation and rejected Role escalation/cluster-admin binding; manual plan/approval; real source Helm capture; Secret snapshot/follow; namespace maps and overrides; guest Deployment/Service/HTTP; operator restart; persistent control-plane replacement and tunnel recovery; refresh; viewer authorization; existing-target conflict and preservation; owned deletion; five-minute TTL and control-plane PVC cleanup. CI targets pinned 1.35.8 and 1.36.4 hosts.
 - `hack/e2e-workload.sh cert-manager|spark|trino|policy`: independently install the source toolset, capture it, reconstruct it in a persistent vCluster, execute a real functional probe, and verify cleanup. Pinned chart archives are vendored with upstream licenses and hashes.
-- `hack/release-artifacts.sh VERSION`: package Linux/macOS amd64/arm64 CLI binaries, operator chart and checksums. This does not publish a release.
+- `hack/release-artifacts.sh VERSION`: package Linux/macOS amd64/arm64 CLI binaries, operator chart and checksums. This local command does not publish. The manual release workflow publishes only from a CI-tested main commit and repeats live tests against the anonymous registry artifacts.
 
 The [recorded results](validation.md) identify the passing commit and scenario. Cloud identity, CSI snapshot/content restoration, production data workloads and broader vendor/scale behavior remain separate gates.
 

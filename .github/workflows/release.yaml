@@ -1,30 +1,220 @@
-name: Release artifacts
+name: Publish alpha release
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Artifact version (for example v0.1.0-rc.1)
+        description: Committed release version (for example v0.1.0-alpha.1)
         required: true
         type: string
 permissions:
   contents: read
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+
 jobs:
-  package:
+  publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+      version: ${{ steps.validate.outputs.version }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - run: make check
-      - name: Build versioned CLI and chart artifacts
+      - name: Require the exact main commit to pass the entire live CI suite
+        id: validate
         env:
-          RELEASE_VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [[ "$RELEASE_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$ ]]
+          gh run list --workflow ci.yaml --commit "$GITHUB_SHA" --event push --json conclusion,headSha --limit 20 > /tmp/release-ci.json
+          python3 - <<'PY'
+          import json,os
+          runs=json.load(open('/tmp/release-ci.json'))
+          assert any(r['headSha']==os.environ['GITHUB_SHA'] and r['conclusion']=='success' for r in runs), 'Exact main commit must pass all CI jobs before publishing'
+          PY
+          if gh release view "$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo 'This release already exists; choose a new version.' >&2; exit 1
+          fi
+          echo "version=${RELEASE_VERSION#v}" >> "$GITHUB_OUTPUT"
+          ./hack/fetch-helm.sh
+          test "$(.cache/e2e-tools/helm show chart charts/replicove | awk '$1 == "version:" {print $2}')" = "${RELEASE_VERSION#v}"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Refuse to replace an existing image tag
+        env:
+          IMAGE_TAG: ${{ steps.validate.outputs.version }}
+        run: |
+          if docker buildx imagetools inspect "ghcr.io/nimeshbuilds/replicove:$IMAGE_TAG" >/dev/null 2>&1; then
+            echo 'Image tag exists. Rerun failed verification jobs, or publish a new version.' >&2; exit 1
+          fi
+      - name: Publish operator for amd64 and arm64
+        id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/nimeshbuilds/replicove:${{ steps.validate.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.validate.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          annotations: |
+            index:org.opencontainers.image.description=Disposable Kubernetes integration environments powered by vCluster
+            index:org.opencontainers.image.source=https://github.com/nimeshbuilds/replicove
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Package CLI, digest-pinned chart, and native YAML
+        env:
+          RELEASE_IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
         run: ./hack/release-artifacts.sh "$RELEASE_VERSION"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: replicove-release
-          path: dist/
-          retention-days: 14
+          path: dist/${{ inputs.version }}/
+          retention-days: 30
+      - name: Publish OCI Helm chart
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GH_TOKEN" | .cache/e2e-tools/helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          .cache/e2e-tools/helm push "dist/$RELEASE_VERSION/replicove-${RELEASE_VERSION#v}.tgz" oci://ghcr.io/nimeshbuilds/charts
+
+  verify:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+      REPLICOVE_IMAGE: ghcr.io/nimeshbuilds/replicove@${{ needs.publish.outputs.digest }}
+      REPLICOVE_CHART: oci://ghcr.io/nimeshbuilds/charts/replicove
+      REPLICOVE_CHART_VERSION: ${{ needs.publish.outputs.version }}
+      REPLICOVE_INSTALLER: helm
+      REPLICOVE_USE_RELEASE_CLI: 'true'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: replicove-release
+          path: dist
+      - name: Verify published artifacts without registry credentials
+        run: |
+          ./hack/fetch-e2e-tools.sh
+          ./hack/fetch-helm.sh
+          python3 hack/verify-published-image.py
+          cd dist
+          sha256sum --check SHA256SUMS
+          mkdir -p ../bin
+          tar -xzf "replicove-$RELEASE_VERSION-linux-amd64.tar.gz" -C ../bin replicove
+          ../bin/replicove --version
+          mkdir -p pulled
+          for attempt in $(seq 1 60); do
+            if ../.cache/e2e-tools/helm pull "$REPLICOVE_CHART" --version "$REPLICOVE_CHART_VERSION" --destination pulled; then break; fi
+            sleep 10
+          done
+          cmp "replicove-$REPLICOVE_CHART_VERSION.tgz" "pulled/replicove-$REPLICOVE_CHART_VERSION.tgz"
+          docker pull "$REPLICOVE_IMAGE"
+      - name: Install from OCI and provision, access, refresh, and expire a new vCluster
+        run: ./hack/e2e-replication.sh
+      - name: Install from OCI into a host with an independently managed vCluster
+        run: ./hack/e2e-helm-existing.sh
+      - name: Retain sanitized published-artifact test evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-verification
+          path: |
+            .cache/replication-e2e/run.*/artifacts/
+            .cache/helm-existing-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 30
+
+  verify-arm64:
+    needs: publish
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 15
+    env:
+      RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: replicove-release
+          path: dist
+      - name: Run the published CLI and operator on a native arm64 runner
+        run: |
+          python3 hack/verify-published-image.py
+          cd dist
+          sha256sum --check SHA256SUMS
+          tar -xzf "replicove-$RELEASE_VERSION-linux-arm64.tar.gz" replicove
+          ./replicove --version
+          docker run --rm "ghcr.io/nimeshbuilds/replicove@$RELEASE_IMAGE_DIGEST" --help
+
+  verify-yaml:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+      REPLICOVE_MANIFEST_DIR: dist
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: replicove-release
+          path: dist
+      - name: Verify the published YAML lifecycle
+        run: |
+          python3 hack/verify-published-image.py
+          ./hack/fetch-e2e-tools.sh
+          ./hack/e2e-yaml.sh
+      - name: Retain sanitized YAML release evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-yaml-verification
+          path: .cache/yaml-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 30
+
+  release:
+    needs: [publish, verify, verify-arm64, verify-yaml]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: replicove-release
+          path: dist
+      - name: Publish the verified GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+        run: |
+          cp docs/releases/alpha.md /tmp/replicove-release.md
+          printf '\nImage digest: `%s`\n\nSource commit: `%s`\n\n[Published-artifact test run](https://github.com/%s/actions/runs/%s).\n' "$RELEASE_IMAGE_DIGEST" "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> /tmp/replicove-release.md
+          gh release create "$RELEASE_VERSION" dist/* --target "$GITHUB_SHA" --prerelease --title "Replicove $RELEASE_VERSION" --notes-file /tmp/replicove-release.md

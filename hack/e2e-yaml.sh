@@ -26,14 +26,25 @@ cleanup(){
  exit "$result"
 }
 trap cleanup EXIT
-docker build --tag replicove:yaml .
+if [[ -z "${REPLICOVE_MANIFEST_DIR:-}" ]]; then docker build --tag replicove:yaml .; fi
 if kind get clusters | grep -Fxq "$cluster"; then exit 1; fi
 created=true
 kind create cluster --name "$cluster" --image kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed --kubeconfig "$work/host.kubeconfig" --wait 180s
-kind load docker-image replicove:yaml --name "$cluster"
-hk apply -f config/crd/
+if [[ -z "${REPLICOVE_MANIFEST_DIR:-}" ]]; then
+ kind load docker-image replicove:yaml --name "$cluster"
+ hk apply -f config/crd/
+else
+ hk apply -f "$REPLICOVE_MANIFEST_DIR/replicove-crds.yaml"
+fi
 hk wait --for=condition=Established --timeout=60s crd/clusterreplicas.replica.nimeshbuilds.dev crd/replicagrants.replica.nimeshbuilds.dev crd/replicaaccesses.replica.nimeshbuilds.dev
-hk apply -k examples/yaml/install
+install_manifests(){
+ if [[ -z "${REPLICOVE_MANIFEST_DIR:-}" ]]; then
+  hk apply -k examples/yaml/install
+ else
+  hk apply -f "$REPLICOVE_MANIFEST_DIR/replicove-install.yaml"
+ fi
+}
+install_manifests
 hk -n replicove-system wait job/replicove-bootstrap --for=condition=Complete --timeout=180s
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 # Reinstall the bootstrap Job while state exists: it must retain the original key.
@@ -45,7 +56,7 @@ hk -n source-dev rollout status deployment/echo --timeout=180s
 hk apply -f examples/yaml/replica.yaml
 hk -n replica-lab wait clusterreplica/yaml-demo --for=condition=Ready --timeout=420s
 hk -n replicove-system delete job replicove-bootstrap --wait=true
-hk apply -k examples/yaml/install
+install_manifests
 hk -n replicove-system wait job/replicove-bootstrap --for=condition=Complete --timeout=180s
 [[ "$key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 replica_uid=$(hk -n replica-lab get clusterreplica yaml-demo -o jsonpath='{.metadata.uid}')

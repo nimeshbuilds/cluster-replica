@@ -65,6 +65,7 @@ nav:
   - Home: index.md
   - Getting started:
       - Installation: getting-started/installation.md
+      - Helm quickstart: getting-started/helm.md
       - YAML quickstart: getting-started/yaml.md
       - CLI quickstart: quickstart.md
   - Feature guides:

@@ -15,7 +15,7 @@ Check the host context before running commands. Avoid dumping Secrets or kubecon
 
 | Symptom | Check / next action |
 | --- | --- |
-| Operator `ImagePullBackOff` | The default registry tag is a placeholder. Build/load the demo image or use your own reachable pushed tag. Check image pull credentials and architecture. |
+| Operator `ImagePullBackOff` | Check node access to `ghcr.io` and the selected alpha tag/digest. Published images are public for amd64/arm64; custom builds need a reachable registry or a loaded local test image. |
 | Bootstrap Job fails | Read `kubectl -n replicove-system logs job/replicove-bootstrap`. Confirm Secret get/list/create permissions. An invalid existing key must be restored deliberately, not overwritten. |
 | State exists but key is missing | Restore the original key and encrypted records from the same backup. Re-running bootstrap cannot recover lost encryption material. |
 | Job update reports an immutable template | After confirming it is completed, remove only `replicove-bootstrap` and reapply the reviewed installer. Preserve the key. |

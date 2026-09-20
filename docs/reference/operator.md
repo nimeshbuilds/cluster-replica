@@ -6,10 +6,12 @@ The operator chart is in [`charts/replicove`](../../charts/replicove/). The CLI 
 
 | Value | Default | Meaning |
 | --- | --- | --- |
-| `image.repository` | `ghcr.io/nimeshbuilds/replicove` | Operator image repository; this is currently a release placeholder |
-| `image.tag` | `0.1.0` | Explicit image tag; use your own built image in the alpha |
+| `image.repository` | `ghcr.io/nimeshbuilds/replicove` | Public operator image repository |
+| `image.tag` | `0.1.0-alpha.1` | Versioned alpha image tag |
+| `image.digest` | Empty in source; set by release packaging | SHA-256 image digest; takes precedence over tag |
 | `image.pullPolicy` | `IfNotPresent` | Kubernetes image pull behavior |
 | `destinationNamespace` | `replica-lab` | The one namespace watched by this operator |
+| `createDestinationNamespace` | `true` | Create if absent; retain on uninstall; reuse existing namespaces without adoption |
 | `stateKey.bootstrap` | `false` | Helm creates/reuses the key Secret by default; `true` uses the bounded bootstrap Job instead |
 | `sources` | `[]` | Source namespace and read-only RBAC rule entries |
 | `clusterReadRules` | `[]` | Additional explicit read-only cluster resource rules |
@@ -21,7 +23,7 @@ The release namespace is the protected state namespace. It must differ from `des
 
 `sources` entries have `namespace` and Kubernetes `rules`; the chart creates a Role and RoleBinding in each source. Sources must already exist. Use `get` and `list` only for desired source reads. Add cluster reads only for inputs your grant permits. The cluster grant reader needs `get replicagrants`; host `kube-system` identity and bound PV inspection are also explicit built-in reads.
 
-The chart does not expose arbitrary vCluster values. Runtime configuration is an exact catalog profile. The current image configuration is repository plus tag, not a completed digest-locked release pipeline. See [remaining release gates](../project-status.md).
+The chart does not expose arbitrary vCluster values. Runtime configuration is an exact catalog profile. The published operator chart pins its multiarchitecture image by digest. Upstream vCluster and guest-image digest locking remains separate work. See [remaining release gates](../project-status.md).
 
 ## Operator process flags
 

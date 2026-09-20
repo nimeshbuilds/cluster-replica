@@ -2,9 +2,13 @@ apiVersion: v2
 name: replicove
 description: Kubernetes replica environments powered by vCluster
 type: application
-version: 0.1.0
-appVersion: 0.1.0
-home: https://github.com/nimeshbuilds/cluster-replica
+version: 0.1.0-alpha.1
+appVersion: 0.1.0-alpha.1
+home: https://nimeshbuilds.github.io/replicove/
+icon: https://nimeshbuilds.github.io/replicove/assets/brand/replicove-icon.png
 sources:
-  - https://github.com/nimeshbuilds/cluster-replica
+  - https://github.com/nimeshbuilds/replicove
+annotations:
+  org.opencontainers.image.source: https://github.com/nimeshbuilds/replicove
+  org.opencontainers.image.licenses: Apache-2.0
 keywords: [kubernetes, vcluster, testing, ephemeral, operators, replicove]

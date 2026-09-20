@@ -11,9 +11,9 @@
 
 **Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** It recreates the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-[Quick start](QUICKSTART.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
+[Helm quickstart](docs/getting-started/helm.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-> **Experimental portable alpha.** The operator and CLI support selected source replication, persistent or existing vClusters, scoped guest access, and owned-resource cleanup on deletion or TTL expiry. Build from source using the quickstart; no packaged public release or production support is available yet.
+> **Experimental portable alpha.** The operator and CLI support selected source replication, persistent or existing vClusters, scoped guest access, and owned-resource cleanup on deletion or TTL expiry. Install the public `v0.1.0-alpha.1` artifacts using Helm, YAML, or the CLI. Production support and cloud certification are not available.
 
 ## Why Replicove?
 
@@ -38,13 +38,17 @@ The integrated alpha’s [eight-job CI run](https://github.com/nimeshbuilds/repl
 
 ## Quick start
 
-**[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
+```bash
+helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
+  --version 0.1.0-alpha.1 \
+  --namespace replicove-system --create-namespace --wait --timeout 3m
+```
 
-The walkthrough takes you through building the tested alpha, creating a disposable kind cluster, installing Replicove, approving a replication plan, connecting to the guest, verifying copied configuration, and cleaning up. It uses complete sample files and an isolated kubeconfig; no cloud account or registry push is needed.
+**[Helm quickstart →](docs/getting-started/helm.md)** · **[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
 
-The YAML guide installs the operator, provisions vCluster, requests access, and cleans up using native manifests and `kubectl`. The Replicove and Helm CLIs are optional. The [developer documentation](https://nimeshbuilds.github.io/replicove/) includes searchable feature guides and generated API/CLI references.
+The Helm command installs the CRDs, operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. The public operator image is `ghcr.io/nimeshbuilds/replicove:0.1.0-alpha.1`; the published chart pins its digest.
 
-Both guides build from `main` and use disposable fixtures. The [configuration guide](docs/replicove-quickstart.md) covers existing targets, grants, secrets, and cleanup policies.
+The guides walk through source permissions, replica creation, guest access, verification, and cleanup. CLI binaries and native manifests are available on the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1). The [developer docs](https://nimeshbuilds.github.io/replicove/) cover each feature and generate API/CLI references from code.
 
 The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 

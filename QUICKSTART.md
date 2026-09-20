@@ -2,20 +2,20 @@
 
 Create a disposable Kubernetes cluster, install Replicove, and recreate a small application’s configuration and Helm component inside a vCluster. You will inspect the plan, connect to the replica, verify the copied resources, and remove the environment.
 
-> **Developer preview:** this guide uses the complete portable alpha on `main`. There is no published release image yet, so you build one locally. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
+> **Experimental alpha:** this guide uses the published `v0.1.0-alpha.1` CLI and operator image with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
 
-Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
+Prefer a one-command Helm installation? Start with the **[Helm quickstart](docs/getting-started/helm.md)**. Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
 
 ## Before you start
 
-- A macOS or Linux machine with Bash, Git, `make`, `curl`, `shasum`, and [Go 1.27.1+](https://go.dev/doc/install).
-- A running Docker engine with room for a local Kubernetes cluster and image builds. Check `docker info` first.
-- Internet access for Go modules, tool downloads, container images, and the pinned vCluster chart.
+- A macOS or Linux machine with Bash, Git, `curl`, `shasum`, and `tar`.
+- A running Docker engine with room for a local Kubernetes cluster. Check `docker info` first.
+- Internet access for release/tool downloads, container images, and the pinned vCluster chart.
 - Two terminal windows. Run the steps in order and stop if a command fails.
 
-The tool downloader installs checksum-verified kind, kubectl, and vCluster binaries under this checkout’s `.cache`, without a system-wide installation. The demo uses a **new kind cluster and separate kubeconfig files**; it does not need access to your existing clusters or a paid cloud account. No Helm CLI or registry push is required.
+The tool downloader installs checksum-verified kind, kubectl, vCluster, and Helm binaries under this checkout’s `.cache`, without a system-wide installation. The demo uses a **new kind cluster and separate kubeconfig files**; it does not need access to your existing clusters or a paid cloud account. Helm is used only to install the sample source component; no image build or registry push is required.
 
-## 1. Get Replicove and build
+## 1. Get the CLI and examples
 
 In **Terminal A**:
 
@@ -24,13 +24,26 @@ git clone --branch main https://github.com/nimeshbuilds/replicove.git replicove-
 cd replicove-demo
 
 ./hack/fetch-e2e-tools.sh
+./hack/fetch-helm.sh
 export PATH="$PWD/.cache/e2e-tools:$PATH"
-make build
+export REPLICOVE_RELEASE=v0.1.0-alpha.1
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+case "$(uname -m)" in
+  x86_64) arch=amd64 ;;
+  arm64|aarch64) arch=arm64 ;;
+  *) echo 'Use macOS or Linux on amd64/arm64'; exit 1 ;;
+esac
+asset="replicove-$REPLICOVE_RELEASE-$os-$arch.tar.gz"
+mkdir -p .cache/release bin
+curl -fL "https://github.com/nimeshbuilds/replicove/releases/download/$REPLICOVE_RELEASE/$asset" -o ".cache/release/$asset"
+curl -fL "https://github.com/nimeshbuilds/replicove/releases/download/$REPLICOVE_RELEASE/SHA256SUMS" -o .cache/release/SHA256SUMS
+(cd .cache/release && awk -v asset="$asset" '$2 == asset' SHA256SUMS | shasum -a 256 --check -)
+tar -xzf ".cache/release/$asset" -C bin replicove
+./bin/replicove --version
 docker info >/dev/null
-docker build --tag replicove:quickstart .
 ```
 
-You stay on the normal `main` branch. The first build can take several minutes while dependencies download. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
+You stay on the normal `main` branch. The CLI reports `v0.1.0-alpha.1`; the operator image is pulled automatically from GHCR. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
 
 <details>
 <summary>Already cloned the repository or followed the older guide?</summary>
@@ -42,7 +55,7 @@ git switch main
 git pull --ff-only
 ```
 
-This also returns an older detached checkout to `main`. Then rerun step 1 starting at `./hack/fetch-e2e-tools.sh` to rebuild the CLI and operator image together, and continue with step 2.
+This also returns an older detached checkout to `main`. Then rerun step 1 starting at `./hack/fetch-e2e-tools.sh` to download the CLI and tools, and continue with step 2.
 
 </details>
 
@@ -61,7 +74,6 @@ printf '%s\n' "$REPLICOVE_CLUSTER" > "$REPLICOVE_LAB/cluster-name"
 kind create cluster --name "$REPLICOVE_CLUSTER" \
   --image kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed \
   --kubeconfig "$REPLICOVE_LAB/host.kubeconfig" --wait 180s
-kind load docker-image replicove:quickstart --name "$REPLICOVE_CLUSTER"
 
 hk() { kubectl --kubeconfig "$REPLICOVE_LAB/host.kubeconfig" --context "kind-$REPLICOVE_CLUSTER" "$@"; }
 rk() { ./bin/replicove --kubeconfig "$REPLICOVE_LAB/host.kubeconfig" --context "kind-$REPLICOVE_CLUSTER" -n replica-lab "$@"; }
@@ -76,13 +88,12 @@ Wait for the node to report `Ready`. `hk` always targets the host, `rk` manages 
 
 ```bash
 hk create namespace source-dev
-rk install --image replicove:quickstart --values test/e2e/replicove-values.yaml
+rk install --image ghcr.io/nimeshbuilds/replicove:0.1.0-alpha.1 --values test/e2e/replicove-values.yaml
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 
 hk apply -f test/e2e/source.yaml
 hk -n source-dev rollout status deployment/echo --timeout=180s
-KUBECONFIG="$REPLICOVE_LAB/host.kubeconfig" \
-  go run ./test/e2e/seed test/e2e/chart source-dev fixture
+helm --kubeconfig "$REPLICOVE_LAB/host.kubeconfig" install fixture test/e2e/chart --namespace source-dev
 
 hk apply -f test/e2e/grant.yaml
 ```
@@ -183,9 +194,9 @@ hk -n replicove-system logs deployment/replicove --tail=100
 
 | Symptom | Next check |
 | --- | --- |
-| `bin/replicove` or a fixture is missing | Run from the repository root. `git branch --show-current` should print `main`; follow the existing-checkout instructions in step 1 to update and rebuild. |
+| `bin/replicove` or a fixture is missing | Run from the repository root. `git branch --show-current` should print `main`; follow the existing-checkout instructions in step 1 to update and download. |
 | Docker is unreachable | Start your Docker engine, confirm `docker info`, and rerun the failed step. |
-| Operator `ImagePullBackOff` | Load `replicove:quickstart` into this guide’s kind cluster; the same tag must be passed to `install`. |
+| Operator `ImagePullBackOff` | Check node access to `ghcr.io` and confirm the image is `ghcr.io/nimeshbuilds/replicove:0.1.0-alpha.1`. |
 | `AwaitingApproval` | Read `rk plan demo`, then approve that plan with `rk approve demo`. |
 | A PVC is `Pending` | Check `hk get storageclass` and the pod/PVC events. The persistent profile needs a functioning default StorageClass. |
 | `Blocked` | Read the request’s condition reason. Grant, ownership, capability, and capture limits are intentional checks. |
@@ -193,7 +204,7 @@ hk -n replicove-system logs deployment/replicove --tail=100
 | Credential output file already exists | Use a new output filename and update `gk` to point to it; the CLI does not overwrite files. |
 | Deletion is stuck | Check operator health and request conditions. Resolve the reported dependency; do not strip finalizers to conceal unfinished cleanup. |
 
-For a scripted verification instead of the interactive walkthrough, install Python 3 and run `./hack/e2e-replication.sh` after step 1. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The [integrated alpha passed all eight CI checks](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
+For a scripted verification instead of the interactive walkthrough, install Go 1.27.1+, make, and Python 3, then run `./hack/e2e-replication.sh` after step 1. This contributor test builds its own image. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The [integrated alpha passed all eight CI checks](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
 
 ## Next steps
 

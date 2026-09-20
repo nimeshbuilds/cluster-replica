@@ -268,7 +268,7 @@ func TestOperatorInstallationChart(t *testing.T) {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	for _, name := range []string{"replicove-system", "replica-lab", "source-dev"} {
+	for _, name := range []string{"replicove-system", "source-dev"} {
 		if err := c.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}); err != nil {
 			t.Fatal(err)
 		}
@@ -293,6 +293,14 @@ func TestOperatorInstallationChart(t *testing.T) {
 	if _, err := install.RunWithContext(ctx, ch, values); err != nil {
 		t.Fatal(err)
 	}
+	destination := &corev1.Namespace{}
+	if err := c.Get(ctx, client.ObjectKey{Name: "replica-lab"}, destination); err != nil {
+		t.Fatalf("one-shot chart did not create destination namespace: %v", err)
+	}
+	if destination.Annotations["helm.sh/resource-policy"] != "keep" {
+		t.Fatal("uninstall would remove a namespace containing replica lifecycles")
+	}
+	destinationUID := destination.UID
 	key := &corev1.Secret{}
 	if err := c.Get(ctx, client.ObjectKey{Namespace: "replicove-system", Name: "replicove-state-key"}, key); err != nil {
 		t.Fatal(err)
@@ -314,6 +322,9 @@ func TestOperatorInstallationChart(t *testing.T) {
 	}
 	if key.UID != originalKeyUID || !bytes.Equal(key.Data["key"], originalKey) {
 		t.Fatal("operator upgrade replaced the encryption key")
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(destination), destination); err != nil || destination.UID != destinationUID {
+		t.Fatal("operator upgrade removed or replaced the destination namespace")
 	}
 	assertOperatorAuthorization(t, config)
 	// Real Helm storage often has nil Config when users accepted chart defaults.

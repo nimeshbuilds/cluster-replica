@@ -31,7 +31,7 @@ The [eight-job integrated-alpha run at c2c5ea3](https://github.com/nimeshbuilds/
 - External Secrets backend recreation and arbitrary operator-specific dependencies, lifecycle hooks or bootstrap cycles.
 - Per-user gateway delegation. Exact-Secret RBAC distribution is implemented for administrator-selected subjects; the authorization model remains namespace delegation.
 - Digest-locked runtime images and automated candidate schema/resource/RBAC diffs ([maintenance issue #6](https://github.com/nimeshbuilds/replicove/issues/6)).
-- Public container/release publication, signed provenance, large encrypted object-store captures, scale/chaos qualification and GA readiness.
+- Separately signed release attestations, large encrypted object-store captures, scale/chaos qualification and GA readiness. Public alpha containers, OCI charts, CLI binaries, native YAML, checksums, and OCI build metadata are distributed by the release workflow.
 - OpenShift/RKE2/cloud distribution qualification and external design-partner validation.
 
 Cloud labs being deferred does not mark cloud features complete. Kubernetes minor versions and actual API/capability evidence determine the portable path; a distribution's name alone is not a compatibility guarantee.

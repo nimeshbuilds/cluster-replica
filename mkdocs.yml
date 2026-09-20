@@ -1,0 +1,100 @@
+site_name: Replicove
+site_description: Recreate selected Kubernetes operators and configuration in disposable vClusters. Guides, YAML examples, API references, and developer documentation.
+site_url: https://nimeshbuilds.github.io/replicove/
+repo_url: https://github.com/nimeshbuilds/replicove
+repo_name: nimeshbuilds/replicove
+edit_uri: ''
+docs_dir: .cache/docs-src
+site_dir: site
+copyright: 'Replicove · Apache-2.0 · Built in public by Nimesh Builds'
+theme:
+  name: material
+  custom_dir: docs/overrides
+  logo: assets/brand/replicove-icon.png
+  favicon: assets/brand/replicove-icon.png
+  font: false
+  palette:
+    - scheme: default
+      primary: custom
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - search.suggest
+    - search.highlight
+    - toc.follow
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra_css:
+  - stylesheets/extra.css
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+  links:
+    not_found: warn
+    anchors: warn
+    unrecognized_links: warn
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started/installation.md
+      - YAML quickstart: getting-started/yaml.md
+      - CLI quickstart: quickstart.md
+  - Feature guides:
+      - Grants and permissions: guides/grants.md
+      - Select and transform: guides/selection.md
+      - Helm releases and operators: guides/operators.md
+      - Secrets and storage: guides/secrets-storage.md
+      - Plans, refresh, and drift: guides/lifecycle.md
+      - Access for people and agents: guides/access.md
+      - Existing vClusters: guides/existing.md
+      - TTL and cleanup: guides/cleanup.md
+      - GitOps and CI: guides/gitops.md
+      - Troubleshooting: guides/troubleshooting.md
+  - Reference:
+      - Kubernetes API: reference/api.md
+      - CLI commands: reference/cli.md
+      - Operator configuration: reference/operator.md
+      - Compatibility and limits: reference/compatibility.md
+      - Workload fixtures: workload-adapters.md
+  - Developers:
+      - Architecture: architecture.md
+      - Build and test: development/local.md
+      - Runtime maintenance: maintaining-replicove.md
+      - Maintain these docs: development/docs.md
+      - Contributing: contributing.md
+  - Project:
+      - Status: project-status.md
+      - Test evidence: validation.md
+      - Implementation ledger: IMPLEMENTATION_STATUS.md
+      - Security: security.md
+      - Roadmap: roadmap.md
+      - Support: support.md
+      - Brand: brand/README.md

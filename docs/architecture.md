@@ -39,7 +39,7 @@ flowchart TD
 | `internal/target` | Data-only kubeconfigs, TLS validation and guest/host identity checks |
 | `internal/workflow` | Approval, apply, readiness, drift, refresh, secret follow, access and cleanup |
 | `cmd/replicove` | Embedded installation, request lifecycle, scoped credentials and local tunnel |
-| `charts/replicove` | Operator, immutable key and explicit source/destination RBAC |
+| `charts/replicove` / `config/install` | Shared chart and generated native YAML, immutable key/bootstrap Job and explicit source/destination RBAC |
 
 The operator watches one destination namespace. The state namespace is separate from both destination and sources. Cross-namespace reads use an uncached client; there is no global Secret informer. The installer labels its own infrastructure so it cannot become a guest source dependency.
 

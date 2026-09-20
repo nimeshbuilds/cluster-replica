@@ -1,0 +1,17 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: yaml-demo
+spec:
+  targetNamespace: replica-lab
+  sourceNamespaces: [source-dev]
+  resources:
+    - {group: "", kind: ConfigMap}
+    - {group: "", kind: ServiceAccount}
+    - {group: "", kind: Service}
+    - {group: apps, kind: Deployment}
+  secrets:
+    - {namespace: source-dev, name: fixture-password}
+  maxTTL: 2h
+  accessRoles: [viewer, deployer]
+  maxAccessSeconds: 900

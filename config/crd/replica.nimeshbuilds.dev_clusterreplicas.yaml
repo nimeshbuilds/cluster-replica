@@ -57,8 +57,8 @@ spec:
             properties:
               approval:
                 default: Automatic
-                description: GrantRef delegates source capabilities to this destination
-                  namespace.
+                description: Approval controls whether a captured plan needs an explicit
+                  revision approval.
                 enum:
                 - Automatic
                 - Manual
@@ -71,6 +71,8 @@ spec:
                 - DeleteOwned
                 type: string
               grantRef:
+                description: GrantRef delegates source capabilities to this destination
+                  namespace.
                 type: string
               profile:
                 description: Profile selects an exact, experimental runtime configuration.
@@ -84,6 +86,8 @@ spec:
                   checks:
                     description: Additional readiness checks for custom resources.
                     items:
+                      description: ReadinessCheck selects the original source identity
+                        and evaluates its live guest counterpart.
                       properties:
                         apiVersion:
                           type: string
@@ -294,6 +298,8 @@ spec:
                     type: array
                   patches:
                     items:
+                      description: ObjectPatch selects the original source identity
+                        and applies a JSON merge patch.
                       properties:
                         apiVersion:
                           type: string

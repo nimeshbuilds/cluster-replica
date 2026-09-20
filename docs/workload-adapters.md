@@ -1,6 +1,6 @@
 # Workload qualification fixtures
 
-Replicove's portable adapter uses CRDs, explicit Helm revision capture, dependency ordering, value overrides, and custom readiness checks. Workload-specific settings stay in inspectable fixture YAML. All four profiles passed source-to-guest functional checks and owned cleanup at `8123f9a`; see the [recorded evidence](validation.md). Later commits must pass the same jobs. These small fixtures do not certify production scale.
+Replicove's portable adapter uses CRDs, explicit Helm revision capture, dependency ordering, value overrides, and custom readiness checks. Workload-specific settings stay in inspectable fixture YAML. All four profiles passed source-to-guest functional checks and owned cleanup in the integrated alpha CI run at `c2c5ea3`; see the [recorded evidence](validation.md). Later commits must pass the same jobs. These small fixtures do not certify production scale.
 
 | Fixture | Pinned upstream | Adaptation | Functional check |
 | --- | --- | --- | --- |

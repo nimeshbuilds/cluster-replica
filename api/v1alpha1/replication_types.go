@@ -31,6 +31,7 @@ type ResourceSelector struct {
 	LabelSelector *metav1.LabelSelector `json:"labelSelector,omitempty"`
 }
 
+// ObjectPatch selects the original source identity and applies a JSON merge patch.
 type ObjectPatch struct {
 	ObjectReference `json:",inline"`
 	// +kubebuilder:validation:Schemaless
@@ -66,6 +67,7 @@ type ReplicationSpec struct {
 	Checks []ReadinessCheck `json:"checks,omitempty"`
 }
 
+// ReadinessCheck selects the original source identity and evaluates its live guest counterpart.
 type ReadinessCheck struct {
 	ObjectReference `json:",inline"`
 	// Use either a condition or a dot-separated status field and expected value.

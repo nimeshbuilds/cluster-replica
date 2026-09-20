@@ -1,0 +1,84 @@
+# Disposable demonstration data only. Never commit real credentials.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: source-dev
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: settings
+  namespace: source-dev
+data:
+  mode: source
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: fixture-password
+  namespace: source-dev
+type: Opaque
+stringData:
+  password: ci-fixture-value
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app
+  namespace: source-dev
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+  namespace: source-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo
+  template:
+    metadata:
+      labels:
+        app: echo
+    spec:
+      serviceAccountName: app
+      containers:
+        - name: echo
+          image: registry.k8s.io/e2e-test-images/agnhost:2.63.0
+          command: [/agnhost, netexec, --http-port=8080]
+          env:
+            - name: MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: settings
+                  key: mode
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fixture-password
+                  key: password
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /hostname
+              port: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 24Mi
+            limits:
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo
+  namespace: source-dev
+spec:
+  selector:
+    app: echo
+  ports:
+    - port: 8080
+      targetPort: 8080

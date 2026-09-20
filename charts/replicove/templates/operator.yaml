@@ -8,6 +8,7 @@ metadata:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
+{{- if not .Values.stateKey.bootstrap }}
 ---
 apiVersion: v1
 kind: Secret
@@ -26,6 +27,7 @@ data:
   key: {{ index $existing.data "key" | quote }}
 {{- else }}
   key: {{ randBytes 32 | quote }}
+{{- end }}
 {{- end }}
 ---
 apiVersion: apps/v1

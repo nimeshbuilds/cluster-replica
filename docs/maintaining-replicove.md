@@ -5,7 +5,7 @@ Upstream vCluster behavior is concentrated in `internal/catalog` (pins and value
 1. Run `python3 hack/check-vcluster-update.py` to compare the pinned release with the official upstream release. This is read-only.
 2. Review upstream release notes and the OSS chart/image. Add a new profile alongside the old one; preserve old cleanup adapters for outstanding finalizers.
 3. Download the exact chart, verify its provenance and SHA-256, and update the relevant catalog entry and tool pins. Never use a floating chart tag or automatically trust a new hash from an unrelated mirror.
-4. Render every profile through `make test-contract`. Check supported Kubernetes API versions, namespaced RBAC, image pins, hooks, workload type, PVC retention and cleanup inventory.
+4. Run `make generate` to update CRDs and the native YAML installer from the same chart, then `make docs` to regenerate and check API/CLI references. Render every profile through `make test-contract`. Check supported Kubernetes API versions, namespaced RBAC, image pins, hooks, workload type, PVC retention and cleanup inventory.
 5. Run `make check`, then the real kind workflows. Require actual installation, workload, operator restart, control-plane rescheduling, guest access, deletion and TTL results. Chart rendering alone does not qualify a release.
 6. Review resource compatibility changes and keep migration/recovery notes. Only then change a default profile.
 

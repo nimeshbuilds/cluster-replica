@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -27,6 +28,8 @@ import (
 
 func main() {
 	var namespace, chartPath, probes, stateNamespace string
+	var bootstrapStateKey bool
+	flag.BoolVar(&bootstrapStateKey, "bootstrap-state-key", false, "Initialize the immutable state key once, then exit (installation Job only)")
 	flag.StringVar(&stateNamespace, "state-namespace", "", "Administrator-only namespace for encrypted captures and access state")
 	flag.StringVar(&namespace, "watch-namespace", "", "Required: one administrator-granted lab namespace")
 	flag.StringVar(&chartPath, "chart-path", "", "Optional administrator-supplied archive; SHA-256 must match the pinned profile")
@@ -35,7 +38,7 @@ func main() {
 	logOptions.BindFlags(flag.CommandLine)
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&logOptions)))
-	if namespace == "" {
+	if namespace == "" && !bootstrapStateKey {
 		fmt.Fprintln(os.Stderr, "--watch-namespace is required")
 		os.Exit(2)
 	}
@@ -44,6 +47,15 @@ func main() {
 	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	config := ctrl.GetConfigOrDie()
 	config.Timeout = 30 * time.Second
+	if bootstrapStateKey {
+		c, err := client.New(config, client.Options{Scheme: scheme})
+		check(err)
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+		check(state.BootstrapKey(ctx, c, stateNamespace))
+		fmt.Println("Protected state key initialized or validated")
+		return
+	}
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme:                 scheme,
 		Cache:                  cache.Options{DefaultNamespaces: map[string]cache.Config{namespace: {}}},

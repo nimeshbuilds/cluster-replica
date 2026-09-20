@@ -10,6 +10,7 @@ type MirrorRef struct {
 // Mirror state is protected alongside ordinary replica inventory. Public status
 // is never the authority for source handles, child ownership, or active revision.
 type Mirror struct {
+	ExpiresAt  time.Time   `json:"expiresAt"`
 	Runs       []MirrorRef `json:"runs,omitempty"`
 	ActiveUID  string      `json:"activeUID,omitempty"`
 	PendingUID string      `json:"pendingUID,omitempty"`

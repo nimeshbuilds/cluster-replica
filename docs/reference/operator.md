@@ -15,6 +15,11 @@ The operator chart is in [`charts/replicove`](../../charts/replicove/). The CLI 
 | `stateKey.bootstrap` | `false` | Helm creates/reuses the key Secret by default; `true` uses the bounded bootstrap Job instead |
 | `sources` | `[]` | Source namespace and read-only RBAC rule entries |
 | `clusterReadRules` | `[]` | Additional explicit read-only cluster resource rules |
+| `mirrors.enabled` | `false` | Enable the ReplicaMirror/ReplicaMirrorRun controller and optional permissions |
+| `mirrors.networkPolicyEnforced` | `false` | Administrator attestation that host CNI enforces the generated egress policies |
+| `mirrors.sources` | `[]` | Source namespace names receiving explicit PVC-read/snapshot permissions |
+| `mirrors.snapshotController.mode` | `auto` | Install snapshot APIs/controller if absent; `existing` reuses host infrastructure; `managed` explicitly installs the bundled controller |
+| `mirrors.snapshotController.image` | `registry.k8s.io/sig-storage/snapshot-controller:v8.6.0` | Qualified upstream controller image |
 | `resources.requests.cpu` | `100m` | Operator CPU request |
 | `resources.requests.memory` | `256Mi` | Operator memory request |
 | `resources.limits.memory` | `1Gi` | Operator memory limit |
@@ -33,6 +38,8 @@ The chart does not expose arbitrary vCluster values. Runtime configuration is an
 | `--state-namespace` | Empty | Enable full workflow with a separate protected namespace; installed chart sets it |
 | `--chart-path` | Empty | Administrator-supplied vCluster archive; SHA-256 must still match the profile |
 | `--health-probe-bind-address` | `:8081` | HTTP health/readiness probe listener |
+| `--mirrors` | `false` | Register the mirror controller and generation preparation/cleanup hooks |
+| `--mirror-network-policy-enforced` | `false` | Require the administrator's CNI qualification before mirroring |
 | `--bootstrap-state-key` | `false` | One-shot immutable key initialization/validation, then exit |
 
 Running without a state namespace retains only the legacy runtime controller. It is not a complete replica deployment. Use the supported installers for full functionality.

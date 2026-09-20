@@ -100,7 +100,7 @@ func (c *cli) mirrorCommand() *cobra.Command {
 	}
 	var hold time.Duration
 	for _, action := range []string{"status", "revisions", "suspend", "resume", "hold", "release", "delete"} {
-		cmd := &cobra.Command{Use: action + " NAME", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		cmd := &cobra.Command{Use: action + " NAME", Short: map[string]string{"status": "Show active and pending mirror generations", "revisions": "List capture revisions and run status", "suspend": "Stop automatic sync requests", "resume": "Resume automatic sync requests", "hold": "Delay generation replacement for an active test", "release": "Release the active test lease", "delete": "Delete the mirror and clean up its owned data"}[action], Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			k, _, err := c.clients()
 			if err != nil {
 				return err

@@ -21,7 +21,7 @@ An empty test cluster does not reproduce an application’s environment. Operato
 
 Replicove provides a repeatable workflow: select what matters from an authorized source, inspect a plan, create a virtual environment, run your test, then expire the environment. vCluster supplies the virtual Kubernetes control plane; Replicove adds the selection, replication, access, and lifecycle workflow around it.
 
-Useful scenarios include testing operator upgrades, reproducing configuration bugs, creating preview environments, and giving CI or coding agents a temporary Kubernetes workspace.
+Useful scenarios include testing operator upgrades, reproducing configuration bugs, creating preview environments, and giving CI or coding agents a temporary Kubernetes workspace. The optional [workload mirror module](docs/guides/mirrors.md) adds writable CSI data copies with manual or scheduled resets to the host state.
 
 ## What can I use today?
 
@@ -55,8 +55,8 @@ The public name is Replicove. The Go module, prototype binary `cluster-replica`,
 ## Boundaries that matter
 
 - Replication is **selected and authorized**. A virtual cluster cannot reproduce every host, cloud, storage, or operator behavior automatically.
-- The CLI defaults to a persistent control plane and `DeleteOwned`. Cleanup follows recorded ownership and respects finalizers. Source data contents, snapshots, shared resources, and external services are outside its contract. The optional `emptyDir` lab profile can lose state on rescheduling; legacy `HelmReleaseOnly` removes only its Helm release.
-- IRSA and other cloud identity adapters, data restoration, vCluster Platform integration, and distribution-specific qualification remain future work.
+- The CLI defaults to a persistent control plane and `DeleteOwned`. Cleanup follows recorded ownership and respects finalizers. Ordinary replicas create empty volumes only. Optional mirrors capture explicitly granted CSI volumes, restore independent copies, and clean up owned snapshots; shared resources and external services remain outside the cleanup contract. The optional `emptyDir` lab profile can lose state on rescheduling; legacy `HelmReleaseOnly` removes only its Helm release.
+- IRSA and other cloud identity adapters, application-consistent/database restore adapters, vCluster Platform integration, and distribution-specific qualification remain future work.
 - Compatibility depends on Kubernetes versions, APIs, and capabilities. EKS, AKS, GKE, OpenShift, and RKE2 are not currently certified.
 
 Read [Security](SECURITY.md), [compatibility policy](docs/design/vcluster-compatibility-policy.md), and [the implementation plan](docs/design/cluster-replica-implementation-plan.md) before extending the project.

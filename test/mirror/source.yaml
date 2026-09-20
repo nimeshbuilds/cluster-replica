@@ -48,7 +48,7 @@ spec:
       containers:
         - name: orders
           image: registry.k8s.io/e2e-test-images/busybox:1.37.0-1
-          command: [sh, -c, 'sleep 86400']
+          command: [sh, -c, 'httpd -f -p 8080 -h /data']
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

@@ -35,7 +35,7 @@ Exact revisions, CI runs, and scope are linked on [project status](../project-st
 
 ## Current boundaries
 
-- No atomic/full-cluster clone, source volume data copy, CSI restore, or external backend recreation.
+- No atomic/full-cluster clone or external backend recreation. Optional CSI mirrors require matching drivers, qualified snapshot support, Delete classes, and enforced host NetworkPolicies; consistency is per volume. See [mirror compatibility](../guides/mirrors.md).
 - No IRSA/EKS Pod Identity/Azure/GCP identity adapter certification.
 - No qualified vCluster Platform provisioning; configured requests block explicitly.
 - No arbitrary privileged/host-network/host-path workload replication or system namespace mapping.

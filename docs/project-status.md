@@ -34,7 +34,7 @@ See the [configuration guide](replicove-quickstart.md), [implementation ledger](
 
 ## Remaining release gates
 
-- Qualify cloud identity adapters such as IRSA, cloud storage/data restoration, and external-resource cleanup in dedicated cloud labs.
+- Qualify cloud identity adapters such as IRSA, cloud CSI mirror behavior, application-consistent database recovery, and external-resource cleanup in dedicated cloud labs.
 - Qualify vCluster Platform integration and additional Kubernetes/distribution combinations.
 - Finish image-digest locking and automated runtime candidate diffs in [#6](https://github.com/nimeshbuilds/replicove/issues/6), plus scale, recovery, and production hardening in the [roadmap](../ROADMAP.md).
 

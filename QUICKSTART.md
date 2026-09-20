@@ -213,3 +213,7 @@ For a scripted verification instead of the interactive walkthrough, install Go 1
 - [Project status](docs/project-status.md), [support](SUPPORT.md), and [contributing](CONTRIBUTING.md).
 
 This walkthrough uses the existing tested source and fixtures. Cloud identity, source volume contents, and arbitrary external resources are outside its scope. See the upstream [kind guide](https://kind.sigs.k8s.io/docs/user/quick-start/) for the local host-cluster tooling.
+
+## Copy workload data and reset it on a schedule
+
+For selected CSI-backed workload data, use the optional [workload mirror guide](docs/guides/mirrors.md). It covers the Helm module, exact PVC grants, YAML requests, manual/scheduled sync, saved-revision reset, access, leases, retention, and TTL cleanup. Ordinary `ClusterReplica` requests continue to provision fresh volumes; selecting a Secret or PVC does not implicitly grant access to its data.

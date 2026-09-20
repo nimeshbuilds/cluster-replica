@@ -23,12 +23,12 @@ cleanup(){
   hk get events -A --field-selector type=Warning > "$work/artifacts/warnings.txt" || true
   kind delete cluster --name "$cluster" || true
  fi
- rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig"
+ rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/existing.kubeconfig" "$work/shared.kubeconfig"
  echo "Mirror evidence: $work/artifacts"
  exit "$result"
 }
 trap cleanup EXIT
-docker build --tag cluster-replica:e2e .
+if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then docker build --tag cluster-replica:e2e .; fi
 cat > "$work/kind.yaml" <<'YAML'
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -45,9 +45,9 @@ curl -fsSL --retry 3 'https://raw.githubusercontent.com/projectcalico/calico/db2
 hk apply -f "$work/calico.yaml"
 hk -n kube-system rollout status daemonset/calico-node --timeout=300s
 hk wait nodes --all --for=condition=Ready --timeout=120s
-kind load docker-image cluster-replica:e2e --name "$cluster"
+if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then kind load docker-image cluster-replica:e2e --name "$cluster"; fi
 hk create namespace source-dev
-make build
+if [[ "${REPLICOVE_USE_RELEASE_CLI:-false}" != true ]]; then make build; fi
 source test/e2e/helm.sh
 replicove_helm_install test/mirror/values.yaml
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
@@ -60,6 +60,13 @@ INSTALL_CRD=false bash "$work/driver/deploy/kubernetes-1.34/deploy.sh"
 hk apply -f test/mirror/source.yaml
 hk -n source-dev rollout status deployment/orders --timeout=180s
 hk -n source-dev exec deployment/orders -- sh -c 'echo host-A > /data/revision; sync'
+source_ip=$(hk -n source-dev get pod -l app=orders -o jsonpath='{.items[0].status.podIP}')
+[[ "$(hk -n source-dev exec deployment/orders -- wget -qO- "http://$source_ip:8080/revision")" == host-A ]]
+# The mirror operator gets snapshot mutation but no source workload/data mutation.
+operator_identity=system:serviceaccount:replicove-system:replicove
+[[ "$(hk --as="$operator_identity" -n source-dev auth can-i create volumesnapshots.snapshot.storage.k8s.io)" == yes ]]
+if hk --as="$operator_identity" -n source-dev auth can-i delete persistentvolumeclaims; then exit 1; fi
+if hk --as="$operator_identity" -n source-dev auth can-i create pods; then exit 1; fi
 source_pvc_uid=$(hk -n source-dev get pvc orders-data -o jsonpath='{.metadata.uid}')
 source_pv=$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')
 hk apply -f test/mirror/grant.yaml
@@ -78,6 +85,12 @@ connect(){
 wait_run(){ hk -n replica-lab wait "replicamirrorrun/$1" --for=jsonpath='{.status.phase}'=Active --timeout=600s; }
 connect
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == host-A ]]
+# Prove policies enforce denial against a reachable source endpoint, while
+# local application and guest DNS still work. A transport failure cannot pass.
+gk -n orders exec deployment/orders -- nslookup kubernetes.default.svc.cluster.local
+[[ "$(gk -n orders exec deployment/orders -- wget -qO- http://127.0.0.1:8080/revision)" == host-A ]]
+gk -n orders exec deployment/orders -- sh -c 'if wget -T 3 -qO- "$1"; then exit 42; else echo egress-denied; fi' sh "http://$source_ip:8080/revision" | tee "$work/artifacts/egress.txt"
+[[ "$(cat "$work/artifacts/egress.txt")" == egress-denied ]]
 gk -n orders exec deployment/orders -- sh -c 'echo guest-only > /data/revision; echo mutation > /data/guest-only; sync'
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-A ]]
 hk -n replicove-system rollout restart deployment/replicove
@@ -87,8 +100,74 @@ hk -n replicove-system rollout status deployment/replicove --timeout=120s
 controller_uid=$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')
 replicove_helm_install test/mirror/values.yaml
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
+# Register the running, independently owned runtime for a second mirror. Its
+# TTL must remove only that mirror's generation, credentials and restored data.
+runtime_release=$(hk -n replica-lab get clusterreplica "$first_replica" -o jsonpath='{.status.runtime.releaseName}')
+runtime_uid=$(hk -n replica-lab get statefulset "$runtime_release" -o jsonpath='{.metadata.uid}')
+guest_uid=$(gk get namespace kube-system -o jsonpath='{.metadata.uid}')
+hk -n replica-lab get secret "vc-$runtime_release" -o json | python3 -c 'import base64,json,sys;open(sys.argv[1],"wb").write(base64.b64decode(json.load(sys.stdin)["data"]["config"]))' "$work/existing.kubeconfig"
+python3 - "$work/existing.kubeconfig" "$runtime_release" <<'PYTARGET'
+import json,subprocess,sys
+config=json.loads(subprocess.check_output(['kubectl','--kubeconfig',sys.argv[1],'config','view','--raw','-o','json']))
+config['clusters'][0]['cluster']['server']='https://'+sys.argv[2]+'.replica-lab.svc:443'
+config['clusters'][0]['cluster']['tls-server-name']=sys.argv[2]+'.replica-lab'
+with open(sys.argv[1],'w') as f:json.dump(config,f)
+PYTARGET
+hk -n replicove-system create secret generic mirror-existing --from-file="config=$work/existing.kubeconfig"
+hk get replicagrant mirror-lab -o json | python3 -c 'import json,sys;g=json.load(sys.stdin);g["metadata"]={"name":"mirror-existing"};g.pop("status",None);g["spec"]["existingTargets"]=[{"name":"shared","kubeconfigSecret":{"namespace":"replicove-system","name":"mirror-existing"},"clusterUID":sys.argv[1],"mirrorReleaseName":sys.argv[2]}];json.dump(g,sys.stdout)' "$guest_uid" "$runtime_release" | hk apply -f -
+hk -n replica-lab get replicamirror orders -o json | python3 -c 'import json,sys;m=json.load(sys.stdin);m["metadata"]={"namespace":"replica-lab","name":"shared"};m.pop("status",None);m["spec"]["template"]["grantRef"]="mirror-existing";m["spec"]["template"]["ttl"]="15m";m["spec"]["template"]["target"]={"provider":"existing","existingRef":"shared"};json.dump(m,sys.stdout)' | hk apply -f -
+hk -n replica-lab wait replicamirror/shared --for=condition=Ready --timeout=180s
+shared_child=$(hk -n replica-lab get replicamirror shared -o jsonpath='{.status.activeReplica.name}')
+shared_ns=$(hk -n replica-lab get clusterreplica "$shared_child" -o jsonpath='{.spec.replication.namespaceMap.source-dev}')
+[[ "$shared_ns" != orders && -n "$shared_ns" ]]
+[[ "$(gk -n "$shared_ns" exec deployment/orders -- cat /data/revision)" == host-A ]]
+bin/replicove mirror access shared --role admin --output "$work/shared.kubeconfig"
+python3 - "$work/guest.kubeconfig" "$work/shared.kubeconfig" <<'PYACCESS'
+import json,subprocess,sys
+configs=[json.loads(subprocess.check_output(['kubectl','--kubeconfig',p,'config','view','--raw','-o','json'])) for p in sys.argv[1:]]
+configs[1]['clusters'][0]['cluster']['server']=configs[0]['clusters'][0]['cluster']['server']
+with open(sys.argv[2],'w') as f:json.dump(configs[1],f)
+PYACCESS
+[[ "$(kubectl --kubeconfig "$work/shared.kubeconfig" auth can-i create deployments -n "$shared_ns")" == yes ]]
+if kubectl --kubeconfig "$work/shared.kubeconfig" auth can-i get secrets -n orders; then exit 1; fi
+if kubectl --kubeconfig "$work/shared.kubeconfig" auth can-i create namespaces; then exit 1; fi
+bin/replicove mirror delete shared
+hk -n replica-lab wait replicamirror/shared --for=delete --timeout=240s
+[[ -z "$(gk get namespace "$shared_ns" --ignore-not-found -o name)" ]]
+[[ "$runtime_uid" == "$(hk -n replica-lab get statefulset "$runtime_release" -o jsonpath='{.metadata.uid}')" ]]
+[[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
+if kubectl --kubeconfig "$work/shared.kubeconfig" --request-timeout=5s get deployments -n "$shared_ns"; then echo 'Expired access survived' >&2; exit 1; fi
+# Separately prove a minimum five-minute mirror TTL, without requesting a token
+# shorter than Kubernetes' ten-minute TokenRequest minimum.
+hk -n replica-lab get replicamirror orders -o json | python3 -c 'import json,sys;m=json.load(sys.stdin);m["metadata"]={"namespace":"replica-lab","name":"shared-ttl"};m.pop("status",None);m["spec"]["template"]["grantRef"]="mirror-existing";m["spec"]["template"]["ttl"]="5m";m["spec"]["template"]["target"]={"provider":"existing","existingRef":"shared"};json.dump(m,sys.stdout)' | hk apply -f -
+hk -n replica-lab wait replicamirror/shared-ttl --for=condition=Ready --timeout=180s
+ttl_child=$(hk -n replica-lab get replicamirror shared-ttl -o jsonpath='{.status.activeReplica.name}')
+ttl_ns=$(hk -n replica-lab get clusterreplica "$ttl_child" -o jsonpath='{.spec.replication.namespaceMap.source-dev}')
+[[ "$(gk -n "$ttl_ns" exec deployment/orders -- cat /data/revision)" == host-A ]]
+hk -n replica-lab wait replicamirror/shared-ttl --for=jsonpath='{.status.phase}'=Expired --timeout=420s
+[[ -z "$(gk get namespace "$ttl_ns" --ignore-not-found -o name)" ]]
+[[ "$runtime_uid" == "$(hk -n replica-lab get statefulset "$runtime_release" -o jsonpath='{.metadata.uid}')" ]]
+bin/replicove mirror delete shared-ttl
+hk -n replica-lab wait replicamirror/shared-ttl --for=delete --timeout=120s
+# A fully prepared but leased candidate can be cancelled without changing active data.
+bin/replicove mirror hold orders --duration 15m
+bin/replicove mirror sync orders --run-name cancel-candidate
+hk -n replica-lab wait replicamirrorrun/cancel-candidate --for=jsonpath='{.status.phase}'=AwaitingActivation --timeout=600s
+bin/replicove mirror cancel cancel-candidate
+hk -n replica-lab wait replicamirrorrun/cancel-candidate --for=delete --timeout=300s
+[[ "$first_replica" == "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeReplica.name}')" ]]
+[[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
 hk -n source-dev exec deployment/orders -- sh -c 'echo host-B > /data/revision; sync'
 bin/replicove mirror hold orders --duration 15m
+mirror_uid=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.metadata.uid}')
+cat <<YAML | hk apply -f -
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaMirrorRun
+metadata: {name: sync-b, namespace: replica-lab}
+spec:
+  mirrorRef: {name: orders, uid: "$mirror_uid"}
+  action: Sync
+YAML
 bin/replicove mirror sync orders --run-name sync-b
 bin/replicove mirror sync orders --run-name sync-b
 hk -n replica-lab wait replicamirrorrun/sync-b --for=jsonpath='{.status.phase}'=AwaitingActivation --timeout=600s
@@ -124,5 +203,5 @@ hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
 [[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","real-csi-source-capture","guest-data-copy","independent-guest-writes","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
+{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
 JSON

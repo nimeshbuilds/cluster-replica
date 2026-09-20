@@ -170,7 +170,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctrl.Resu
 		if m.Status.ActiveRun != nil || m.Status.PendingRun != nil {
 			return r.report(ctx, m, "Blocked", state.ErrUnavailable)
 		}
-		st = &state.State{OwnerUID: string(m.UID), OwnerName: m.Name, OwnerNamespace: m.Namespace, GrantUID: string(g.UID), GrantVersion: g.ResourceVersion, Mirror: &state.Mirror{}}
+		st = &state.State{OwnerUID: string(m.UID), OwnerName: m.Name, OwnerNamespace: m.Namespace, GrantUID: string(g.UID), GrantVersion: g.ResourceVersion, Mirror: &state.Mirror{ExpiresAt: expires}}
 		if err := r.Store.Save(ctx, st); err != nil {
 			return r.report(ctx, m, "Blocked", err)
 		}
@@ -242,7 +242,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctrl.Resu
 		if err := r.syncRunStatus(ctx, run, rs); err != nil {
 			return ctrl.Result{}, err
 		}
-	} else if !m.Spec.Suspend && (st.Mirror.ActiveUID == "" && st.Mirror.LastSync.IsZero() || m.Spec.Interval != "" && !r.now().Before(st.Mirror.LastSync.Add(duration(m.Spec.Interval)))) && expires.Sub(r.now()) >= 5*time.Minute {
+	} else if !m.Spec.Suspend && (st.Mirror.ActiveUID == "" && st.Mirror.LastSync.IsZero() || m.Spec.Interval != "" && !r.now().Before(st.Mirror.LastSync.Add(duration(m.Spec.Interval)))) && expires.Sub(r.now()) >= time.Minute {
 		// A deterministic scheduled request name makes retries after a crash idempotent.
 		name := shortName("sync", st.OwnerUID, int(st.Mirror.LastSync.Unix()))
 		run := &api.ReplicaMirrorRun{ObjectMeta: metav1.ObjectMeta{Namespace: m.Namespace, Name: name}, Spec: api.ReplicaMirrorRunSpec{MirrorRef: api.MirrorObjectRef{Name: m.Name, UID: string(m.UID)}, Action: "Sync"}}

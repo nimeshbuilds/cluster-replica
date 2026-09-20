@@ -27,8 +27,8 @@ func (r *Reconciler) advance(ctx context.Context, m *api.ReplicaMirror, g *api.R
 		return problem("InvalidRun", "Sync cannot reference a saved revision; use Reset.")
 	}
 	if st.MirrorRun.Phase == "Queued" {
-		if expires.Sub(r.now()) < 5*time.Minute {
-			return problem("MirrorExpiring", "Fewer than five minutes remain; no new generation can be provisioned.")
+		if expires.Sub(r.now()) < time.Minute {
+			return problem("MirrorExpiring", "Fewer than one minute remains; no new generation can be provisioned.")
 		}
 		if run.Spec.Action == "Reset" {
 			if run.Spec.RevisionRef == nil {
@@ -340,8 +340,13 @@ func (r *Reconciler) child(ctx context.Context, m *api.ReplicaMirror, scope poli
 	name := shortName("generation", st.OwnerUID, 0)
 	if st.MirrorRun.ChildOperation == "" {
 		remaining := int(expires.Sub(r.now()) / time.Minute)
-		if remaining < 5 {
+		if remaining < 1 {
 			return nil, problem("MirrorExpiring", "Insufficient lifetime remains for a generation.")
+		}
+		// The child API has a five-minute minimum. The mirror's protected TTL
+		// independently caps access and deletes the child at the overall deadline.
+		if remaining < 5 {
+			remaining = 5
 		}
 		op, err := state.OperationID()
 		if err != nil {

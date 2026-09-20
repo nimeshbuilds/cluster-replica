@@ -38,7 +38,9 @@ UID and operation checks stop deletion when a name has been reused or ownership 
 
 For supported bound volumes, cleanup requires `Delete` reclaim behavior and waits for the recorded PV UID to disappear. A Retain policy, blocked finalizer, or unavailable CSI controller can stop completion.
 
-Deleting Kubernetes objects does not prove that cloud backups, snapshots, external databases, object buckets, or application-created external infrastructure are erased. Those capabilities require qualified adapters and are outside the portable contract. Source data is never deleted by replica cleanup.
+The optional mirror module waits for deletion of its recorded restored PVs and source `VolumeSnapshot`/`VolumeSnapshotContent` objects before completing cleanup. Imported snapshot references use Retain so retiring one generation cannot delete a retained capture; the original owned capture uses Delete.
+
+Deleting Kubernetes objects does not prove physical erasure of provider backups, external databases, object buckets, or application-created external infrastructure. Those capabilities require qualified adapters and are outside the portable contract. Source data is never deleted by replica cleanup.
 
 ## Recover a blocked cleanup
 
@@ -49,6 +51,8 @@ Replicove intentionally retains finalizers when ownership or cleanup cannot be v
 ## Remove the operator
 
 First delete all replica requests in its watched namespace and verify their access requests have been cleaned. Keep the operator and protected state available until that completes.
+
+Delete `ReplicaMirror` requests and wait for their finalizers before removing the mirror module or source snapshot permissions. An expired mirror keeps its terminal status but removes its owned data and access; it does not extend the TTL for an active test lease. See [mirror cleanup and retention](mirrors.md#retention-deletion-and-ttl).
 
 For Helm, uninstall the existing release only afterward. The key is retained by the chart. For YAML, remove the operator Deployment, completed bootstrap Job, and associated RBAC/service accounts after cleanup. The generated installation also contains namespace resources: **do not run a blanket `kubectl delete -k` on a shared cluster**. Delete namespaces or CRDs only after an administrator has confirmed they contain no resources that need preservation. Keep or securely destroy backed-up key/state together according to your retention requirements.
 

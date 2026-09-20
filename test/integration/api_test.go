@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"helm.sh/helm/v4/pkg/action"
 	chartloader "helm.sh/helm/v4/pkg/chart/loader"
 	"helm.sh/helm/v4/pkg/kube"
@@ -107,6 +108,53 @@ func TestAPIServerContract(t *testing.T) {
 			if err := c.Create(ctx, obj); !apierrors.IsInvalid(err) {
 				t.Fatalf("case %d: want validation rejection, got %v", i, err)
 			}
+		}
+	})
+
+	t.Run("mirror admission preserves selection and run identity", func(t *testing.T) {
+		m := &v1alpha1.ReplicaMirror{ObjectMeta: metav1.ObjectMeta{Name: "mirror-admission", Namespace: "lab"}, Spec: v1alpha1.ReplicaMirrorSpec{Template: v1alpha1.ClusterReplicaSpec{Profile: catalog.PersistentProfile, TTL: "1h", CleanupPolicy: "DeleteOwned", GrantRef: "mirror-source", Replication: &v1alpha1.ReplicationSpec{Namespaces: []string{"source"}}}, Volumes: []v1alpha1.NamespacedName{{Namespace: "source", Name: "data"}}}}
+		if err := c.Create(ctx, m); err != nil {
+			t.Fatal(err)
+		}
+		if m.Spec.Consistency != "CrashConsistent" || m.Spec.RetainRevisions != 2 {
+			t.Fatal("mirror defaults missing")
+		}
+		original := m.DeepCopy()
+		for _, mutate := range []func(*v1alpha1.ReplicaMirror){
+			func(m *v1alpha1.ReplicaMirror) { m.Spec.Template.TTL = "2h" },
+			func(m *v1alpha1.ReplicaMirror) { m.Spec.Volumes[0].Name = "another" },
+			func(m *v1alpha1.ReplicaMirror) { m.Spec.RetainRevisions = 11 },
+			func(m *v1alpha1.ReplicaMirror) { m.Spec.Consistency = "ApplicationConsistent" },
+		} {
+			bad := original.DeepCopy()
+			mutate(bad)
+			if err := c.Update(ctx, bad); !apierrors.IsInvalid(err) {
+				t.Fatalf("unsafe mirror mutation admitted: %v", err)
+			}
+		}
+		m.Spec.Suspend = true
+		m.Spec.Interval = "1h"
+		m.Spec.HoldUntil = &metav1.Time{Time: time.Now().Add(time.Minute)}
+		if err := c.Update(ctx, m); err != nil {
+			t.Fatal(err)
+		}
+		for i, spec := range []v1alpha1.ReplicaMirrorRunSpec{
+			{Action: "Reset", MirrorRef: v1alpha1.MirrorObjectRef{Name: m.Name, UID: string(m.UID)}},
+			{Action: "Sync", MirrorRef: v1alpha1.MirrorObjectRef{Name: m.Name, UID: string(m.UID)}, RevisionRef: &v1alpha1.MirrorObjectRef{Name: "prior", UID: "uid"}},
+			{Action: "Sync", MirrorRef: v1alpha1.MirrorObjectRef{Name: m.Name}},
+		} {
+			run := &v1alpha1.ReplicaMirrorRun{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("bad-mirror-run-%d", i), Namespace: "lab"}, Spec: spec}
+			if err := c.Create(ctx, run); !apierrors.IsInvalid(err) {
+				t.Fatalf("invalid run admitted: %v", err)
+			}
+		}
+		run := &v1alpha1.ReplicaMirrorRun{ObjectMeta: metav1.ObjectMeta{Name: "valid-mirror-run", Namespace: "lab"}, Spec: v1alpha1.ReplicaMirrorRunSpec{Action: "Sync", MirrorRef: v1alpha1.MirrorObjectRef{Name: m.Name, UID: string(m.UID)}}}
+		if err := c.Create(ctx, run); err != nil {
+			t.Fatal(err)
+		}
+		run.Spec.Force = true
+		if err := c.Update(ctx, run); !apierrors.IsInvalid(err) {
+			t.Fatalf("immutable run changed: %v", err)
 		}
 	})
 

@@ -27,7 +27,7 @@ The [eight-job integrated-alpha run at c2c5ea3](https://github.com/nimeshbuilds/
 
 - Configured vCluster Platform provisioning and lifecycle qualification. Requests currently report `PlatformQualificationRequired`; Helm fallback is blocked.
 - Cloud identity adapters and authenticated exchanges: IRSA, EKS Pod Identity, Azure/GCP workload identity. Source tokens are not cloned; unadapted annotations block capture.
-- Data content copying, CSI snapshot/restore workflows and external data lifecycle. Current data support provisions explicitly granted fresh volumes only.
+- Application-consistent/database and grouped-volume recovery, non-CSI data adapters, cloud CSI qualification, and external data lifecycle. The optional per-volume CSI mirror implementation is tracked in the [mirror guide](guides/mirrors.md); its disposable-cluster qualification is separate from the original alpha evidence.
 - External Secrets backend recreation and arbitrary operator-specific dependencies, lifecycle hooks or bootstrap cycles.
 - Per-user gateway delegation. Exact-Secret RBAC distribution is implemented for administrator-selected subjects; the authorization model remains namespace delegation.
 - Digest-locked runtime images and automated candidate schema/resource/RBAC diffs ([maintenance issue #6](https://github.com/nimeshbuilds/replicove/issues/6)).

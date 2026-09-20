@@ -67,4 +67,12 @@ Cleanup persists its intent, revokes access, removes guest objects in reverse or
 
 ## Remaining provider boundaries
 
-Configured vCluster Platform requests currently block with `PlatformQualificationRequired` and cannot silently fall back to Helm. Cloud identity exchange, CSI data restoration, external backend recreation and broader vendor qualification are not implemented or certified by the portable fixtures. See the [implementation ledger](IMPLEMENTATION_STATUS.md), [full plan](design/cluster-replica-implementation-plan.md) and [maintenance guide](maintaining-replicove.md).
+Configured vCluster Platform requests currently block with `PlatformQualificationRequired` and cannot silently fall back to Helm. Cloud identity exchange, application-consistent/database recovery, external backend recreation and broader vendor qualification are not implemented or certified by the portable fixtures. The optional CSI mirror controller adds independent storage copies with its own qualification suite; it does not turn the generic workflow into an exact clone. See the [implementation ledger](IMPLEMENTATION_STATUS.md), [full plan](design/cluster-replica-implementation-plan.md) and [maintenance guide](maintaining-replicove.md).
+
+## Optional workload mirror controller
+
+`ReplicaMirror` owns the overall TTL and active generation. Immutable `ReplicaMirrorRun` requests queue Sync or Reset operations. The controller captures a protected desired-state plan and explicitly granted CSI snapshots, imports read-only recovery points into the destination namespace, and prepares a separate `ClusterReplica` generation with independent writable PVCs. A host NetworkPolicy is established before application objects are applied. Access is issued only for the active generation.
+
+The private state journal binds each creation operation, source/target UID, capture handle, and active/pending pointer. Activation checks restored storage and the candidate again after a test lease. Cleanup inventories partially restored volumes, waits for guest/host deletion, preserves referenced capture revisions, and never writes changes back to the host workload. A reset uses a saved capture; a sync takes a new capture. Existing runtimes use exclusive generation namespaces and namespaced guest RoleBindings.
+
+The Helm module conditionally installs the pinned upstream snapshot controller and APIs if absent, or uses the host's installation. CSI drivers and enforced CNI are host capabilities; Replicove does not replace them. Details, failure recovery and YAML/CLI examples are in [workload mirrors](guides/mirrors.md).

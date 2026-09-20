@@ -63,6 +63,7 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 	if parent == nil || parent.CleanupStarted || obj.Status.ExpiresAt == nil || !obj.DeletionTimestamp.IsZero() || !time.Now().Before(obj.Status.ExpiresAt.Time) {
 		return r.revoke(ctx, a, st)
 	}
+	accessDeadline := obj.Status.ExpiresAt.Time
 	if parent.MirrorRunUID != "" {
 		run, e := r.Engine.Store.Load(ctx, parent.MirrorRunUID)
 		if e != nil || run == nil || run.MirrorRun == nil {
@@ -71,6 +72,15 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 		mirror, e := r.Engine.Store.Load(ctx, run.MirrorRun.MirrorUID)
 		if e != nil || mirror == nil || mirror.Mirror == nil {
 			return r.report(ctx, a, "Blocked", "MirrorStateUnavailable", "Cannot verify the active mirror generation.")
+		}
+		if mirror.Mirror.ExpiresAt.IsZero() {
+			return r.report(ctx, a, "Blocked", "MirrorStateUnavailable", "The mirror's protected deadline is unavailable.")
+		}
+		if !time.Now().Before(mirror.Mirror.ExpiresAt) {
+			return r.revoke(ctx, a, st)
+		}
+		if mirror.Mirror.ExpiresAt.Before(accessDeadline) {
+			accessDeadline = mirror.Mirror.ExpiresAt
 		}
 		if mirror.Mirror.ActiveUID != run.OwnerUID {
 			if st != nil {
@@ -109,8 +119,8 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 			return r.report(ctx, a, "Rejected", "DurationNotGranted", "The requested credential duration is outside the grant.")
 		}
 		end := a.CreationTimestamp.Add(time.Duration(seconds) * time.Second)
-		if obj.Status.ExpiresAt.Time.Before(end) {
-			end = obj.Status.ExpiresAt.Time
+		if accessDeadline.Before(end) {
+			end = accessDeadline
 		}
 		if time.Until(end) < 600*time.Second {
 			return r.report(ctx, a, "Rejected", "ReplicaExpiresSoon", "At least ten minutes must remain to issue a bounded Kubernetes token.")

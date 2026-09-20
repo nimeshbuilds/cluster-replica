@@ -2,6 +2,8 @@
 
 ## Workload mirror release qualification
 
+[CI run 35513679668](https://github.com/nimeshbuilds/replicove/actions/runs/35513679668) passed all 11 jobs at `6c08d5c`, merged as `35e40ee`. Its live mirror job passed all 25 scenarios in the [saved mirror report](validation/2026-09-20-mirrors.json), including copied file contents, latest/saved/scheduled resets, guest isolation and complete owned cleanup with source identity and data preserved. Subsequent main and published-artifact runs must pass independently before release.
+
 The optional module's `workload-mirrors` job is mandatory in the [current CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml). The alpha publishing workflow requires the exact main commit to pass all jobs, then runs the mirror fixture again against the published image, OCI chart and released CLI before creating the GitHub release. Its release notes link the exact source and artifact-verification run.
 
 The fixture uses Kubernetes 1.36.4, vCluster 0.37.1/Kubernetes 1.36.0, upstream CSI host-path manifests v1.18.0 (driver image v1.17.1), snapshot-controller v8.6.0, and Calico v3.32.2. It checks actual file contents, independent guest writes, latest-source and retained-revision resets, scheduling, leases, cancellation, source-egress denial and guest DNS, source authorization, existing-runtime namespace/RBAC boundaries, minimum TTL, restarts, Helm upgrade/reuse and owned cleanup. Source PVC/PV identity and contents must survive. The small host-path fixture does not qualify cloud drivers, application-consistent databases, arbitrary CNI behavior or large data sets.

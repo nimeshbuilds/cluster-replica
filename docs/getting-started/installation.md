@@ -16,7 +16,7 @@ The YAML installer is generated from the **same chart** as the CLI. Replicove us
 
 ## Host prerequisites
 
-- Administrator permission to install three CRDs, protected/destination namespaces, and their RBAC.
+- Administrator permission to install all Replicove CRDs, protected/destination namespaces, and their RBAC.
 - A separate source namespace with explicit read permissions for selected resources.
 - For the default persistent profile: a working default StorageClass with dynamic provisioning and `Delete` reclaim policy. The control plane requests 1 GiB. Application volumes are additional.
 - A working container runtime, cluster DNS, pod networking, and outbound access to the pinned chart and workload images.

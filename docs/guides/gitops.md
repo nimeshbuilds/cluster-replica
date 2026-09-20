@@ -4,7 +4,7 @@ Replicove is declarative. A GitOps controller or Kubernetes client can submit th
 
 ## Reconcile installation in order
 
-1. Install/update the three CRDs and wait for them to become established.
+1. Install/update all Replicove CRDs and wait for them to become established.
 2. Apply the protected/destination namespaces, operator RBAC, bootstrap Job, and Deployment.
 3. Wait for successful key bootstrap and the Deployment rollout.
 4. Apply source read RBAC and administrator grants.

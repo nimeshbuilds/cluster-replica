@@ -19,7 +19,7 @@ helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
   --wait --timeout 3m
 ```
 
-This installs all three CRDs, the operator, its explicit RBAC, and an immutable encryption key in `replicove-system`. It creates `replica-lab` if absent. Existing destination namespaces are reused without taking ownership; namespaces created by the chart are retained on uninstall. The published chart pins the operator by image digest.
+This installs all Replicove CRDs, including the mirror APIs, the operator, its explicit RBAC, and an immutable encryption key in `replicove-system`. It creates `replica-lab` if absent. Existing destination namespaces are reused without taking ownership; namespaces created by the chart are retained on uninstall. The published chart pins the operator by image digest.
 
 The default values grant no access to source namespaces. An administrator grants those reads separately. Replicove downloads and installs its pinned OSS vCluster chart when an approved replica requires a new runtime. You do not need the vCluster CLI, a preinstalled vCluster, or vCluster Platform.
 

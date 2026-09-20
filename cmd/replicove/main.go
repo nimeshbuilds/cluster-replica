@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -166,7 +168,7 @@ func command() *cobra.Command {
 			}
 		}})
 	}
-	root.AddCommand(c.accessCommand(false), c.accessCommand(true), c.installCommand())
+	root.AddCommand(c.accessCommand(false), c.accessCommand(true), c.installCommand(), c.mirrorCommand())
 	return root
 }
 func (c *cli) installCommand() *cobra.Command {
@@ -394,8 +396,37 @@ func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, dat
 		cancel()
 		return nil, nil, nil, errors.New("invalid local tunnel port")
 	}
+	// Keep the public listener across streaming transport reconnects. A new
+	// kubectl request can arrive while the previous SPDY stream is closing.
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		closeCurrent()
+		cancel()
+		return nil, nil, nil, errors.New("cannot retain local tunnel endpoint")
+	}
+	raw, err := clientcmd.Load(output)
+	if err != nil {
+		listener.Close()
+		closeCurrent()
+		cancel()
+		return nil, nil, nil, err
+	}
+	for _, cluster := range raw.Clusters {
+		cluster.Server = "https://" + listener.Addr().String()
+	}
+	output, err = clientcmd.Write(*raw)
+	if err != nil {
+		listener.Close()
+		closeCurrent()
+		cancel()
+		return nil, nil, nil, err
+	}
+	var backend atomic.Int64
+	backend.Store(int64(port))
+	go serveTunnel(session, listener, &backend)
 	done := make(chan error, 1)
 	go func() {
+		defer listener.Close()
 		defer close(done)
 		defer func() { closeCurrent() }()
 		defer cancel()
@@ -405,6 +436,7 @@ func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, dat
 				return
 			case <-currentDone:
 			}
+			backend.Store(0)
 			closeCurrent()
 			reconnected := false
 			for attempt := 0; attempt < 120; attempt++ {
@@ -416,6 +448,7 @@ func forward(ctx context.Context, cfg *rest.Config, obj *api.ClusterReplica, dat
 				_, nextClose, nextDone, err := forwardOnce(session, cfg, obj, data, port)
 				if err == nil {
 					closeCurrent, currentDone, reconnected = nextClose, nextDone, true
+					backend.Store(int64(port))
 					break
 				}
 			}

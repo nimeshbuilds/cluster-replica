@@ -108,6 +108,11 @@ spec:
                       - name
                       - namespace
                       type: object
+                    mirrorReleaseName:
+                      description: |-
+                        Optional administrator-qualified vCluster 0.37.1 single-namespace runtime
+                        in the destination namespace. Required for CSI mirrors into an existing target.
+                      type: string
                     name:
                       type: string
                   required:
@@ -151,6 +156,47 @@ spec:
               maxTTL:
                 default: 24h
                 type: string
+              mirror:
+                description: Explicit permission to read volume data. Empty-volume
+                  permission alone is insufficient.
+                properties:
+                  allowForcedReset:
+                    type: boolean
+                  maxRevisions:
+                    default: 2
+                    format: int32
+                    maximum: 10
+                    minimum: 1
+                    type: integer
+                  minInterval:
+                    default: 1h
+                    type: string
+                  volumes:
+                    items:
+                      description: |-
+                        MirrorVolumeGrant delegates capture of one PVC and the exact storage classes.
+                        It never delegates arbitrary backend handles or direct source volume mounts.
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                        snapshotClass:
+                          type: string
+                        storageClass:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      - snapshotClass
+                      - storageClass
+                      type: object
+                    maxItems: 16
+                    minItems: 1
+                    type: array
+                required:
+                - volumes
+                type: object
               platform:
                 properties:
                   namespace:

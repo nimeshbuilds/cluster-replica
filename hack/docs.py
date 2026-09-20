@@ -53,6 +53,7 @@ def prepare():
     shutil.copytree(ROOT / 'docs/stylesheets', STAGE / 'stylesheets')
     # Publish fixture downloads without credentials or private build artifacts.
     shutil.copytree(ROOT / 'examples/yaml', STAGE / 'examples/yaml')
+    shutil.copytree(ROOT / 'examples/mirror', STAGE / 'examples/mirror')
 
     def rewrite_link(target, source, destination):
         parts = urlsplit(target)
@@ -166,10 +167,28 @@ def generate_api():
 
 
 def generate_cli():
-    commands = ['', 'install', 'create', 'plan', 'approve', 'status', 'refresh', 'access', 'connect', 'delete',
-                'completion', 'completion bash', 'completion fish', 'completion powershell', 'completion zsh']
+    # Discover the command tree from the built binary. New commands cannot be
+    # silently omitted from the published CLI reference.
+    binary = ROOT / 'bin/replicove'
+    pending = ['']
+    commands = []
+    while pending:
+        command = pending.pop(0)
+        result = subprocess.run([str(binary), *command.split(), '--help'], check=True, capture_output=True, text=True)
+        commands.append((command, result.stdout))
+        in_commands = False
+        for line in result.stdout.splitlines():
+            if line == 'Available Commands:':
+                in_commands = True
+                continue
+            if in_commands and line and not line.startswith(' '):
+                in_commands = False
+            if in_commands:
+                match = re.match(r'^  ([a-z][a-z0-9-]*)\s+', line)
+                if match and match[1] != 'help':
+                    pending.append((command + ' ' + match[1]).strip())
     lines = ['# CLI reference', '',
-             'Generated from the built `bin/replicove` help output. The alpha is built from source; '
+             'Generated from the complete command tree of the built `bin/replicove`; '
              '[start with the CLI walkthrough](../quickstart.md) or use the [YAML API](../getting-started/yaml.md).', '',
              'Global flags select the **host** kubeconfig, context, and granted destination namespace. '
              'The default destination is `replica-lab`. `plan` and `status` print sanitized status, '
@@ -177,10 +196,8 @@ def generate_cli():
              'follow the [upgrade guide](../getting-started/installation.md#upgrades-and-removal) for an existing installation.', '',
              'The credential commands refuse to overwrite an existing output file. `access` uses an existing '
              'network route; `connect` manages a loopback tunnel for an owned runtime. See [access](../guides/access.md).', '']
-    binary = ROOT / 'bin/replicove'
-    for command in commands:
-        result = subprocess.run([str(binary), *command.split(), '--help'], check=True, capture_output=True, text=True)
-        lines += ['## replicove' + (' ' + command if command else ''), '', '```text', result.stdout.rstrip(), '```', '']
+    for command, help_text in commands:
+        lines += ['## replicove' + (' ' + command if command else ''), '', '```text', help_text.rstrip(), '```', '']
     (STAGE / 'reference/cli.md').write_text('\n'.join(lines))
 
 

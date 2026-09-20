@@ -62,6 +62,10 @@ spec:
           args:
             - --watch-namespace={{ .Values.destinationNamespace }}
             - --state-namespace={{ .Release.Namespace }}
+            {{- if .Values.mirrors.enabled }}
+            - --mirrors=true
+            - --mirror-network-policy-enforced={{ .Values.mirrors.networkPolicyEnforced }}
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

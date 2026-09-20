@@ -12,10 +12,37 @@ import (
 	"helm.sh/helm/v4/pkg/release"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestNamespaceSlotPreservesExistingVCluster(t *testing.T) {
+	req := runtimeprovider.Request{Namespace: "lab", OwnerUID: "uid", Reference: catalog.Resolve("uid")}
+	for _, tc := range []struct {
+		name, namespace, release string
+		blocked                  bool
+	}{
+		{"own", "lab", req.Reference.ReleaseName, false},
+		{"foreign", "lab", "independent", true},
+		{"other namespace", "another-lab", "independent", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scheme := runtime.NewScheme()
+			_ = corev1.AddToScheme(scheme)
+			service := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "virtual-api", Namespace: tc.namespace, Labels: map[string]string{"app": "vcluster", "release": tc.release}}}
+			p := &Provider{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(service).Build()}
+			err := p.namespaceAvailable(context.Background(), req)
+			if tc.blocked != errors.Is(err, runtimeprovider.ErrNamespaceInUse) {
+				t.Fatalf("namespace slot: %v", err)
+			}
+			if err != nil && !tc.blocked {
+				t.Fatal(err)
+			}
+		})
+	}
+}
 
 func TestReleaseOwnershipRequiresUIDNamespaceAndName(t *testing.T) {
 	req := runtimeprovider.Request{Namespace: "lab", OwnerUID: "uid", Reference: catalog.Resolve("uid")}

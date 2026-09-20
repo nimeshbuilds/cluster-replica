@@ -73,6 +73,7 @@ nav:
       - Select and transform: guides/selection.md
       - Helm releases and operators: guides/operators.md
       - Secrets and storage: guides/secrets-storage.md
+      - Workload mirrors: guides/mirrors.md
       - Plans, refresh, and drift: guides/lifecycle.md
       - Access for people and agents: guides/access.md
       - Existing vClusters: guides/existing.md

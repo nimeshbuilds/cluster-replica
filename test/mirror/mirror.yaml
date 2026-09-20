@@ -1,0 +1,22 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaMirror
+metadata:
+  name: orders
+  namespace: replica-lab
+spec:
+  template:
+    profile: vcluster-0.37.1-persistent
+    ttl: 2h
+    cleanupPolicy: DeleteOwned
+    grantRef: mirror-lab
+    replication:
+      namespaces: [source-dev]
+      namespaceMap:
+        source-dev: orders
+      include:
+        - {kinds: [Deployment], names: [orders]}
+  volumes:
+    - namespace: source-dev
+      name: orders-data
+  consistency: CrashConsistent
+  retainRevisions: 3

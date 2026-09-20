@@ -59,19 +59,22 @@ The CLI submits Kubernetes resources. You can use those same resources directly 
 | `ReplicaGrant` | Host administrator | Authorize sources, secrets, runtimes, TTL, and access roles |
 | `ClusterReplica` | Developer, CI, or agent | Select configuration and request a temporary replica |
 | `ReplicaAccess` | Authorized credential consumer | Request a bounded guest credential |
+| `ReplicaMirror` | Developer, CI, or agent | Select workload/PVC copies, schedule resets, and bound their lifetime |
+| `ReplicaMirrorRun` | Developer, CI, or agent | Request an immutable manual Sync or saved-revision Reset |
 
-The [YAML quickstart](getting-started/yaml.md) covers the operator installation, all three resource types, connecting with `kubectl`, and verified cleanup. You do not need the Replicove or Helm CLI for that workflow.
+The [YAML quickstart](getting-started/yaml.md) covers the operator installation, the core replica resource types, connecting with `kubectl`, and verified cleanup. You do not need the Replicove or Helm CLI for that workflow.
 
 ## What a replica means
 
 Replicove recreates **selected, authorized Kubernetes desired state**. It strips host identities, resolves known dependencies, applies your mappings and overrides, and creates new objects in the guest. A source capture is a series of API reads, not an atomic etcd snapshot.
 
-The guest has its own API server and object identities. With the current shared-worker profiles, workload pods still use host compute and networking. Replicove does not automatically copy volume contents, recreate cloud accounts, or reproduce every managed-cluster feature. [Compatibility and limits](reference/compatibility.md) explains the boundaries.
+The guest has its own API server and object identities. With the current shared-worker profiles, workload pods still use host compute and networking. The optional [workload mirror module](guides/mirrors.md) copies explicitly granted CSI-backed data into independent writable generations. Replicove does not automatically recreate cloud accounts or every managed-cluster feature. [Compatibility and limits](reference/compatibility.md) explains the boundaries.
 
 ## Find the right guide
 
 - **First installation:** [installation choices](getting-started/installation.md), [Helm](getting-started/helm.md), [YAML](getting-started/yaml.md), or [CLI](../QUICKSTART.md).
 - **Platform administrators:** [grants and RBAC](guides/grants.md), [secrets and storage](guides/secrets-storage.md), [security](../SECURITY.md).
+- **Workload data copies:** [mirrors, schedules, and saved-revision resets](guides/mirrors.md).
 - **Application developers:** [operators and Helm](guides/operators.md), [refresh and drift](guides/lifecycle.md), [troubleshooting](guides/troubleshooting.md).
 - **Agent and CI developers:** [access](guides/access.md), [GitOps and CI](guides/gitops.md), [full API reference](reference/api.md).
 - **Contributors:** [architecture](architecture.md), [local development](development/local.md), [runtime maintenance](maintaining-replicove.md).

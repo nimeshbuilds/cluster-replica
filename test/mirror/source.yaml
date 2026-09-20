@@ -1,0 +1,67 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mirror-csi
+provisioner: hostpath.csi.k8s.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: orders-data
+  namespace: source-dev
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: mirror-csi
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: settings
+  namespace: source-dev
+data:
+  revision: A
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: source-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders
+  template:
+    metadata:
+      labels:
+        app: orders
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: orders
+          image: registry.k8s.io/e2e-test-images/busybox:1.37.0-1
+          command: [sh, -c, 'httpd -f -p 8080 -h /data']
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: orders-data
+        - name: config
+          configMap:
+            name: settings

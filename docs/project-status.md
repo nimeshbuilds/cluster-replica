@@ -1,12 +1,20 @@
 # Replicove project status
 
-Replicove is experimental. The [v0.1.0-alpha.1 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. This is not a supported production release.
+Replicove is experimental. The [v0.2.0-alpha.1 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.1) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. This is not a supported production release.
 
 ## Portable alpha
 
 The operator and CLI on `main` support source grants, capture and planning, selected Helm and resource replication, namespace/value overrides, selected secrets, explicit refresh, scoped guest access, and owned cleanup. The CLI defaults to a persistent vCluster; existing vClusters can be registered through administrator-pinned credentials. Follow the [first replica quickstart](../QUICKSTART.md) for a complete local walkthrough.
 
 The installed operator uses explicit runtime resource/verb permissions. Chart contracts verify coverage of the pinned vCluster Role without wildcard permissions or escalation bypasses. Real API tests and the two live host workflows check source/destination authorization and reject wildcard Role escalation and cluster-admin bindings. Host API permissions do not establish isolation of shared workers or networks; see [Security](../SECURITY.md).
+
+## Workload mirrors
+
+The optional mirror module uses the same image and Helm deployment. It installs the upstream snapshot controller/APIs when absent, or reuses qualified host infrastructure. `ReplicaMirror` and immutable `ReplicaMirrorRun` requests support explicit CSI volume-data grants, independent writable generations, latest-source sync, saved-revision reset, schedules, test leases, bounded retention, existing-runtime namespaces, guest access, and TTL cleanup. Follow the [mirror guide](guides/mirrors.md) and [versioned verification record](validation.md).
+
+This provides per-volume crash-consistent recovery points. Database consistency, atomic multi-volume state, cloud CSI certification and external-service cloning remain separate work. The proposed MCP/certificate identity service and dashboard are not part of this release.
+
+Managed replacements require downtime: the pinned vCluster permits one runtime per host namespace. Existing-target mirrors can prepare separate generation namespaces within that runtime. Separate concurrent managed clusters need separate administrator-granted destinations.
 
 ## YAML and developer documentation
 
@@ -34,7 +42,7 @@ See the [configuration guide](replicove-quickstart.md), [implementation ledger](
 
 ## Remaining release gates
 
-- Qualify cloud identity adapters such as IRSA, cloud storage/data restoration, and external-resource cleanup in dedicated cloud labs.
+- Qualify cloud identity adapters such as IRSA, cloud CSI mirror behavior, application-consistent database recovery, and external-resource cleanup in dedicated cloud labs.
 - Qualify vCluster Platform integration and additional Kubernetes/distribution combinations.
 - Finish image-digest locking and automated runtime candidate diffs in [#6](https://github.com/nimeshbuilds/replicove/issues/6), plus scale, recovery, and production hardening in the [roadmap](../ROADMAP.md).
 

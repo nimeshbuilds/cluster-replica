@@ -19,6 +19,7 @@ import (
 	"helm.sh/helm/v4/pkg/release"
 	"helm.sh/helm/v4/pkg/storage/driver"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -74,6 +75,9 @@ func (p *Provider) Ensure(ctx context.Context, req runtimeprovider.Request) (run
 	}
 	stored, err := cfg.Releases.Last(req.Reference.ReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
+		if err := p.namespaceAvailable(ctx, req); err != nil {
+			return runtimeprovider.Observation{}, err
+		}
 		ch, err := LoadChart(ctx, p.ChartPath)
 		if err != nil {
 			return runtimeprovider.Observation{}, err
@@ -112,6 +116,19 @@ func (p *Provider) Ensure(ctx context.Context, req runtimeprovider.Request) (run
 	default:
 		return runtimeprovider.Observation{}, runtimeprovider.ErrReleaseFailed
 	}
+}
+
+func (p *Provider) namespaceAvailable(ctx context.Context, req runtimeprovider.Request) error {
+	services := &corev1.ServiceList{}
+	if err := p.Client.List(ctx, services, client.InNamespace(req.Namespace), client.MatchingLabels{"app": "vcluster"}); err != nil {
+		return err
+	}
+	for _, service := range services.Items {
+		if service.Labels["release"] != req.Reference.ReleaseName {
+			return runtimeprovider.ErrNamespaceInUse
+		}
+	}
+	return nil
 }
 
 func (p *Provider) observe(ctx context.Context, req runtimeprovider.Request) (runtimeprovider.Observation, error) {

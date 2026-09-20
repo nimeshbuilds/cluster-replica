@@ -1,5 +1,15 @@
 # Validation record
 
+## Workload mirror release qualification
+
+The optional module's `workload-mirrors` job is mandatory in the [current CI workflow](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml). The alpha publishing workflow requires the exact main commit to pass all jobs, then runs the mirror fixture again against the published image, OCI chart and released CLI before creating the GitHub release. Its release notes link the exact source and artifact-verification run.
+
+The fixture uses Kubernetes 1.36.4, vCluster 0.37.1/Kubernetes 1.36.0, upstream CSI host-path manifests v1.18.0 (driver image v1.17.1), snapshot-controller v8.6.0, and Calico v3.32.2. It checks actual file contents, independent guest writes, latest-source and retained-revision resets, scheduling, leases, cancellation, source-egress denial and guest DNS, source authorization, existing-runtime namespace/RBAC boundaries, minimum TTL, restarts, Helm upgrade/reuse and owned cleanup. Source PVC/PV identity and contents must survive. The small host-path fixture does not qualify cloud drivers, application-consistent databases, arbitrary CNI behavior or large data sets.
+
+Local checks cover ownership forgery, source/backend identity changes, protected active revision retention, recovery after interrupted enrollment, partial restore inventory/deletion, bounded lifetime, queue overflow cleanup, API admission, example manifests, dependency checksums and optional chart modes. The full CLI reference is discovered from the binary; API reference comes from every generated CRD. Strict documentation builds check links and anchors.
+
+The older records below remain historical evidence for the original portable alpha, separate from the new mirror suite.
+
 ## Native YAML installation and lifecycle
 
 The [kubectl-only YAML job](https://github.com/nimeshbuilds/replicove/actions/runs/35477718800/job/105989750205) passed at [`b615d8a`](https://github.com/nimeshbuilds/replicove/commit/b615d8ab36bc03baf2ec714d503353b61976fffc). It applied the public CRDs and Kustomize installer, ran the restricted state-key bootstrap Job, created a persistent vCluster, verified mapped configuration and source preservation, issued and revoked a bounded viewer session, and verified owned cleanup. Re-running the bootstrap Job preserved the same immutable key while encrypted state existed.

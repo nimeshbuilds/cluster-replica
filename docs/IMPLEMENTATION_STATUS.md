@@ -15,6 +15,7 @@ Requested scope: the full ClusterReplica product plan, researched product brandi
 | Existing target | Protected data-only credentials, pinned guest identity, no runtime adoption | Real API tests and live preservation/conflict checks pass |
 | Ephemeral cleanup | Guest/host inventory, finalizers, access revocation, bound volume checks | Stateless lifecycle and both durable TTL/PVC cleanup workflows pass |
 | Human/CI/agent access | Expiring guest role/token, exact-Secret reader RBAC, CLI/tunnel recovery, private output file | Viewer permissions, exact-Secret reader authorization/revocation and cleanup passed on both host minors |
+| Workload mirrors | Optional CSI captures, independent generations, manual/scheduled reset, leases, exact volume grants, access and cleanup | See the versioned [mirror verification record](validation.md) |
 | Workloads | Pinned cert-manager, native policy, Spark Operator and Trino fixtures with functional probes | All four functional suites and cleanup passed at c2c5ea3 |
 | Maintenance and packaging | Embedded operator chart, four CLI builds, chart archive/checksums, read-only update checker | Local packaging and actual Helm key-preserving upgrade pass |
 | Kubernetes compatibility | Host 1.35/1.36 live matrix, pinned 1.36 guest, chart render 1.35–1.37 | Full 1.35.8/1.36.4 workflows pass with 1.36.0 guest |
@@ -27,7 +28,7 @@ The [eight-job integrated-alpha run at c2c5ea3](https://github.com/nimeshbuilds/
 
 - Configured vCluster Platform provisioning and lifecycle qualification. Requests currently report `PlatformQualificationRequired`; Helm fallback is blocked.
 - Cloud identity adapters and authenticated exchanges: IRSA, EKS Pod Identity, Azure/GCP workload identity. Source tokens are not cloned; unadapted annotations block capture.
-- Data content copying, CSI snapshot/restore workflows and external data lifecycle. Current data support provisions explicitly granted fresh volumes only.
+- Application-consistent/database and grouped-volume recovery, non-CSI data adapters, cloud CSI qualification, and external data lifecycle. The optional per-volume CSI mirror implementation is tracked in the [mirror guide](guides/mirrors.md); its disposable-cluster qualification is separate from the original alpha evidence.
 - External Secrets backend recreation and arbitrary operator-specific dependencies, lifecycle hooks or bootstrap cycles.
 - Per-user gateway delegation. Exact-Secret RBAC distribution is implemented for administrator-selected subjects; the authorization model remains namespace delegation.
 - Digest-locked runtime images and automated candidate schema/resource/RBAC diffs ([maintenance issue #6](https://github.com/nimeshbuilds/replicove/issues/6)).

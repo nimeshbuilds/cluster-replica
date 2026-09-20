@@ -70,3 +70,9 @@ A unit test of a mock runtime is useful but is not evidence that an actual vClus
 ## Submit a change
 
 Keep generated files, docs, and examples aligned with behavior. Run relevant checks and explain their scope in the PR. Follow [Contributing](../../CONTRIBUTING.md), report security issues through [Security](../../SECURITY.md), and use [runtime maintenance](../maintaining-replicove.md) for upstream releases.
+
+## Mirror module verification
+
+`go test -race ./internal/mirror ./cmd/replicove ./internal/runtime/helm` covers mirror recovery, source/target ownership, partial restore cleanup, active revision retention, storage dependency pins and tunnel reconnect behavior. `make test-integration` validates mirror admission and the checked-in example manifests against a real API server. `make docs` discovers the full CLI tree and generates all CRD fields before building and checking links.
+
+With Docker, run `./hack/fetch-e2e-tools.sh`, `./hack/fetch-helm.sh`, then `./hack/e2e-mirror.sh`. The script owns a fresh kind cluster, installs pinned Calico and CSI host-path fixtures, and removes that cluster on exit. It is also a mandatory CI job and a published-artifact release gate. Do not point the fixture at a production cluster. Evidence is written under `.cache/mirror-e2e/run.*/artifacts/`; credential files are excluded. Cloud labs remain separate qualification.

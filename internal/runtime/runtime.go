@@ -14,6 +14,7 @@ var (
 	ErrProfileMismatch   = errors.New("persisted runtime does not match the selected profile")
 	ErrCleanupIncomplete = errors.New("Helm reports retained resources; administrator review is required")
 	ErrDeletionPending   = errors.New("chart manifest objects are still terminating")
+	ErrNamespaceInUse    = errors.New("vCluster permits one runtime per host namespace; use a registered existing target or another granted destination")
 )
 
 type Request struct {

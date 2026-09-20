@@ -29,6 +29,8 @@ for obj in json.load(sys.stdin).get("items", []):
              "waitingReason": c.get("state", {}).get("waiting", {}).get("reason"),
              "terminatedReason": c.get("state", {}).get("terminated", {}).get("reason"),
              "exitCode": c.get("state", {}).get("terminated", {}).get("exitCode")}
+             | {"lastTermination": {k: c.get("lastState", {}).get("terminated", {}).get(k)
+                                    for k in ("reason", "exitCode", "signal")}}
             for c in status.get("containerStatuses", []) + status.get("initContainerStatuses", [])
         ],
     })

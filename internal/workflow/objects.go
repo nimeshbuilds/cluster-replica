@@ -145,12 +145,15 @@ func (w *Engine) namespaces(ctx context.Context, conn *target.Connection, st *st
 		if entry(st, id) == nil {
 			_, err := conn.Kubernetes.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 			if err == nil {
+				if st.MirrorRunUID != "" {
+					return failure("MirrorNamespaceConflict", "A mirror requires an exclusively owned guest namespace; an existing namespace was preserved.")
+				}
 				continue
 			}
 			if !apierrors.IsNotFound(err) {
 				return failure("GuestReadFailed", "Cannot read guest namespaces.")
 			}
-			if st.Provider == "existing" {
+			if st.Provider == "existing" && st.MirrorRunUID == "" {
 				return failure("ExistingNamespaceRequired", "Create the mapped namespace in the existing guest before applying this request.")
 			}
 		}

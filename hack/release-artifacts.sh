@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$PWD/.cache/e2e-tools:$PATH"
-version="${1:?Pass a release version, for example v0.1.0-alpha.1}"
+version="${1:?Pass a release version, for example v0.2.0-alpha.1}"
 if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+([.-][a-zA-Z0-9]+)*)?$ ]]; then
   echo 'Expected a v-prefixed semantic version.' >&2; exit 2
 fi

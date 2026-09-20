@@ -28,7 +28,7 @@ Publish installable binaries and a verified operator image with checksums, signe
 ## Additional adapters
 
 - Cloud identities: IRSA, EKS Pod Identity, Azure/GCP workload identity with authenticated exchange and revocation tests.
-- Data: source content copying, CSI snapshot/restore and explicit external-resource cleanup contracts.
+- Data: qualify cloud CSI drivers, application-consistent/database and grouped-volume adapters, non-CSI transfer, and explicit external-resource cleanup. The optional per-volume mirror implementation and its qualification scope are described in [workload mirrors](docs/guides/mirrors.md).
 - vCluster Platform: qualified provisioning and lifecycle integration; current requests block without falling back to Helm.
 - Operators: External Secrets backend recreation, lifecycle hooks, bootstrap cycles and additional behavior tests.
 

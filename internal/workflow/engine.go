@@ -33,11 +33,13 @@ type Capturer interface {
 	Capture(context.Context, *api.ClusterReplica, *api.ReplicaGrant, policy.Resolution) (*state.Plan, error)
 }
 type Engine struct {
-	Client  client.Client
-	Store   *state.Store
-	Reader  Capturer
-	Runtime runtimeprovider.Provider
-	Now     func() time.Time
+	Client            client.Client
+	Store             *state.Store
+	Reader            Capturer
+	Runtime           runtimeprovider.Provider
+	Now               func() time.Time
+	MirrorCleanup     func(context.Context, *state.State, bool) (bool, error)
+	MirrorPreparation func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
 }
 
 func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.Result, error) {
@@ -60,6 +62,11 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	expires := obj.CreationTimestamp.Add(ttl)
 	if !obj.DeletionTimestamp.IsZero() || !now.Before(expires) {
 		return w.cleanup(ctx, obj, st)
+	}
+	// Generation plans are prepared by the mirror controller, never captured by
+	// racing child reconciliation. A user annotation cannot supply protected state.
+	if obj.Annotations["replicove.nimeshbuilds.dev/mirror-run"] != "" && st == nil && obj.DeletionTimestamp.IsZero() {
+		return w.report(ctx, obj, "Preparing", failure("MirrorPreparationPending", "Waiting for the mirror controller's protected generation plan."), false)
 	}
 	grant := &api.ReplicaGrant{}
 	if err := w.Client.Get(ctx, client.ObjectKey{Name: obj.Spec.GrantRef}, grant); err != nil {
@@ -98,6 +105,9 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		}
 	}
 	if st.Plan == nil || obj.Annotations[RefreshAnnotation] != st.RefreshToken {
+		if st.MirrorRunUID != "" {
+			return w.report(ctx, obj, "Blocked", failure("MirrorPlanPinned", "Use a mirror sync or reset request to replace a generation."), false)
+		}
 		if st.Provider == "existing" {
 			conn, err := target.Connect(ctx, w.Client, st, "")
 			if err != nil {
@@ -150,6 +160,9 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	if st.Provider == "helm" {
 		observed, err := w.Runtime.Ensure(ctx, runtimeprovider.Request{Namespace: obj.Namespace, OwnerUID: st.OwnerUID, Reference: *obj.Status.Runtime})
 		if err != nil {
+			if errors.Is(err, runtimeprovider.ErrNamespaceInUse) {
+				return w.report(ctx, obj, "Blocked", failure("RuntimeNamespaceInUse", "vCluster permits one runtime per host namespace. Use a registered existing target or another administrator-granted destination."), false)
+			}
 			return w.report(ctx, obj, "Blocked", failure("RuntimeOperationFailed", "The pinned vCluster runtime could not be provisioned; inspect its Helm release and namespace permissions."), false)
 		}
 		if !observed.Ready {
@@ -209,6 +222,15 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	}
 	if err := w.namespaces(ctx, conn, st); err != nil {
 		return w.report(ctx, obj, "Blocked", err, false)
+	}
+	if st.MirrorRunUID != "" {
+		if w.MirrorPreparation == nil {
+			return w.report(ctx, obj, "Blocked", failure("MirrorsDisabled", "Enable the mirror module to restore this generation."), false)
+		}
+		ready, err := w.MirrorPreparation(ctx, obj, st, conn)
+		if err != nil || !ready {
+			return w.report(ctx, obj, "Restoring", err, false)
+		}
 	}
 	refreshing := st.AppliedRevision != st.Plan.Revision
 	byID := map[string]state.Object{}
@@ -395,6 +417,14 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
+	if st.MirrorRunUID != "" && !st.GuestCleaned {
+		if w.MirrorCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("MirrorsDisabled", "Enable the mirror module to clean up owned snapshots and restored volumes."), false)
+		}
+		if done, err := w.MirrorCleanup(ctx, st, false); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+	}
 	if !st.GuestCleaned {
 		remaining := false
 		for _, e := range st.Entries {
@@ -442,6 +472,14 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 		}
 		if !done {
 			return w.report(ctx, obj, "Deleting", nil, false)
+		}
+	}
+	if st.MirrorRunUID != "" {
+		if w.MirrorCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("MirrorsDisabled", "Enable the mirror module to finish restored volume cleanup."), false)
+		}
+		if done, err := w.MirrorCleanup(ctx, st, true); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
 	terminal := "Expired"

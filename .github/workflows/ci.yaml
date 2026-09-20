@@ -3,6 +3,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      mirror_only:
+        description: Run only the disposable CSI mirror suite
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,6 +19,7 @@ concurrency:
 
 jobs:
   verify:
+    if: ${{ !inputs.mirror_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,6 +36,7 @@ jobs:
       - run: make check
 
   live-vcluster:
+    if: ${{ !inputs.mirror_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -46,6 +54,7 @@ jobs:
           retention-days: 7
 
   replica-workflow:
+    if: ${{ !inputs.mirror_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
@@ -80,6 +89,7 @@ jobs:
           retention-days: 7
 
   helm-existing:
+    if: ${{ !inputs.mirror_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -98,6 +108,7 @@ jobs:
           retention-days: 7
 
   workload-replication:
+    if: ${{ !inputs.mirror_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
@@ -125,6 +136,7 @@ jobs:
           retention-days: 7
 
   yaml-workflow:
+    if: ${{ !inputs.mirror_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -138,5 +150,27 @@ jobs:
         with:
           name: yaml-workflow
           path: .cache/yaml-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7
+
+  workload-mirrors:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          ./hack/fetch-e2e-tools.sh
+          ./hack/fetch-helm.sh
+          ./hack/e2e-mirror.sh
+      - name: Retain sanitized mirror lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: workload-mirror-evidence
+          path: .cache/mirror-e2e/run.*/artifacts/
           include-hidden-files: true
           retention-days: 7

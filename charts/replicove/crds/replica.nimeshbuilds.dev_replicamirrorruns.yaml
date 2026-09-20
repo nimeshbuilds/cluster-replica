@@ -1,0 +1,144 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: replicamirrorruns.replica.nimeshbuilds.dev
+spec:
+  group: replica.nimeshbuilds.dev
+  names:
+    kind: ReplicaMirrorRun
+    listKind: ReplicaMirrorRunList
+    plural: replicamirrorruns
+    shortNames:
+    - rmrun
+    singular: replicamirrorrun
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.action
+      name: Action
+      type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              action:
+                description: Sync captures current host state. Reset reuses a retained
+                  Sync run's revision.
+                enum:
+                - Sync
+                - Reset
+                type: string
+              force:
+                description: Force bypasses the test lease only when the administrator
+                  grant permits it.
+                type: boolean
+              mirrorRef:
+                properties:
+                  name:
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                  uid:
+                    maxLength: 128
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - uid
+                type: object
+              revisionRef:
+                properties:
+                  name:
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                  uid:
+                    maxLength: 128
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - uid
+                type: object
+            required:
+            - action
+            - mirrorRef
+            type: object
+            x-kubernetes-validations:
+            - message: mirror run is immutable
+              rule: self == oldSelf
+            - message: only Reset requires a revisionRef
+              rule: (self.action == 'Reset') == has(self.revisionRef)
+          status:
+            properties:
+              activatedAt:
+                format: date-time
+                type: string
+              capturedAt:
+                format: date-time
+                type: string
+              message:
+                type: string
+              phase:
+                type: string
+              replicaRef:
+                properties:
+                  name:
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                  uid:
+                    maxLength: 128
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - uid
+                type: object
+              revisionRef:
+                properties:
+                  name:
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                  uid:
+                    maxLength: 128
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - uid
+                type: object
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

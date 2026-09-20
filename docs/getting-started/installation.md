@@ -2,7 +2,7 @@
 
 Replicove is a Go operator installed on your host cluster. It watches one destination namespace and keeps encrypted capture and access state in a separate, administrator-only namespace.
 
-Public alpha artifacts are available on [GitHub Releases](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1) and GitHub Container Registry. Installing does not require a local image build or a GitHub login.
+Public alpha artifacts are available on [GitHub Releases](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.1) and GitHub Container Registry. Installing does not require a local image build or a GitHub login.
 
 ## Choose a path
 
@@ -30,7 +30,7 @@ Use your administrator test-cluster context:
 
 ```bash
 helm --kube-context YOUR_TEST_CONTEXT upgrade --install replicove \
-  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.1.0-alpha.1 \
+  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.2.0-alpha.1 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 

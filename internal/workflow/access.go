@@ -63,6 +63,32 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 	if parent == nil || parent.CleanupStarted || obj.Status.ExpiresAt == nil || !obj.DeletionTimestamp.IsZero() || !time.Now().Before(obj.Status.ExpiresAt.Time) {
 		return r.revoke(ctx, a, st)
 	}
+	accessDeadline := obj.Status.ExpiresAt.Time
+	if parent.MirrorRunUID != "" {
+		run, e := r.Engine.Store.Load(ctx, parent.MirrorRunUID)
+		if e != nil || run == nil || run.MirrorRun == nil {
+			return r.report(ctx, a, "Blocked", "MirrorStateUnavailable", "Cannot verify the active mirror generation.")
+		}
+		mirror, e := r.Engine.Store.Load(ctx, run.MirrorRun.MirrorUID)
+		if e != nil || mirror == nil || mirror.Mirror == nil {
+			return r.report(ctx, a, "Blocked", "MirrorStateUnavailable", "Cannot verify the active mirror generation.")
+		}
+		if mirror.Mirror.ExpiresAt.IsZero() {
+			return r.report(ctx, a, "Blocked", "MirrorStateUnavailable", "The mirror's protected deadline is unavailable.")
+		}
+		if !time.Now().Before(mirror.Mirror.ExpiresAt) {
+			return r.revoke(ctx, a, st)
+		}
+		if mirror.Mirror.ExpiresAt.Before(accessDeadline) {
+			accessDeadline = mirror.Mirror.ExpiresAt
+		}
+		if mirror.Mirror.ActiveUID != run.OwnerUID {
+			if st != nil {
+				return r.revoke(ctx, a, st)
+			}
+			return r.report(ctx, a, "Pending", "MirrorGenerationInactive", "Access is issued only for the active mirror generation.")
+		}
+	}
 	grant := &api.ReplicaGrant{}
 	if err := r.Engine.Client.Get(ctx, client.ObjectKey{Name: obj.Spec.GrantRef}, grant); err != nil || string(grant.UID) != parent.GrantUID || grant.ResourceVersion != parent.GrantVersion || grant.Spec.TargetNamespace != a.Namespace || !slices.Contains(grant.Spec.AccessRoles, a.Spec.Role) {
 		return r.revoke(ctx, a, st)
@@ -93,8 +119,8 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 			return r.report(ctx, a, "Rejected", "DurationNotGranted", "The requested credential duration is outside the grant.")
 		}
 		end := a.CreationTimestamp.Add(time.Duration(seconds) * time.Second)
-		if obj.Status.ExpiresAt.Time.Before(end) {
-			end = obj.Status.ExpiresAt.Time
+		if accessDeadline.Before(end) {
+			end = accessDeadline
 		}
 		if time.Until(end) < 600*time.Second {
 			return r.report(ctx, a, "Rejected", "ReplicaExpiresSoon", "At least ten minutes must remain to issue a bounded Kubernetes token.")
@@ -115,6 +141,20 @@ func (r *AccessReconciler) Reconcile(ctx context.Context, key ctrl.Request) (ctr
 	objects := []state.Object{
 		{ID: planner.ID("", "ServiceAccount", "default", name), APIVersion: "v1", Kind: "ServiceAccount", Resource: "serviceaccounts", Namespace: "default", Name: name, Desired: map[string]any{"apiVersion": "v1", "kind": "ServiceAccount", "metadata": map[string]any{"name": name, "namespace": "default"}, "automountServiceAccountToken": false}},
 		{ID: planner.ID("rbac.authorization.k8s.io", "ClusterRoleBinding", "", name), APIVersion: "rbac.authorization.k8s.io/v1", Kind: "ClusterRoleBinding", Resource: "clusterrolebindings", Name: name, Desired: map[string]any{"apiVersion": "rbac.authorization.k8s.io/v1", "kind": "ClusterRoleBinding", "metadata": map[string]any{"name": name}, "roleRef": map[string]any{"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": role}, "subjects": []any{map[string]any{"kind": "ServiceAccount", "namespace": "default", "name": name}}}},
+	}
+	if parent.MirrorRunUID != "" && parent.Provider == "existing" {
+		objects = objects[:1]
+		namespaces := []string{}
+		for _, o := range parent.Plan.Objects {
+			if o.Namespace != "" {
+				namespaces = append(namespaces, o.Namespace)
+			}
+		}
+		slices.Sort(namespaces)
+		namespaces = slices.Compact(namespaces)
+		for _, ns := range namespaces {
+			objects = append(objects, state.Object{ID: planner.ID("rbac.authorization.k8s.io", "RoleBinding", ns, name), APIVersion: "rbac.authorization.k8s.io/v1", Kind: "RoleBinding", Resource: "rolebindings", Namespace: ns, Name: name, Desired: map[string]any{"apiVersion": "rbac.authorization.k8s.io/v1", "kind": "RoleBinding", "metadata": map[string]any{"name": name, "namespace": ns}, "roleRef": map[string]any{"apiGroup": "rbac.authorization.k8s.io", "kind": "ClusterRole", "name": role}, "subjects": []any{map[string]any{"kind": "ServiceAccount", "namespace": "default", "name": name}}}})
+		}
 	}
 	for _, desired := range objects {
 		if _, err := r.Engine.apply(ctx, conn, st, desired, false); err != nil {

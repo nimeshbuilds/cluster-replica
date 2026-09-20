@@ -88,3 +88,9 @@ The kubeconfig is data-only: exec plugins, external file references, impersonati
 ## Revocation and failures
 
 Deleting a session, deleting/expiring its replica, or changing its grant initiates revocation. Replicove removes exact-Secret reader permissions, guest identity/binding, credential Secret, and encrypted access state using recorded ownership. If the guest API cannot be reached, a finalizer remains until safe verification can complete. Token expiration still bounds use; never remove finalizers simply to hide an unavailable guest.
+
+## Access to workload mirrors
+
+`replicove mirror connect NAME` and `mirror access NAME` resolve the currently active generation and use the same Kubernetes identity, ReplicaGrant role limits, credential Secret distribution, and bounded TokenRequest flow. They do not add a separate agent identity system or MCP endpoint. Acquire a test lease before submitting a reset to defer managed-runtime replacement or existing-target activation. Reconnect after a reset; a connection never silently follows the next generation. Managed replacements have an interval with no active runtime while the old one is removed and its replacement starts.
+
+Prepared candidates cannot issue access. The mirror's protected TTL caps sessions, and retired/expired generations revoke their credentials. In an administrator-qualified existing vCluster, mirror access binds roles only in that generation's owned namespaces, including when the requested role is `admin`. See [workload mirrors](mirrors.md) for prerequisites and lifecycle examples.

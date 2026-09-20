@@ -1,6 +1,6 @@
 # Secrets and storage
 
-Secrets and volume contents are separate capabilities. Replicove supports explicitly granted Secret replication and fresh PVC provisioning. It does not currently restore source volume data or recreate cloud identities.
+Secrets and volume contents are separate capabilities. Replicove supports explicitly granted Secret replication and fresh PVC provisioning. The optional [workload mirror module](mirrors.md) adds per-volume crash-consistent CSI snapshot copies. It does not recreate cloud identities.
 
 ## Secret modes
 
@@ -58,6 +58,6 @@ For recorded bound volumes, cleanup requires `Delete` reclaim behavior and waits
 
 ## Cloud identity and host-specific resources
 
-IRSA, EKS Pod Identity, Azure/GCP workload identity, cloud load balancers, CSI data restores, and external infrastructure recreation are not implemented/certified by the portable workflow. Unadapted cloud identity annotations, privileged containers, host paths, and host networking are blocked. A future adapter must demonstrate the full identity and cleanup lifecycle in a disposable cloud lab.
+IRSA, EKS Pod Identity, Azure/GCP workload identity, cloud load balancers, and external infrastructure recreation are not implemented/certified by the portable workflow. CSI mirror qualification is separate from fresh-volume replication; a passing host-path driver fixture does not certify EBS, Azure Disk, or GCE PD. Unadapted cloud identity annotations, privileged containers, host paths, and host networking are blocked. A future adapter must demonstrate the full identity and cleanup lifecycle in a disposable cloud lab.
 
 See [compatibility and limits](../reference/compatibility.md) before interpreting “replica” as an exact clone of every host capability.

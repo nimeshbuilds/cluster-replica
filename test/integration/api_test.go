@@ -15,6 +15,7 @@ import (
 	kYaml "k8s.io/apimachinery/pkg/util/yaml"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sigs.k8s.io/yaml"
 	"strings"
 	"testing"
@@ -401,6 +402,62 @@ func TestOperatorInstallationChart(t *testing.T) {
 		t.Fatal("operator upgrade removed or replaced the destination namespace")
 	}
 	assertOperatorAuthorization(t, config)
+	// Opt in after installation, preserving user overrides and the immutable key.
+	// envtest checks real Helm/API behavior; the live suite additionally preserves
+	// a running guest and exercises snapshot capture, restore and deletion.
+	kubeClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deployments := kubeClient.AppsV1().Deployments("replicove-system")
+	if _, err := deployments.Get(ctx, "replicove-snapshot-controller", metav1.GetOptions{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("snapshot controller must be absent before opt-in: %v", err)
+	}
+	beforeOperator, err := deployments.Get(ctx, "replicove", metav1.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	upgrade = action.NewUpgrade(cfg)
+	upgrade.Namespace = "replicove-system"
+	upgrade.WaitStrategy = kube.HookOnlyStrategy
+	upgrade.Timeout = 30 * time.Second
+	upgrade.ResetThenReuseValues = true
+	overlay := map[string]any{"mirrors": map[string]any{"enabled": true, "networkPolicyEnforced": true, "sources": []any{"source-dev"}}}
+	if _, err := upgrade.RunWithContext(ctx, "replicove", ch, overlay); err != nil {
+		t.Fatalf("enabling mirrors on an existing release: %v", err)
+	}
+	saved, err := cfg.Releases.Last("replicove")
+	if err != nil {
+		t.Fatal(err)
+	}
+	savedV1, ok := saved.(*releasev1.Release)
+	if !ok {
+		t.Fatalf("unexpected Helm release format: %T", saved)
+	}
+	for name, value := range values {
+		if !reflect.DeepEqual(savedV1.Config[name], value) {
+			t.Fatalf("enabling mirrors replaced the saved %s override", name)
+		}
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(key), key); err != nil || key.UID != originalKeyUID || !bytes.Equal(key.Data["key"], originalKey) {
+		t.Fatal("enabling mirrors replaced the encryption key")
+	}
+	if err := c.Get(ctx, client.ObjectKeyFromObject(destination), destination); err != nil || destination.UID != destinationUID {
+		t.Fatal("enabling mirrors replaced the destination namespace")
+	}
+	afterOperator, err := deployments.Get(ctx, "replicove", metav1.GetOptions{})
+	if err != nil || afterOperator.UID != beforeOperator.UID {
+		t.Fatal("enabling mirrors replaced the operator Deployment")
+	}
+	if !strings.Contains(strings.Join(afterOperator.Spec.Template.Spec.Containers[0].Args, " "), "--mirrors=true") {
+		t.Fatal("mirror controller was not enabled")
+	}
+	if _, err := deployments.Get(ctx, "replicove-snapshot-controller", metav1.GetOptions{}); err != nil {
+		t.Fatalf("late opt-in did not install snapshot controller: %v", err)
+	}
+	if _, err := kubeClient.RbacV1().Roles("source-dev").Get(ctx, "replicove-system-replicove-mirror", metav1.GetOptions{}); err != nil {
+		t.Fatalf("late opt-in did not grant scoped snapshot permissions: %v", err)
+	}
 	// Real Helm storage often has nil Config when users accepted chart defaults.
 	// An override must still work and must never mutate the source release.
 	sourceChart, err := chartloader.Load(filepath.Join("..", "e2e", "chart"))

@@ -41,6 +41,11 @@ func TestMirrorDependencyContract(t *testing.T) {
 			objs := renderRBACContract(t, ch, "v1.36.4", "replicove-system", values)
 			controller, crds, sourceRoles := 0, 0, 0
 			for _, obj := range objs {
+				if strings.Contains(obj.GetName(), "snapshot-controller") || strings.HasSuffix(obj.GetName(), "snapshot.storage.k8s.io") || obj.GetNamespace() == "source-dev" {
+					if obj.GetLabels()["replicove.nimeshbuilds.dev/infrastructure"] != "true" {
+						t.Fatalf("mirror infrastructure could be captured as application configuration: %s/%s", obj.GetKind(), obj.GetName())
+					}
+				}
 				if obj.GetKind() == "CustomResourceDefinition" && strings.HasSuffix(obj.GetName(), "snapshot.storage.k8s.io") {
 					crds++
 					if obj.GetAnnotations()["helm.sh/resource-policy"] != "keep" {

@@ -2,8 +2,8 @@ apiVersion: v2
 name: replicove
 description: Kubernetes replica environments powered by vCluster
 type: application
-version: 0.2.0-alpha.1
-appVersion: 0.2.0-alpha.1
+version: 0.2.0-alpha.2
+appVersion: 0.2.0-alpha.2
 home: https://nimeshbuilds.github.io/replicove/
 icon: https://nimeshbuilds.github.io/replicove/assets/brand/replicove-icon.png
 sources:

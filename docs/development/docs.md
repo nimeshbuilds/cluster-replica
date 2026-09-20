@@ -46,3 +46,5 @@ The site URL includes `/replicove/`. Keep `site_url`, canonical/social metadata,
 ## Content review
 
 For each feature, explain who configures it, a valid YAML example, defaults and limits, observed status, and failure/cleanup behavior. Distinguish actual live evidence from render tests or planned adapters. Update the CLI and YAML entry points together when behavior changes. Verify navigation, search, code copy, dark mode, and narrow-screen readability when changing the theme.
+
+Update the [feature map](../features.md), project status and implementation ledger with every added capability or changed limit. Optional modules also need a late-enable path from a supported earlier release, preservation tests for active resources/state, and cleanup-before-disable instructions. Keep current examples on the released artifact version; historical validation records retain their original version and revision. Generated references and automated link checks complement this review; they cannot establish that prose accurately describes runtime behavior.

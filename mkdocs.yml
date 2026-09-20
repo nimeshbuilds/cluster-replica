@@ -63,6 +63,7 @@ validation:
     unrecognized_links: warn
 nav:
   - Home: index.md
+  - Feature map: features.md
   - Getting started:
       - Installation: getting-started/installation.md
       - Helm quickstart: getting-started/helm.md
@@ -74,6 +75,7 @@ nav:
       - Helm releases and operators: guides/operators.md
       - Secrets and storage: guides/secrets-storage.md
       - Workload mirrors: guides/mirrors.md
+      - Enable mirroring later: guides/enable-mirroring.md
       - Plans, refresh, and drift: guides/lifecycle.md
       - Access for people and agents: guides/access.md
       - Existing vClusters: guides/existing.md

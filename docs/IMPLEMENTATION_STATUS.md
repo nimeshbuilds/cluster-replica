@@ -26,6 +26,8 @@ The [eight-job integrated-alpha run at c2c5ea3](https://github.com/nimeshbuilds/
 
 ## Still incomplete
 
+- Optional MCP server, Replicove-issued agent certificates/identity policies, and a visual dashboard. Agents currently use Kubernetes authentication/RBAC with the CLI or CRDs; see the [feature map](features.md).
+
 - Configured vCluster Platform provisioning and lifecycle qualification. Requests currently report `PlatformQualificationRequired`; Helm fallback is blocked.
 - Cloud identity adapters and authenticated exchanges: IRSA, EKS Pod Identity, Azure/GCP workload identity. Source tokens are not cloned; unadapted annotations block capture.
 - Application-consistent/database and grouped-volume recovery, non-CSI data adapters, cloud CSI qualification, and external data lifecycle. The optional per-volume CSI mirror implementation is tracked in the [mirror guide](guides/mirrors.md); its disposable-cluster qualification is separate from the original alpha evidence.

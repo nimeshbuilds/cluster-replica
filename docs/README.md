@@ -10,7 +10,8 @@ The searchable site includes Helm, YAML, and CLI quickstarts, detailed feature g
 | Create with the CLI and managed tunnel | [CLI quickstart](../QUICKSTART.md) |
 | Choose an installation method | [Installation](getting-started/installation.md) |
 | Create writable data copies with scheduled resets | [Workload mirrors](guides/mirrors.md) |
-| Explore every current capability | [Documentation home](index.md) |
+| Add mirrors after installing Replicove | [Enable mirroring later](guides/enable-mirroring.md) |
+| Explore every current capability and limit | [Feature map](features.md) |
 | Understand tested behavior and remaining work | [Project status](project-status.md) |
 | Build and extend Replicove | [Local development](development/local.md) and [architecture](architecture.md) |
 | Update or preview the website | [Docs maintenance](development/docs.md) |

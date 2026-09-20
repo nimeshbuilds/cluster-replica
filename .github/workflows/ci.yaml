@@ -156,6 +156,12 @@ jobs:
   workload-mirrors:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        initial: [current, previous, native]
+    env:
+      REPLICOVE_MIRROR_BASE: ${{ matrix.initial }}
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-go@v7.0.0
@@ -170,7 +176,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: workload-mirror-evidence
+          name: workload-mirror-evidence-${{ matrix.initial }}
           path: .cache/mirror-e2e/run.*/artifacts/
           include-hidden-files: true
           retention-days: 7

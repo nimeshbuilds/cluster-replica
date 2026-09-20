@@ -30,7 +30,7 @@ Keep Terminal A open; subsequent commands use its variables. Stop if any command
 ## 2. Install the operator from manifests
 
 ```bash
-export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.2.0-alpha.1
+export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.2.0-alpha.2
 hk apply -f "$REPLICOVE_RELEASE_URL/replicove-crds.yaml"
 hk wait --for=condition=Established --timeout=60s \
   crd/clusterreplicas.replica.nimeshbuilds.dev \
@@ -183,5 +183,7 @@ rm -f "$REPLICOVE_YAML_HOST" "$REPLICOVE_YAML_GUEST"
 The destination should have no owned runtime resources and the source Deployment should remain until the disposable kind cluster is deleted. If you leave the replica running, its one-hour TTL initiates cleanup; the expired request remains as status evidence. Cleanup can be blocked by finalizers, unavailable APIs, or unsupported storage behavior—see [TTL and cleanup](../guides/cleanup.md).
 
 ## Automated verification
+
+For optional data mirroring after this installation, see [native YAML and GitOps enablement](../guides/enable-mirroring.md#cli-native-yaml-and-gitops-installations). Keep native ownership and the existing state key, and apply the complete optional RBAC/dependencies alongside the flags. The [feature map](../features.md) separates shipped functionality from proposed integrations.
 
 [`hack/e2e-yaml.sh`](../../hack/e2e-yaml.sh) exercises these checked-in installation and request manifests in a fresh kind cluster, including idempotent key bootstrap, guest access, configuration checks, access revocation, source preservation, and owned cleanup. It does not use the Replicove or Helm CLI. The release workflow repeats it with the published digest-pinned YAML and image. See the **yaml-workflow** job in [CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml).

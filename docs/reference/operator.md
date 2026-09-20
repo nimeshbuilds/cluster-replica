@@ -7,7 +7,7 @@ The operator chart is in [`charts/replicove`](../../charts/replicove/). The CLI 
 | Value | Default | Meaning |
 | --- | --- | --- |
 | `image.repository` | `ghcr.io/nimeshbuilds/replicove` | Public operator image repository |
-| `image.tag` | `0.2.0-alpha.1` | Versioned alpha image tag |
+| `image.tag` | `0.2.0-alpha.2` | Versioned alpha image tag |
 | `image.digest` | Empty in source; set by release packaging | SHA-256 image digest; takes precedence over tag |
 | `image.pullPolicy` | `IfNotPresent` | Kubernetes image pull behavior |
 | `destinationNamespace` | `replica-lab` | The one namespace watched by this operator |
@@ -59,3 +59,5 @@ Probe success indicates the process is available, not that every replica or exte
 Edit the chart templates and run `make generate` to regenerate CRDs, embedded chart schemas, and native installation manifests. CI fails if checked-in generated files differ. Review permissions alongside the pinned upstream chart contract.
 
 Follow [installation upgrades](../getting-started/installation.md#upgrades-and-removal) and [runtime maintenance](../maintaining-replicove.md) for key retention, CRD updates, immutable Job replacement, and compatibility qualification.
+
+`mirrors.enabled` may be enabled after installation. Use the [complete upgrade procedure](../guides/enable-mirroring.md), including image selection, retained user values, source authorization and dependency checks. Changing it back to false requires completing mirror cleanup first.

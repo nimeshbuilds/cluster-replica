@@ -54,6 +54,8 @@ First delete all replica requests in its watched namespace and verify their acce
 
 Delete `ReplicaMirror` requests and wait for their finalizers before removing the mirror module or source snapshot permissions. An expired mirror keeps its terminal status but removes its owned data and access; it does not extend the TTL for an active test lease. See [mirror cleanup and retention](mirrors.md#retention-deletion-and-ttl).
 
+If this release installed the shared snapshot controller, check for other consumers before disabling the module or uninstalling it. They need a functioning administrator-managed replacement or completed snapshot lifecycles first. Retained snapshot CRDs do not run a controller. See [module removal and recovery](enable-mirroring.md#recovery-and-disabling).
+
 For Helm, uninstall the existing release only afterward. The key is retained by the chart. For YAML, remove the operator Deployment, completed bootstrap Job, and associated RBAC/service accounts after cleanup. The generated installation also contains namespace resources: **do not run a blanket `kubectl delete -k` on a shared cluster**. Delete namespaces or CRDs only after an administrator has confirmed they contain no resources that need preservation. Keep or securely destroy backed-up key/state together according to your retention requirements.
 
 For the disposable kind walkthrough, deleting its uniquely named kind cluster after verified replica cleanup removes the entire test host.

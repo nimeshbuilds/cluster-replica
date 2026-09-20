@@ -17,7 +17,7 @@ Dependabot already groups Kubernetes/controller-runtime/Helm module updates and 
 
 1. Commit a new `Chart.yaml` version/appVersion and default image tag, update quickstart/release links and `docs/releases/alpha.md`, then run `make generate` and `make docs`.
 2. Merge after CI passes; wait for the exact merged `main` commit to pass all CI jobs too. The workflow enforces that commit gate.
-3. Dispatch **Publish alpha release** from `main` with the new committed version, such as `v0.2.0-alpha.1`. It publishes only explicit alpha tags and refuses an existing operator tag or release. It never moves `latest`.
+3. Dispatch **Publish alpha release** from `main` with the new committed version, such as `v0.2.0-alpha.2`. It publishes only explicit alpha tags and refuses an existing operator tag or release. It never moves `latest`.
 4. The workflow builds Linux amd64/arm64 images with source/version/revision labels and OCI SBOM/provenance metadata. It packages a digest-pinned chart and YAML plus four macOS/Linux CLI archives and checksums. The OCI chart is published at `ghcr.io/nimeshbuilds/charts/replicove`.
 5. For the first publication of each GHCR package, set its visibility to **Public** in GitHub package settings. Repository visibility alone does not make a new package public. Anonymous verification waits for this setup and fails if access remains private.
 6. Fresh runners pull without registry login, verify platforms, source commit and checksums, exercise real Helm installation with new/existing vClusters, and start both Linux arm64 binaries. Only then is the GitHub prerelease created with its test-run link.
@@ -31,6 +31,8 @@ For an operator chart upgrade, retain its system namespace and immutable encrypt
 ## Mirror dependency upgrades
 
 Keep snapshot APIs/controller versions in `charts/replicove/files/NOTICE.md`, vendored schema checksums, `mirrors.snapshotController.image`, and the mirror guide aligned. `TestMirrorDependencyContract` checks the exact upstream schemas, optional modes, and bounded source permissions. New drivers require real capture/restore/delete qualification rather than a chart-only test.
+
+Preserve mirror infrastructure labels so broad source capture cannot select installation RBAC/controllers as application resources. Require the late-enable matrix from both pinned older Helm releases and native YAML, with a running guest and state-key preservation. When updating the matrix's starting versions, retain a pre-mirror release case while that upgrade remains documented and keep the fixture's digest/version pins together.
 
 A vCluster upgrade must also qualify PVC snapshot dataSource translation, the explicit skip-translation annotation, guest object labels/UIDs, host egress selectors, and existing-runtime namespace separation. Run the complete mirror suite for data contents, guest-only writes, latest and saved resets, scheduling, leases, cancellation, existing-runtime access, TTL, restarts and upgrades. Do not remove old cleanup paths while outstanding mirrors use them.
 

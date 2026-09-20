@@ -21,6 +21,8 @@ kind: RoleBinding
 metadata:
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-mirror
   namespace: {{ . | quote }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role

@@ -13,7 +13,7 @@
 
 [Helm quickstart](docs/getting-started/helm.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-> **Experimental portable alpha.** The operator and CLI support selected source replication, persistent or existing vClusters, scoped guest access, and owned-resource cleanup on deletion or TTL expiry. Install the public `v0.2.0-alpha.1` artifacts using Helm, YAML, or the CLI. Production support and cloud certification are not available.
+> **Experimental portable alpha.** The operator and CLI support selected source replication, persistent or existing vClusters, scoped guest access, and owned-resource cleanup on deletion or TTL expiry. Install the public `v0.2.0-alpha.2` artifacts using Helm, YAML, or the CLI. Production support and cloud certification are not available.
 
 ## Why Replicove?
 
@@ -22,6 +22,8 @@ An empty test cluster does not reproduce an application’s environment. Operato
 Replicove provides a repeatable workflow: select what matters from an authorized source, inspect a plan, create a virtual environment, run your test, then expire the environment. vCluster supplies the virtual Kubernetes control plane; Replicove adds the selection, replication, access, and lifecycle workflow around it.
 
 Useful scenarios include testing operator upgrades, reproducing configuration bugs, creating preview environments, and giving CI or coding agents a temporary Kubernetes workspace. The optional [workload mirror module](docs/guides/mirrors.md) adds writable CSI data copies with manual or scheduled resets to the host state.
+
+Mirroring can be [enabled after installation](docs/guides/enable-mirroring.md) with a values-preserving upgrade. Browse the [complete feature map](docs/features.md) for installation, selection, access, refresh, data copies, cleanup and current limits.
 
 ## What can I use today?
 
@@ -41,15 +43,15 @@ The integrated alpha’s [eight-job CI run](https://github.com/nimeshbuilds/repl
 
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.1 \
+  --version 0.2.0-alpha.2 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
 **[Helm quickstart →](docs/getting-started/helm.md)** · **[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
 
-The Helm command installs the CRDs, operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. The public operator image is `ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.1`; the published chart pins its digest.
+The Helm command installs the CRDs, operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. The public operator image is `ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.2`; the published chart pins its digest.
 
-The guides walk through source permissions, replica creation, guest access, verification, and cleanup. CLI binaries and native manifests are available on the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.1). The [developer docs](https://nimeshbuilds.github.io/replicove/) cover each feature and generate API/CLI references from code.
+The guides walk through source permissions, replica creation, guest access, verification, and cleanup. CLI binaries and native manifests are available on the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2). The [developer docs](https://nimeshbuilds.github.io/replicove/) cover each feature and generate API/CLI references from code.
 
 The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 

@@ -2,7 +2,7 @@
 
 A `ReplicaMirror` creates an independent writable copy of selected workloads and their granted PVC data. Tests can change the copy. A manual or scheduled sync captures current source state and replaces the test generation. A reset to a retained revision reproduces that revision's configuration and volume recovery points. Access to a new generation starts only after readiness checks pass.
 
-This module is included in **v0.2.0-alpha.1**. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
+This module was introduced in v0.2.0-alpha.1; use **v0.2.0-alpha.2** for the corrected infrastructure exclusions and documented late-enable path. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
 
 ## Behavior
 
@@ -28,6 +28,8 @@ The adapter supports **per-volume crash consistency**. It does not claim one ato
 
 ## Install the optional module
 
+**Already installed Replicove?** Follow [enable mirroring later](enable-mirroring.md), which updates CRDs and preserves the existing release's settings and key. The installation example below is for a new release; its full values file can replace existing source-rule arrays if reused carelessly during an upgrade.
+
 The same Helm chart and operator image include the mirror controller. No VolSync or Velero deployment is required for this CSI adapter. Set `mirrors.enabled: true` and delegate source snapshot permissions with `mirrors.sources`. The chart's snapshot-controller mode is:
 
 | Mode | Behavior |
@@ -49,10 +51,10 @@ Download the [installation values](../../examples/mirror/values.yaml) and edit t
 
 ```bash
 curl -fsSLo mirror-values.yaml \
-  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.1/examples/mirror/values.yaml
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.2/examples/mirror/values.yaml
 # Edit mirror-values.yaml for the granted source and qualified host CNI.
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.1 \
+  --version 0.2.0-alpha.2 \
   --namespace replicove-system --create-namespace \
   --values mirror-values.yaml --wait --timeout 5m
 ```
@@ -89,9 +91,9 @@ Edit and apply the complete [grant](../../examples/mirror/grant.yaml) and [mirro
 
 ```bash
 curl -fsSLo mirror-grant.yaml \
-  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.1/examples/mirror/grant.yaml
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.2/examples/mirror/grant.yaml
 curl -fsSLo mirror.yaml \
-  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.1/examples/mirror/mirror.yaml
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.2/examples/mirror/mirror.yaml
 # Edit names, selectors, approved classes and grants for your source workload.
 kubectl apply -f mirror-grant.yaml
 kubectl apply -f mirror.yaml

@@ -25,6 +25,17 @@ Check the host context before running commands. Avoid dumping Secrets or kubecon
 
 ## Planning and replication problems
 
+If you are adding data copies to a running installation, use [enable mirroring later](enable-mirroring.md). Common opt-in problems are:
+
+| Symptom | Check / next action |
+| --- | --- |
+| Mirror kind missing, or `ReplicaGrant.spec.mirror` is unknown | Apply all matching release CRDs before upgrading the operator; Helm does not upgrade them. |
+| New chart still runs an older operator | A saved `image.digest` takes precedence over the tag. Explicitly select the matching release image in the upgrade overlay. |
+| Mirrors enabled but selected workload reads fail | `mirrors.sources` supplies snapshot permissions only. Preserve/add normal `sources` read rules and the exact administrator grant. |
+| Snapshot APIs exist but snapshots never become ready | Check the existing controller and CSI snapshot/restore support. `auto` reuses existing infrastructure; it cannot repair an incomplete host installation. |
+| `RuntimeNamespaceInUse` | The pinned vCluster permits one runtime per host namespace. Use a separate granted destination or an explicitly registered suitable existing target; enabling mirrors does not remove ordinary replicas. |
+| A broad refresh tries to capture Replicove mirror RBAC | Upgrade to 0.2.0-alpha.2, which marks all bundled mirror infrastructure as excluded from application capture. |
+
 | Symptom / reason | Check / next action |
 | --- | --- |
 | `GrantChanged` | Delete and recreate the request after cleanup under the revised administrator grant. |

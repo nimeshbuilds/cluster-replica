@@ -2,7 +2,7 @@ GO ?= go
 CONTROLLER_GEN_VERSION := v0.22.0
 CHART := $(CURDIR)/.cache/vcluster-0.37.1.tgz
 
-.PHONY: build generate test test-contract test-integration test-e2e vet check
+.PHONY: build generate manifests test test-contract test-integration test-e2e vet check docs docs-serve
 
 build:
 	mkdir -p bin
@@ -13,6 +13,10 @@ generate:
 	$(GO) run sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) object paths=./api/... crd output:crd:artifacts:config=config/crd
 	gofmt -w api cmd internal test
 	cp config/crd/*.yaml charts/replicove/crds/
+	$(MAKE) manifests
+
+manifests:
+	$(GO) run ./hack/render-install
 
 test:
 	$(GO) test -race ./...
@@ -35,3 +39,13 @@ test-e2e:
 	./hack/e2e.sh
 
 check: test test-contract test-integration vet build
+
+DOCS_PYTHON ?= $(CURDIR)/.cache/docs-venv/bin/python
+
+docs: build
+	$(DOCS_PYTHON) hack/docs.py prepare
+	$(DOCS_PYTHON) -m mkdocs build --strict
+	$(DOCS_PYTHON) hack/docs.py check
+
+docs-serve: docs
+	$(DOCS_PYTHON) -m mkdocs serve --dev-addr 127.0.0.1:8000

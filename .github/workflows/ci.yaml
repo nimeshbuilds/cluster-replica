@@ -100,3 +100,20 @@ jobs:
           path: .cache/workload-e2e/run.*/artifacts/
           include-hidden-files: true
           retention-days: 7
+
+  yaml-workflow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - run: ./hack/fetch-e2e-tools.sh
+      - name: Run the public YAML walkthrough without either CLI
+        run: ./hack/e2e-yaml.sh
+      - name: Retain sanitized YAML evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: yaml-workflow
+          path: .cache/yaml-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7

@@ -1,21 +1,17 @@
 # Replicove documentation
 
-Replicove creates Kubernetes replica environments with vCluster. Start with the first-replica walkthrough.
+**[Read the complete developer docs →](https://nimeshbuilds.github.io/replicove/)**
 
-| I want to… | Start here |
+The searchable site includes both quickstarts, detailed feature guides, generated Kubernetes API and CLI references, compatibility boundaries, troubleshooting, and contributor documentation.
+
+| Start here | Guide |
 | --- | --- |
-| Create my first replica in a disposable local cluster | [First replica quickstart (tested alpha)](../QUICKSTART.md) |
-| Configure grants, selections, existing targets, secrets and access | [Configuration guide](replicove-quickstart.md) |
-| Understand what is implemented and tested | [Project status](project-status.md) |
-| Maintain runtime versions and prepare releases | [Maintenance](maintaining-replicove.md) |
-| Understand the runtime architecture | [Architecture](architecture.md) |
-| Understand the planned replica workflow | [Design](design/vcluster-wrapper-design.md) and [implementation plan](design/cluster-replica-implementation-plan.md) |
-| Check compatibility expectations | [Compatibility policy](design/vcluster-compatibility-policy.md) and [upstream provenance](upstream.md) |
-| Run local checks | [Testing](testing.md) |
-| Propose a change | [Contributing](../CONTRIBUTING.md) and [roadmap](../ROADMAP.md) |
-| Ask a question or report a problem | [Support](../SUPPORT.md) |
-| Use the logo or describe the project | [Brand guide](brand/README.md) |
+| Install and create using native manifests | [YAML quickstart](getting-started/yaml.md) |
+| Create with the CLI and managed tunnel | [CLI quickstart](../QUICKSTART.md) |
+| Choose an installation method | [Installation](getting-started/installation.md) |
+| Explore every current capability | [Documentation home](index.md) |
+| Understand tested behavior and remaining work | [Project status](project-status.md) |
+| Build and extend Replicove | [Local development](development/local.md) and [architecture](architecture.md) |
+| Update or preview the website | [Docs maintenance](development/docs.md) |
 
-Design documents describe the intended system, including features that are not implemented. The [status page](project-status.md) records implemented capabilities and their test evidence.
-
-[Back to Replicove](../README.md)
+Historical [design proposals](design/cluster-replica-implementation-plan.md) include unimplemented ideas. Current guides and the status page distinguish those from implemented behavior.

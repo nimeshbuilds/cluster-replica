@@ -16,10 +16,11 @@ type ClusterReplicaSpec struct {
 	// CleanupPolicy selects the legacy Helm-only lifecycle or full owned-resource cleanup.
 	// +kubebuilder:validation:Enum=HelmReleaseOnly;DeleteOwned
 	CleanupPolicy string `json:"cleanupPolicy"`
-	// GrantRef delegates source capabilities to this destination namespace.
+	// Approval controls whether a captured plan needs an explicit revision approval.
 	// +kubebuilder:validation:Enum=Automatic;Manual
 	// +kubebuilder:default=Automatic
-	Approval    string           `json:"approval,omitempty"`
+	Approval string `json:"approval,omitempty"`
+	// GrantRef delegates source capabilities to this destination namespace.
 	GrantRef    string           `json:"grantRef,omitempty"`
 	Target      *TargetSpec      `json:"target,omitempty"`
 	Replication *ReplicationSpec `json:"replication,omitempty"`

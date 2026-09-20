@@ -1,0 +1,27 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ClusterReplica
+metadata:
+  name: yaml-demo
+  namespace: replica-lab
+spec:
+  profile: vcluster-0.37.1-persistent
+  ttl: 1h
+  cleanupPolicy: DeleteOwned
+  approval: Automatic
+  grantRef: yaml-demo
+  target:
+    provider: auto
+  replication:
+    namespaces: [source-dev]
+    namespaceMap:
+      source-dev: integration
+    secrets: Snapshot
+    data: None
+    patches:
+      - apiVersion: v1
+        kind: ConfigMap
+        namespace: source-dev
+        name: settings
+        patch:
+          data:
+            mode: guest-yaml

@@ -1,5 +1,11 @@
 # Validation record
 
+## Native YAML installation and lifecycle
+
+The [kubectl-only YAML job](https://github.com/nimeshbuilds/replicove/actions/runs/35477718800/job/105989750205) passed at [`b615d8a`](https://github.com/nimeshbuilds/replicove/commit/b615d8ab36bc03baf2ec714d503353b61976fffc). It applied the public CRDs and Kustomize installer, ran the restricted state-key bootstrap Job, created a persistent vCluster, verified mapped configuration and source preservation, issued and revoked a bounded viewer session, and verified owned cleanup. Re-running the bootstrap Job preserved the same immutable key while encrypted state existed.
+
+The [sanitized report](validation/2026-09-19-yaml.json) contains only outcome flags. This fixture uses the pinned Kubernetes 1.36.4 kind host, vCluster 0.37.1 and Kubernetes 1.36.0 guest. It requires neither the Replicove CLI nor Helm CLI. This deletion scenario does not replace the separate core workflow's real TTL, restart, secret-follow and existing-target evidence.
+
 ## Integrated portable alpha
 
 [CI run 35472630195](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195) passed **all eight jobs** at `c2c5ea3`. The same file contents were merged into `main` as `c5d4d62`. Both full host workflows verified explicit operator permissions, rejection of wildcard Role escalation and cluster-admin bindings, exact-Secret credential readers, access revocation, owned deletion, and a real five-minute TTL with control-plane PVC cleanup. The runtime lifecycle and all four functional workload suites also passed.

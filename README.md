@@ -11,7 +11,7 @@
 
 **Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** It recreates the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-[Quick start](QUICKSTART.md) · [Documentation](docs/README.md) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
+[Quick start](QUICKSTART.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
 > **Experimental portable alpha.** The operator and CLI support selected source replication, persistent or existing vClusters, scoped guest access, and owned-resource cleanup on deletion or TTL expiry. Build from source using the quickstart; no packaged public release or production support is available yet.
 
@@ -38,11 +38,13 @@ The integrated alpha’s [eight-job CI run](https://github.com/nimeshbuilds/repl
 
 ## Quick start
 
-**[Create your first replica →](QUICKSTART.md)**
+**[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
 
 The walkthrough takes you through building the tested alpha, creating a disposable kind cluster, installing Replicove, approving a replication plan, connecting to the guest, verifying copied configuration, and cleaning up. It uses complete sample files and an isolated kubeconfig; no cloud account or registry push is needed.
 
-The guide builds from `main` and uses disposable fixtures. The [configuration guide](docs/replicove-quickstart.md) covers existing targets, grants, secrets, and cleanup policies.
+The YAML guide installs the operator, provisions vCluster, requests access, and cleans up using native manifests and `kubectl`. The Replicove and Helm CLIs are optional. The [developer documentation](https://nimeshbuilds.github.io/replicove/) includes searchable feature guides and generated API/CLI references.
+
+Both guides build from `main` and use disposable fixtures. The [configuration guide](docs/replicove-quickstart.md) covers existing targets, grants, secrets, and cleanup policies.
 
 The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 

@@ -4,6 +4,8 @@ Create a disposable Kubernetes cluster, install Replicove, and recreate a small 
 
 > **Developer preview:** this guide uses the complete portable alpha on `main`. There is no published release image yet, so you build one locally. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
 
+Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
+
 ## Before you start
 
 - A macOS or Linux machine with Bash, Git, `make`, `curl`, `shasum`, and [Go 1.27.1+](https://go.dev/doc/install).

@@ -4,6 +4,10 @@ image:
   tag: "0.1.0"
   pullPolicy: IfNotPresent
 destinationNamespace: replica-lab
+# Native YAML uses a one-shot Job so no encryption key is committed to Git.
+# Helm installations retain their existing generated Secret by default.
+stateKey:
+  bootstrap: false
 # Source RBAC is explicit; ReplicaGrant narrows which reads each request may use.
 sources: []
 # Example source:

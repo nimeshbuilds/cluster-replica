@@ -21,6 +21,7 @@ Check the host context before running commands. Avoid dumping Secrets or kubecon
 | Job update reports an immutable template | After confirming it is completed, remove only `replicove-bootstrap` and reapply the reviewed installer. Preserve the key. |
 | “No matches for kind ClusterReplica” | Apply `config/crd/` and wait for CRDs to be established before requests. |
 | Persistent vCluster PVC is Pending | Check the default StorageClass, provisioner, quota, scheduling and capacity. The profile requests 1 GiB for control-plane state. |
+| cert-manager is rolled out but source admission says connection refused | Deployment readiness can precede webhook Service routing or CA propagation. Wait for a server-side dry run of the fixture to succeed before creating Issuers/Certificates. The workload test bounds this wait and still fails invalid manifests or a persistently unavailable webhook. |
 
 ## Planning and replication problems
 

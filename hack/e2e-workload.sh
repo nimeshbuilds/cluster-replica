@@ -54,6 +54,19 @@ chart_path=".cache/workload-charts/$chart"
 if [[ "$workload" == policy ]];then chart_path=test/e2e/chart;fi
 go run ./test/e2e/seed "$chart_path" source-dev fixture "test/workloads/$workload/values.yaml"
 while IFS= read -r deployment;do hk -n source-dev rollout status "$deployment" --timeout=240s;done < <(hk -n source-dev get deployment -o name)
+if [[ "$workload" == cert-manager ]];then
+ # Pod readiness can precede Service routing and webhook CA propagation. Probe
+ # the real admission path without creating resources before source capture.
+ admission_deadline=$((SECONDS + 120))
+ until hk --request-timeout=10s apply --dry-run=server -f test/workloads/cert-manager/resources.yaml > /dev/null 2> "$work/admission-error.txt";do
+  if [[ "$SECONDS" -ge "$admission_deadline" ]] || ! grep -Eq 'failed calling webhook|failed to call webhook|context deadline exceeded|Client.Timeout exceeded' "$work/admission-error.txt";then
+   cat "$work/admission-error.txt" >&2
+   exit 1
+  fi
+  echo 'Waiting for source cert-manager admission to become reachable'
+  sleep 2
+ done
+fi
 if [[ -f "test/workloads/$workload/resources.yaml" ]];then hk apply -f "test/workloads/$workload/resources.yaml";fi
 case "$workload" in
  cert-manager) hk -n source-dev wait certificate/integration-certificate --for=condition=Ready --timeout=120s ;;

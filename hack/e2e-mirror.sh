@@ -20,6 +20,13 @@ cleanup(){
   hk -n replicove-system logs deployment/replicove-snapshot-controller --tail=100 > "$work/artifacts/snapshots.log" 2>&1 || true
   hk -n replica-lab get replicamirrors,replicamirrorruns,clusterreplicas -o json > "$work/artifacts/status.json" || true
   hk get pods -A -o wide > "$work/artifacts/pods.txt" || true
+  hk -n replica-lab get pods -o json | python3 test/e2e/inventory.py > "$work/artifacts/runtime-status.json" || true
+  while read -r pod; do
+   [[ -n "$pod" ]] || continue
+   hk -n replica-lab logs "$pod" -c syncer --tail=250 > "$work/artifacts/${pod#pod/}.log" 2>&1 || true
+   hk -n replica-lab logs "$pod" -c syncer --previous --tail=250 > "$work/artifacts/${pod#pod/}-previous.log" 2>&1 || true
+  done < <(hk -n replica-lab get pods -l app=vcluster -o name)
+  docker exec "$cluster-control-plane" sysctl fs.inotify.max_user_instances fs.inotify.max_user_watches > "$work/artifacts/node-limits.txt" 2>&1 || true
   hk -n replica-lab get pods --show-labels > "$work/artifacts/labels.txt" || true
   hk -n replica-lab get networkpolicies -o yaml > "$work/artifacts/networkpolicies.yaml" || true
   hk get events -A --field-selector type=Warning > "$work/artifacts/warnings.txt" || true
@@ -84,7 +91,25 @@ connect(){
  for i in $(seq 1 120); do if [[ -f "$work/guest.kubeconfig" ]] && gk --request-timeout=5s get --raw=/readyz >/dev/null 2>&1; then return; fi; if ! kill -0 "$tunnel_pid" 2>/dev/null; then cat "$work/artifacts/connect.log"; return 1; fi; sleep 1; done
  return 1
 }
-wait_run(){ hk -n replica-lab wait "replicamirrorrun/$1" --for=jsonpath='{.status.phase}'=Active --timeout=600s; }
+wait_phase(){
+ local run="$1" expected="$2" phase child release
+ for i in $(seq 1 120); do
+  phase=$(hk -n replica-lab get replicamirrorrun "$run" -o jsonpath='{.status.phase}')
+  if [[ "$phase" == "$expected" ]]; then return; fi
+  child=$(hk -n replica-lab get replicamirrorrun "$run" -o jsonpath='{.status.replicaRef.name}')
+  if [[ -n "$child" ]]; then
+   release=$(hk -n replica-lab get clusterreplica "$child" -o jsonpath='{.status.runtime.releaseName}')
+   if [[ -n "$release" ]] && hk -n replica-lab get pods -l "app=vcluster,release=$release" -o json | python3 -c 'import json,sys;sys.exit(0 if any(c.get("restartCount",0)>=3 for p in json.load(sys.stdin)["items"] for c in p.get("status",{}).get("containerStatuses",[])) else 1)'; then
+    echo "Runtime $release repeatedly restarted while waiting for $run/$expected; retaining startup evidence." >&2
+    return 1
+   fi
+  fi
+  sleep 5
+ done
+ echo "Timed out waiting for $run/$expected" >&2
+ return 1
+}
+wait_run(){ wait_phase "$1" Active; }
 connect
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == host-A ]]
 # Prove policies enforce denial against a reachable source endpoint, while
@@ -108,6 +133,17 @@ REPLICOVE_HELM_RELEASE=mirror-probe REPLICOVE_HELM_NAMESPACE=mirror-probe-system
 [[ "$(hk get crd volumesnapshots.snapshot.storage.k8s.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}')" == replicove ]]
 helm uninstall mirror-probe --namespace mirror-probe-system --wait --timeout 120s
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
+
+# Exercise two concurrent dedicated runtimes before the slower real TTL wait.
+# A fully prepared but leased candidate can be cancelled without changing active data.
+bin/replicove mirror hold orders --duration 15m
+bin/replicove mirror sync orders --run-name cancel-candidate
+wait_phase cancel-candidate AwaitingActivation
+bin/replicove mirror cancel cancel-candidate
+hk -n replica-lab wait replicamirrorrun/cancel-candidate --for=delete --timeout=300s
+[[ "$first_replica" == "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeReplica.name}')" ]]
+[[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
+bin/replicove mirror release orders
 
 # Register the running, independently owned runtime for a second mirror. Its
 # TTL must remove only that mirror's generation, credentials and restored data.
@@ -158,14 +194,6 @@ hk -n replica-lab wait replicamirror/shared-ttl --for=jsonpath='{.status.phase}'
 [[ "$runtime_uid" == "$(hk -n replica-lab get statefulset "$runtime_release" -o jsonpath='{.metadata.uid}')" ]]
 bin/replicove mirror delete shared-ttl
 hk -n replica-lab wait replicamirror/shared-ttl --for=delete --timeout=120s
-# A fully prepared but leased candidate can be cancelled without changing active data.
-bin/replicove mirror hold orders --duration 15m
-bin/replicove mirror sync orders --run-name cancel-candidate
-hk -n replica-lab wait replicamirrorrun/cancel-candidate --for=jsonpath='{.status.phase}'=AwaitingActivation --timeout=600s
-bin/replicove mirror cancel cancel-candidate
-hk -n replica-lab wait replicamirrorrun/cancel-candidate --for=delete --timeout=300s
-[[ "$first_replica" == "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeReplica.name}')" ]]
-[[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
 hk -n source-dev exec deployment/orders -- sh -c 'echo host-B > /data/revision; sync'
 bin/replicove mirror hold orders --duration 15m
 mirror_uid=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.metadata.uid}')
@@ -179,7 +207,7 @@ spec:
 YAML
 bin/replicove mirror sync orders --run-name sync-b
 bin/replicove mirror sync orders --run-name sync-b
-hk -n replica-lab wait replicamirrorrun/sync-b --for=jsonpath='{.status.phase}'=AwaitingActivation --timeout=600s
+wait_phase sync-b AwaitingActivation
 [[ "$first_replica" == "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeReplica.name}')" ]]
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
 bin/replicove mirror release orders

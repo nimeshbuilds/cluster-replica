@@ -52,6 +52,8 @@ For YAML upgrades, review the generated diff, preserve the state key and state S
 
 For Helm upgrades, apply CRD updates separately (Helm does not automatically upgrade files in `crds/`) and use `helm upgrade` with the existing release name, protected namespace, and reviewed values. The chart reuses the existing key.
 
+If you opted into `stateKey.bootstrap: true` in Helm values, changing its image also requires replacing the completed bootstrap Job; its pod template is immutable under Helm too. Follow the [conditional bootstrap step](../guides/enable-mirroring.md#3-upgrade-the-same-release). Default Helm installations do not create that Job.
+
 For optional workload data copies, follow [enable mirroring later](../guides/enable-mirroring.md). It covers existing Helm/CLI installations, CRD changes from the earlier alpha, value preservation, snapshot dependencies, and native/GitOps rendering. `replicove install` creates a Helm release; rerunning it does not upgrade that release.
 
 Before uninstalling, delete replica requests and wait for their finalizers and all access requests to finish. See the [cleanup guide](../guides/cleanup.md). **Do not delete the installation namespaces or CRDs to bypass cleanup.** They can contain unrelated resources and the ownership records needed for recovery.

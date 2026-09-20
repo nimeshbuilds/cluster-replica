@@ -67,6 +67,17 @@ The overlay deliberately leaves normal `sources`, `clusterReadRules`, resource l
 
 ## 3. Upgrade the same release
 
+If your saved Helm values explicitly set `stateKey.bootstrap: true`, an image change also changes the bootstrap Job's immutable pod template. After confirming the existing Job completed successfully, remove only that Job so Helm can recreate it with the target image and reuse the existing key:
+
+```bash
+# Only for Helm installations with stateKey.bootstrap: true.
+kubectl -n replicove-system wait job/replicove-bootstrap \
+  --for=condition=complete --timeout=5m && \
+kubectl -n replicove-system delete job replicove-bootstrap --wait=true
+```
+
+If the wait fails, diagnose bootstrap instead of deleting an active or failed Job. The default Helm installation uses `stateKey.bootstrap: false` and skips this step. Preserve the key and protected state in either case.
+
 ```bash
 helm upgrade replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
   --version 0.2.0-alpha.2 \

@@ -150,6 +150,40 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
+  verify-mirrors:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+      REPLICOVE_IMAGE: ghcr.io/nimeshbuilds/replicove@${{ needs.publish.outputs.digest }}
+      REPLICOVE_CHART: oci://ghcr.io/nimeshbuilds/charts/replicove
+      REPLICOVE_CHART_VERSION: ${{ needs.publish.outputs.version }}
+      REPLICOVE_USE_RELEASE_CLI: 'true'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          name: replicove-release
+          path: dist
+      - name: Verify the published optional mirror module
+        run: |
+          ./hack/fetch-e2e-tools.sh
+          ./hack/fetch-helm.sh
+          python3 hack/verify-published-image.py
+          (cd dist && sha256sum --check SHA256SUMS)
+          mkdir -p bin
+          tar -xzf "dist/replicove-$RELEASE_VERSION-linux-amd64.tar.gz" -C bin replicove
+          ./hack/e2e-mirror.sh
+      - name: Retain sanitized mirror release evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: release-mirror-verification
+          path: .cache/mirror-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 30
+
   verify-arm64:
     needs: publish
     runs-on: ubuntu-24.04-arm
@@ -199,7 +233,7 @@ jobs:
           retention-days: 30
 
   release:
-    needs: [publish, verify, verify-arm64, verify-yaml]
+    needs: [publish, verify, verify-arm64, verify-yaml, verify-mirrors]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:

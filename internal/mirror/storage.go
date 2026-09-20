@@ -133,27 +133,47 @@ func (r *Reconciler) captureVolumes(ctx context.Context, st *state.State) (bool,
 		if err := r.Client.Get(ctx, client.ObjectKey{Namespace: s.Namespace, Name: s.PVCName}, pvc); err != nil || string(pvc.UID) != s.PVCUID || pvc.Spec.VolumeName != s.PVName {
 			return false, problem("SourceVolumeChanged", "The source PVC identity changed during capture.")
 		}
+		pv := &corev1.PersistentVolume{}
+		if err := r.Client.Get(ctx, client.ObjectKey{Name: s.PVName}, pv); err != nil || string(pv.UID) != s.PVUID || pv.Spec.CSI == nil || pv.Spec.CSI.Driver != s.Driver || pv.Spec.CSI.VolumeHandle != s.SourceHandle {
+			return false, problem("SourceVolumeChanged", "The source PV identity changed during capture.")
+		}
 		desired := object("VolumeSnapshot", s.Namespace, s.Name)
 		desired.Object["spec"] = map[string]any{"volumeSnapshotClassName": s.SnapshotClass, "source": map[string]any{"persistentVolumeClaimName": s.PVCName}}
 		snap, err := r.ensureSnapshot(ctx, st, desired, s.OperationID, &s.UID)
 		if err != nil {
 			return false, err
 		}
-		if _, ok, _ := unstructured.NestedMap(snap.Object, "status", "error"); ok {
-			return false, problem("CaptureFailed", "The CSI controller reported a snapshot failure; the previous test generation is preserved.")
-		}
-		if !ready(snap) {
+		contentName := str(snap, "status", "boundVolumeSnapshotContentName")
+		if contentName == "" {
+			if _, ok, _ := unstructured.NestedMap(snap.Object, "status", "error"); ok {
+				return false, problem("CaptureFailed", "The CSI controller reported a snapshot failure; the previous test generation is preserved.")
+			}
 			return false, nil
 		}
-		content := object("VolumeSnapshotContent", "", str(snap, "status", "boundVolumeSnapshotContentName"))
-		if content.GetName() == "" {
-			return false, nil
-		}
+		content := object("VolumeSnapshotContent", "", contentName)
 		if err := r.Client.Get(ctx, client.ObjectKeyFromObject(content), content); err != nil {
 			return false, problem("SnapshotContentUnavailable", "Cannot verify snapshot content ownership.")
 		}
-		if str(content, "spec", "volumeSnapshotRef", "uid") != s.UID || str(content, "spec", "source", "volumeHandle") != s.SourceHandle || str(content, "spec", "driver") != s.Driver || str(content, "spec", "deletionPolicy") != "Delete" || !ready(content) {
+		if str(content, "spec", "volumeSnapshotRef", "uid") != s.UID || (s.ContentUID != "" && s.ContentUID != string(content.GetUID())) {
+			return false, problem("SnapshotContentMismatch", "The snapshot content belongs to a different identity.")
+		}
+		// Journal bound content even when CSI is still restoring or reports an
+		// error. Cancellation must wait for its deletion rather than orphan it.
+		if s.ContentUID == "" {
+			s.ContentName = content.GetName()
+			s.ContentUID = string(content.GetUID())
+			if err := r.Store.Save(ctx, st); err != nil {
+				return false, err
+			}
+		}
+		if str(content, "spec", "source", "volumeHandle") != s.SourceHandle || str(content, "spec", "driver") != s.Driver || str(content, "spec", "deletionPolicy") != "Delete" {
 			return false, problem("SnapshotContentMismatch", "The CSI snapshot does not match the recorded source volume and retention policy.")
+		}
+		if _, ok, _ := unstructured.NestedMap(snap.Object, "status", "error"); ok {
+			return false, problem("CaptureFailed", "The CSI controller reported a snapshot failure; the previous test generation is preserved.")
+		}
+		if !ready(snap) || !ready(content) {
+			return false, nil
 		}
 		handle := str(content, "status", "snapshotHandle")
 		if handle == "" {

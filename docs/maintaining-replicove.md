@@ -27,3 +27,11 @@ For local packaging, run `./hack/fetch-helm.sh` then `./hack/release-artifacts.s
 If verification fails after publication, retain the failed run and rerun **failed jobs** after fixing the external issue. Do not replace an existing version tag. A source change requires a new version and a newly tested commit. OCI build metadata is not a separate signed release attestation; upstream runtime image digest locking remains tracked in issue #6.
 
 For an operator chart upgrade, retain its system namespace and immutable encryption key. Test restoring the key and sealed records before changing storage implementation. Never delete state or force finalizers to make an upgrade appear successful.
+
+## Mirror dependency upgrades
+
+Keep snapshot APIs/controller versions in `charts/replicove/files/NOTICE.md`, vendored schema checksums, `mirrors.snapshotController.image`, and the mirror guide aligned. `TestMirrorDependencyContract` checks the exact upstream schemas, optional modes, and bounded source permissions. New drivers require real capture/restore/delete qualification rather than a chart-only test.
+
+A vCluster upgrade must also qualify PVC snapshot dataSource translation, the explicit skip-translation annotation, guest object labels/UIDs, host egress selectors, and existing-runtime namespace separation. Run the complete mirror suite for data contents, guest-only writes, latest and saved resets, scheduling, leases, cancellation, existing-runtime access, TTL, restarts and upgrades. Do not remove old cleanup paths while outstanding mirrors use them.
+
+Documentation CI generates every CRD field and discovers the complete CLI command tree from the current binary. It builds strictly and checks every local link/anchor. Feature changes must also update the guide, examples, status/evidence and release notes in the same change; automation cannot verify prose claims about cloud compatibility.

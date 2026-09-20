@@ -158,6 +158,32 @@ func TestAPIServerContract(t *testing.T) {
 		}
 	})
 
+	t.Run("published mirror examples satisfy current schemas", func(t *testing.T) {
+		data, err := os.ReadFile(filepath.Join("..", "..", "examples", "mirror", "grant.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		grant := &v1alpha1.ReplicaGrant{}
+		if err := yaml.UnmarshalStrict(data, grant); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.Create(ctx, grant); err != nil {
+			t.Fatal(err)
+		}
+		data, err = os.ReadFile(filepath.Join("..", "..", "examples", "mirror", "mirror.yaml"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		mirror := &v1alpha1.ReplicaMirror{}
+		if err := yaml.UnmarshalStrict(data, mirror); err != nil {
+			t.Fatal(err)
+		}
+		mirror.Namespace = "lab"
+		if err := c.Create(ctx, mirror); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("immutable spec status expiry and finalizer", func(t *testing.T) {
 		obj := newRequest("lifecycle")
 		if err := c.Create(ctx, obj); err != nil {

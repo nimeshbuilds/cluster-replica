@@ -189,3 +189,21 @@ func TestPartialRestoreCleanupWaitsForPhysicalStorage(t *testing.T) {
 		t.Fatalf("finished cleanup: %v %v", done, err)
 	}
 }
+
+func TestFiveMinuteMirrorCanCreateBoundedGeneration(t *testing.T) {
+	r, m, g := fixture(t)
+	m.Spec.Template.TTL = "5m"
+	scope, err := r.authorize(m, g)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := &state.State{OwnerUID: "short-run", MirrorRun: &state.MirrorRun{MirrorUID: string(m.UID)}}
+	save(t, r, st)
+	child, err := r.child(context.Background(), m, scope, st, r.now().Add(4*time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.Spec.TTL != "5m" {
+		t.Fatalf("invalid minimum child TTL: %s", child.Spec.TTL)
+	}
+}

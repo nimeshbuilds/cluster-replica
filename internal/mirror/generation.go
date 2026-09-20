@@ -492,6 +492,9 @@ func (r *Reconciler) Prepare(ctx context.Context, child *api.ClusterReplica, cs 
 	if parent == nil || parent.Mirror == nil {
 		return false, state.ErrUnavailable
 	}
+	if parent.Mirror.ExpiresAt.IsZero() || !r.now().Before(parent.Mirror.ExpiresAt) {
+		return false, problem("MirrorExpired", "The protected mirror lifetime has ended.")
+	}
 	if parent.Mirror.ActiveUID != st.OwnerUID && parent.Mirror.PendingUID != st.OwnerUID {
 		return false, problem("GenerationRetired", "This generation is no longer active or being prepared.")
 	}

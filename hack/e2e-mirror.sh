@@ -20,6 +20,8 @@ cleanup(){
   hk -n replicove-system logs deployment/replicove-snapshot-controller --tail=100 > "$work/artifacts/snapshots.log" 2>&1 || true
   hk -n replica-lab get replicamirrors,replicamirrorruns,clusterreplicas -o json > "$work/artifacts/status.json" || true
   hk get pods -A -o wide > "$work/artifacts/pods.txt" || true
+  hk -n replica-lab get pods --show-labels > "$work/artifacts/labels.txt" || true
+  hk -n replica-lab get networkpolicies -o yaml > "$work/artifacts/networkpolicies.yaml" || true
   hk get events -A --field-selector type=Warning > "$work/artifacts/warnings.txt" || true
   kind delete cluster --name "$cluster" || true
  fi
@@ -100,6 +102,13 @@ hk -n replicove-system rollout status deployment/replicove --timeout=120s
 controller_uid=$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')
 replicove_helm_install test/mirror/values.yaml
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
+# Another installation reuses host snapshot APIs/controller without adopting them.
+REPLICOVE_HELM_RELEASE=mirror-probe REPLICOVE_HELM_NAMESPACE=mirror-probe-system REPLICOVE_DESTINATION_NAMESPACE=mirror-probe-lab replicove_helm_install test/mirror/values.yaml
+[[ -z "$(hk -n mirror-probe-system get deployment mirror-probe-snapshot-controller --ignore-not-found -o name)" ]]
+[[ "$(hk get crd volumesnapshots.snapshot.storage.k8s.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}')" == replicove ]]
+helm uninstall mirror-probe --namespace mirror-probe-system --wait --timeout 120s
+[[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
+
 # Register the running, independently owned runtime for a second mirror. Its
 # TTL must remove only that mirror's generation, credentials and restored data.
 runtime_release=$(hk -n replica-lab get clusterreplica "$first_replica" -o jsonpath='{.status.runtime.releaseName}')
@@ -203,5 +212,5 @@ hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
 [[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
+{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
 JSON

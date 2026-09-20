@@ -48,3 +48,9 @@ TTL supplies a fallback when the runner vanishes. It does not replace a pipeline
 - [Workload runners](../../hack/e2e-workload.sh): cert-manager, Spark, Trino and admission-policy scenarios.
 
 The disposable test runners choose unique kind cluster names, private kubeconfig paths, and sanitized artifacts. They remove only the cluster they created. Build-specific runtime artifacts stay under ignored `.cache/` paths.
+
+## Mirror requests in CI or GitOps
+
+The optional mirror module uses `ReplicaMirror` for selection/TTL and immutable `ReplicaMirrorRun` resources for manual Sync/Reset requests. Submit a distinct run name per build; retrying the same name/spec is idempotent. Pin `mirrorRef.uid` to the current mirror and use `revisionRef` only for a saved Reset. An interval provides automatic latest-source sync; suspension stops new scheduling without cancelling existing requests.
+
+Agents authenticate to the host Kubernetes API using their normal kubeconfig or ServiceAccount and need namespace RBAC for the mirror/run/access operations they use. Administrators alone define the separate PVC data grants. A CI run should obtain its bounded guest credential, hold the active generation while testing, and release/delete it in its cleanup path. See [the complete mirror guide](mirrors.md) for YAML, CLI, retention and test leases.

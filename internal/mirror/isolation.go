@@ -52,8 +52,11 @@ func (r *Reconciler) ensurePolicies(ctx context.Context, run, child *state.State
 	}
 	tcp, udp := corev1.ProtocolTCP, corev1.ProtocolUDP
 	dns := intstr.FromInt32(53)
+	dnsBackend := intstr.FromInt32(1053)
 	peer := selector(release, namespaces)
-	dnsPeer := metav1.LabelSelector{MatchLabels: map[string]string{"vcluster.loft.sh/managed-by": release, "vcluster.loft.sh/namespace": "kube-system", "k8s-app": "kube-dns"}}
+	// vCluster 0.37.1 CoreDNS uses vcluster-kube-dns and backend port 1053.
+	// Allow the Service port as well for CNIs enforcing before destination NAT.
+	dnsPeer := metav1.LabelSelector{MatchLabels: map[string]string{"vcluster.loft.sh/managed-by": release, "vcluster.loft.sh/namespace": "kube-system", "k8s-app": "vcluster-kube-dns"}}
 	apiPeer := metav1.LabelSelector{MatchLabels: map[string]string{"app": "vcluster", "release": release}}
 	ports := []networkingv1.NetworkPolicyPort{}
 	for _, n := range []int32{443, 6443, 8443} {
@@ -62,7 +65,7 @@ func (r *Reconciler) ensurePolicies(ctx context.Context, run, child *state.State
 	}
 	desired := &networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Namespace: e.Namespace, Name: e.Name}, Spec: networkingv1.NetworkPolicySpec{PodSelector: peer, PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeEgress}, Egress: []networkingv1.NetworkPolicyEgressRule{
 		{To: []networkingv1.NetworkPolicyPeer{{PodSelector: &peer}}},
-		{To: []networkingv1.NetworkPolicyPeer{{PodSelector: &dnsPeer}}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: &udp, Port: &dns}, {Protocol: &tcp, Port: &dns}}},
+		{To: []networkingv1.NetworkPolicyPeer{{PodSelector: &dnsPeer}}, Ports: []networkingv1.NetworkPolicyPort{{Protocol: &udp, Port: &dns}, {Protocol: &tcp, Port: &dns}, {Protocol: &udp, Port: &dnsBackend}, {Protocol: &tcp, Port: &dnsBackend}}},
 		{To: []networkingv1.NetworkPolicyPeer{{PodSelector: &apiPeer}}, Ports: ports},
 	}}}
 	mark(desired, run.OwnerUID, e.OperationID)

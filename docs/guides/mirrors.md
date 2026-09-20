@@ -96,11 +96,11 @@ replicove mirror status orders
 replicove mirror connect orders --role deployer --output ./orders.kubeconfig
 ```
 
-`connect` resolves the active generation once and obtains an expiring guest session. It never redirects an ongoing test into a replacement generation. Reconnect after a reset. Existing targets use their configured network route through `mirror access`.
+`connect` resolves the active generation once and obtains an expiring guest session. It never redirects an ongoing test into a replacement generation. Reconnect after a reset. Kubernetes TokenRequest requires at least ten minutes of remaining lifetime when issuing a session; allow at least 15 minutes including provisioning for CLI/agent access. Shorter mirrors can run through an existing administrator-controlled integration route. Existing targets use their configured network route through `mirror access`.
 
 The template and selected PVC list are immutable. Interval, suspend, retention within the grant, and the bounded test lease can change. Template TTL bounds the **whole mirror**, including capture and every replacement; resetting does not renew it. All captured PVCs must be listed. StatefulSets require every current ordinal's PVC, including controller-owned claims, to be explicitly granted. CronJobs are suspended in copies. One-shot Jobs require a future replay adapter.
 
-Managed mirrors provision a dedicated vCluster for each generation and preserve selected guest namespace names. Existing-target mirrors create new, exclusively owned guest namespaces. They currently require namespaced resources and an administrator-qualified `existingTargets[].mirrorReleaseName` for a vCluster 0.37.1 single-namespace runtime in the destination host namespace. Shared operators/schemas must already be available, or use a dedicated runtime. Namespace names and references can change; arbitrary configuration strings and external endpoints are never guessed.
+Managed mirrors provision a dedicated vCluster for each generation and preserve selected guest namespace names. Existing-target mirrors create new, exclusively owned guest namespaces. They currently require namespaced resources and an administrator-qualified `existingTargets[].mirrorReleaseName` for a vCluster 0.37.1 single-namespace runtime in the destination host namespace, using its default separate CoreDNS deployment (`k8s-app: vcluster-kube-dns`, backend port 1053). Custom/embedded DNS and alternative label translation require separate qualification. Shared operators/schemas must already be available, or use a dedicated runtime. Namespace names and references can change; arbitrary configuration strings and external endpoints are never guessed.
 
 ## Sync latest data, or reset to a saved capture
 

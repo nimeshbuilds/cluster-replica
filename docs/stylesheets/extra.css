@@ -17,3 +17,6 @@
 .feature-grid h3 { font-size: .85rem; }
 .feature-grid p { font-size: .76rem; color: var(--md-default-fg-color--light); }
 @media (max-width: 700px) { .hero h1 { font-size: 2.1rem; } .feature-grid { grid-template-columns: 1fr; } }
+[data-md-color-scheme="slate"] { --md-typeset-a-color: #94b7ff; }
+[data-md-color-scheme="slate"] .md-nav__link--active { color: #94b7ff; }
+[data-md-color-scheme="slate"] .md-typeset .md-button:not(.md-button--primary) { color: #94b7ff; border-color: #94b7ff; }

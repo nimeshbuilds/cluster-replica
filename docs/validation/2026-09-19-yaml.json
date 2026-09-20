@@ -1,0 +1,1 @@
+{"scenario":"yaml-only","operatorInstall":true,"inClusterKeyBootstrap":true,"idempotentBootstrap":true,"vclusterProvisioned":true,"replicatedConfig":true,"sourcePreserved":true,"boundedAccess":true,"revocation":true,"ownedCleanup":true}

@@ -90,7 +90,13 @@ def prepare():
 
 
 def cell(text):
-    return str(text).replace('|', '&#124;').replace('\n', ' ').strip()
+    # Encode punctuation so table pipes and regex character classes remain
+    # literal code, rather than being parsed as Markdown links or columns.
+    def literal(match):
+        value = ''.join(char if char.isalnum() or char == ' ' else f'&#{ord(char)};' for char in match[1])
+        return '<code>' + value + '</code>'
+    text = re.sub(r'`([^`]+)`', literal, str(text))
+    return text.replace('|', '&#124;').replace('\n', ' ').strip()
 
 
 def rows(schema, prefix='', required=False):

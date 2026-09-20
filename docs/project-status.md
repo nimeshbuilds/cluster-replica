@@ -8,6 +8,12 @@ The operator and CLI on `main` support source grants, capture and planning, sele
 
 The installed operator uses explicit runtime resource/verb permissions. Chart contracts verify coverage of the pinned vCluster Role without wildcard permissions or escalation bypasses. Real API tests and the two live host workflows check source/destination authorization and reject wildcard Role escalation and cluster-admin bindings. Host API permissions do not establish isolation of shared workers or networks; see [Security](../SECURITY.md).
 
+## YAML and developer documentation
+
+A [native YAML quickstart](getting-started/yaml.md) installs the operator and creates, accesses, and cleans up a replica through Kubernetes manifests and kubectl. The generated installer shares its chart/RBAC with the CLI and initializes its immutable state key inside the cluster. The [YAML lifecycle CI job](https://github.com/nimeshbuilds/replicove/actions/runs/35477718800/job/105989750205) passed at `b615d8a`; see [validation](validation.md).
+
+The [developer site](https://nimeshbuilds.github.io/replicove/) includes searchable feature guides, generated API/CLI references, compatibility limits, troubleshooting and maintenance. Both entry points still build an operator image from source.
+
 ## Recorded behavior evidence
 
 At integrated alpha revision [`c2c5ea3`](https://github.com/nimeshbuilds/replicove/commit/c2c5ea387c74964dd8f12c9c0d81a0c96c1c673c), **all eight jobs passed** in [this disposable-cluster CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195). Its file contents were merged unchanged into `main` as [`c5d4d62`](https://github.com/nimeshbuilds/replicove/commit/c5d4d627e5e16da22085305f591c9fea305cd236):

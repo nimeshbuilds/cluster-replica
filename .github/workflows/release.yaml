@@ -157,7 +157,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        initial: [current, previous]
+        initial: [current, previous, native]
     env:
       REPLICOVE_MIRROR_BASE: ${{ matrix.initial }}
       RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}

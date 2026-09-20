@@ -159,7 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        initial: [current, previous]
+        initial: [current, previous, native]
     env:
       REPLICOVE_MIRROR_BASE: ${{ matrix.initial }}
     steps:

@@ -125,12 +125,13 @@ hk -n replicove-system rollout status deployment/replicove --timeout=120s
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
 # Upgrades must reuse the snapshot controller and its CRDs.
 controller_uid=$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')
-replicove_helm_install test/mirror/values.yaml
+if [[ "$mirror_base" == native ]]; then hk apply -f "$work/native-enabled.yaml"; else replicove_helm_install test/mirror/values.yaml; fi
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
 # Another installation reuses host snapshot APIs/controller without adopting them.
 REPLICOVE_HELM_RELEASE=mirror-probe REPLICOVE_HELM_NAMESPACE=mirror-probe-system REPLICOVE_DESTINATION_NAMESPACE=mirror-probe-lab replicove_helm_install test/mirror/values.yaml
 [[ -z "$(hk -n mirror-probe-system get deployment mirror-probe-snapshot-controller --ignore-not-found -o name)" ]]
-[[ "$(hk get crd volumesnapshots.snapshot.storage.k8s.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}')" == replicove ]]
+snapshot_owner=$(hk get crd volumesnapshots.snapshot.storage.k8s.io -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}')
+if [[ "$mirror_base" == native ]]; then [[ -z "$snapshot_owner" ]]; else [[ "$snapshot_owner" == replicove ]]; fi
 helm uninstall mirror-probe --namespace mirror-probe-system --wait --timeout 120s
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
 

@@ -32,6 +32,8 @@ For an operator chart upgrade, retain its system namespace and immutable encrypt
 
 Keep snapshot APIs/controller versions in `charts/replicove/files/NOTICE.md`, vendored schema checksums, `mirrors.snapshotController.image`, and the mirror guide aligned. `TestMirrorDependencyContract` checks the exact upstream schemas, optional modes, and bounded source permissions. New drivers require real capture/restore/delete qualification rather than a chart-only test.
 
+Preserve mirror infrastructure labels so broad source capture cannot select installation RBAC/controllers as application resources. Require the late-enable matrix from both pinned older Helm releases and native YAML, with a running guest and state-key preservation. When updating the matrix's starting versions, retain a pre-mirror release case while that upgrade remains documented and keep the fixture's digest/version pins together.
+
 A vCluster upgrade must also qualify PVC snapshot dataSource translation, the explicit skip-translation annotation, guest object labels/UIDs, host egress selectors, and existing-runtime namespace separation. Run the complete mirror suite for data contents, guest-only writes, latest and saved resets, scheduling, leases, cancellation, existing-runtime access, TTL, restarts and upgrades. Do not remove old cleanup paths while outstanding mirrors use them.
 
 Documentation CI generates every CRD field and discovers the complete CLI command tree from the current binary. It builds strictly and checks every local link/anchor. Feature changes must also update the guide, examples, status/evidence and release notes in the same change; automation cannot verify prose claims about cloud compatibility.

@@ -1,6 +1,18 @@
 # Sourced only by the disposable mirror runner after its host/CNI is ready.
 # Keep a real ordinary replica and its encrypted state alive through opt-in.
 mirror_base="${REPLICOVE_MIRROR_BASE:-current}"
+native_mirror_render() {
+ local image="${REPLICOVE_IMAGE:-cluster-replica:e2e}" args=()
+ if [[ "$image" == *@sha256:* ]]; then
+  args+=(--set-string "image.repository=${image%@*}" --set-string "image.digest=${image#*@}")
+ else
+  args+=(--set-string "image.repository=${image%:*}" --set-string "image.tag=${image##*:}" --set-string 'image.digest=')
+ fi
+ if [[ -n "${REPLICOVE_CHART_VERSION:-}" ]]; then args+=(--version "$REPLICOVE_CHART_VERSION"); fi
+ helm template replicove "${REPLICOVE_CHART:-./charts/replicove}" --namespace replicove-system --include-crds \
+  --values test/mirror/disabled-values.yaml --set stateKey.bootstrap=true --set createDestinationNamespace=false \
+  "${args[@]}" "$@"
+}
 case "$mirror_base" in
  current)
   mirror_base_version=0.2.0-alpha.1
@@ -17,7 +29,18 @@ case "$mirror_base" in
    replicove_helm_install test/mirror/disabled-values.yaml
   [[ -z "$(hk get crd replicamirrors.replica.nimeshbuilds.dev --ignore-not-found -o name)" ]]
   ;;
- *) echo 'REPLICOVE_MIRROR_BASE must be current or previous' >&2; exit 2 ;;
+ native)
+  mirror_base_version=0.2.0-alpha.1
+  hk create namespace replicove-system
+  hk create namespace replica-lab
+  REPLICOVE_CHART=oci://ghcr.io/nimeshbuilds/charts/replicove \
+  REPLICOVE_CHART_VERSION=0.2.0-alpha.1 \
+  REPLICOVE_IMAGE=ghcr.io/nimeshbuilds/replicove@sha256:306ca6cd22b77d890ef3db0fe0039a7a7aea3c3553dfb21c4ce3ee715f3be0a1 \
+   native_mirror_render > "$work/native-before.yaml"
+  hk apply -f "$work/native-before.yaml"
+  hk -n replicove-system wait job/replicove-bootstrap --for=condition=complete --timeout=120s
+  ;;
+ *) echo 'REPLICOVE_MIRROR_BASE must be current, previous or native' >&2; exit 2 ;;
 esac
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 [[ -z "$(hk -n replicove-system get deployment replicove-snapshot-controller --ignore-not-found -o name)" ]]
@@ -68,7 +91,8 @@ before_expiry=$(hk -n replica-lab get clusterreplica before-mirrors -o jsonpath=
 before_key=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
 before_destination=$(hk get namespace replica-lab -o jsonpath='{.metadata.uid}')
 before_operator=$(hk -n replicove-system get deployment replicove -o jsonpath='{.metadata.uid}')
-helm get values replicove -n replicove-system -o json > "$work/values-before.json"
+if [[ "$mirror_base" != native ]]; then helm get values replicove -n replicove-system -o json > "$work/values-before.json"; fi
+hk -n replicove-system get deployment replicove -o json | python3 -c 'import json,sys;d=json.load(sys.stdin);json.dump(d["spec"]["template"]["spec"]["containers"][0]["resources"],sys.stdout)' > "$work/resources-before.json"
 
 # Helm does not upgrade CRDs. Install the exact target chart schemas first,
 # including ReplicaGrant's new volume-data policy when upgrading from 0.1.
@@ -87,9 +111,20 @@ mirrors:
 YAML
 # Helper supplies the reviewed target image explicitly, replacing any previous
 # image digest. Retain all other user settings, while loading new chart defaults.
-replicove_helm_install "$work/enable-mirrors.yaml" --reset-then-reuse-values
+if [[ "$mirror_base" == native ]]; then
+ # Offline rendering needs an explicit snapshot ownership decision. This fixture
+ # established there is no host snapshot system before selecting managed mode.
+ native_mirror_render --values "$work/enable-mirrors.yaml" --set mirrors.snapshotController.mode=managed > "$work/native-enabled.yaml"
+ hk -n replicove-system wait job/replicove-bootstrap --for=condition=complete --timeout=120s
+ hk -n replicove-system delete job replicove-bootstrap --wait=true --timeout=120s
+ hk apply -f "$work/native-enabled.yaml"
+ hk -n replicove-system wait job/replicove-bootstrap --for=condition=complete --timeout=120s
+else
+ replicove_helm_install "$work/enable-mirrors.yaml" --reset-then-reuse-values
+fi
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
+if [[ "$mirror_base" != native ]]; then
 helm get values replicove -n replicove-system -o json > "$work/values-after.json"
 python3 - "$work/values-before.json" "$work/values-after.json" <<'PY'
 import json,sys
@@ -99,6 +134,9 @@ for key,value in before.items():
   assert after[key]==value, 'Existing installation values changed: '+key
 assert after['mirrors']['enabled'] is True
 PY
+fi
+hk -n replicove-system get deployment replicove -o json | python3 -c 'import json,sys;d=json.load(sys.stdin);json.dump(d["spec"]["template"]["spec"]["containers"][0]["resources"],sys.stdout)' > "$work/resources-after.json"
+cmp "$work/resources-before.json" "$work/resources-after.json"
 [[ "$before_key" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 [[ "$before_destination" == "$(hk get namespace replica-lab -o jsonpath='{.metadata.uid}')" ]]
 [[ "$before_operator" == "$(hk -n replicove-system get deployment replicove -o jsonpath='{.metadata.uid}')" ]]
@@ -120,7 +158,7 @@ PY
 [[ "$(kubectl --kubeconfig "$work/enable-later-access.kubeconfig" -n before-mirrors get configmap before-mirrors -o jsonpath='{.data.mode}')" == guest-experiment ]]
 python3 - "$mirror_base" "$mirror_base_version" > "$work/artifacts/enable-later.json" <<'PY'
 import json,sys
-json.dump({'result':'passed','initialInstall':sys.argv[1],'initialVersion':sys.argv[2],'scenarios':['mirrors-initially-disabled','snapshot-components-added-on-upgrade','crds-updated-before-operator','saved-values-preserved','encryption-key-preserved','destination-and-operator-uid-preserved','active-runtime-and-guest-uid-preserved','guest-experiment-and-source-preserved','original-ttl-preserved','existing-session-preserved','fresh-session-from-existing-state']},sys.stdout)
+json.dump({'result':'passed','initialInstall':sys.argv[1],'initialVersion':sys.argv[2],'scenarios':['mirrors-initially-disabled','snapshot-components-added-on-upgrade','crds-updated-before-operator','installation-settings-preserved','encryption-key-preserved','destination-and-operator-uid-preserved','active-runtime-and-guest-uid-preserved','guest-experiment-and-source-preserved','original-ttl-preserved','existing-session-preserved','fresh-session-from-existing-state']},sys.stdout)
 PY
 
 # Explicit fixture cleanup frees the one-runtime host namespace for the managed

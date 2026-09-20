@@ -127,7 +127,7 @@ helm template replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
 
 Also pass your original native customizations if applicable. Review the complete bundle against the existing manifests, preserve separate namespace and source-RBAC manifests, apply the Replicove CRDs first, then apply the reviewed installation bundle. `stateKey.bootstrap: true` reuses the existing key; never render a new key offline. The bundle must include the mirror RBAC and any selected snapshot infrastructure, not just new Deployment flags. If the bootstrap Job's image/template changed, replace only its **completed** Job before applying; never replace an active bootstrap Job. Wait for bootstrap and controller readiness. See [YAML upgrades](../getting-started/installation.md#upgrades-and-removal) and [GitOps ordering/pruning](gitops.md#reconcile-installation-in-order).
 
-The late-enable live suite covers Helm and CLI-created Helm releases' common upgrade mechanism. The native installation/bootstrap has its own live suite; late opt-in through a customized native/GitOps overlay is not separately live-qualified. Validate that rendered transition on a disposable cluster before using it elsewhere.
+The late-enable live suite covers the Helm upgrade mechanism used by Helm/CLI installations and a native rendered-manifest transition from 0.2.0-alpha.1, including completed-Job replacement and key reuse. It does not exercise every GitOps controller's reconciliation/pruning behavior or arbitrary custom overlays. Validate your controller's desired diff and apply ordering on a disposable cluster.
 
 ## Recovery and disabling
 
@@ -137,4 +137,4 @@ Before setting `mirrors.enabled: false`, delete all `ReplicaMirror` requests and
 
 ## Verification scope
 
-The [disposable mirror suite](../../hack/e2e-mirror.sh) starts with mirroring disabled, provisions an ordinary guest, changes guest data, and then enables the module. It has separate published-0.2.0-alpha.1 and published-0.1.0-alpha.1 starting points. It checks saved values, key/namespace/runtime identity, original TTL, existing access and newly issued access before explicitly cleaning that fixture and running the full mirror lifecycle suite. Results and tested versions belong in the [validation record](../validation.md); fixture presence alone is not a passing result.
+The [disposable mirror suite](../../hack/e2e-mirror.sh) starts with mirroring disabled, provisions an ordinary guest, changes guest data, and then enables the module. It has published-0.2.0-alpha.1 and published-0.1.0-alpha.1 Helm starting points and a rendered 0.2.0-alpha.1 native YAML starting point. It checks installation settings, key/namespace/runtime identity, original TTL, existing access and newly issued access before explicitly cleaning that fixture and running the full mirror lifecycle suite. Results and tested versions belong in the [validation record](../validation.md); fixture presence alone is not a passing result.

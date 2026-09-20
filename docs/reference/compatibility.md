@@ -45,7 +45,7 @@ Exact revisions, CI runs, and scope are linked on [project status](../project-st
 - No guest Helm release reconstruction in Helm storage, lifecycle-hook execution, or recovered upstream signature claim.
 - No per-user ownership authentication inside a shared destination grant; authorization is delegated by namespace.
 - No independent kernel, worker-node, network, or cloud-account isolation from the host through the current profiles.
-- No published production release, container image, binary support policy, performance SLO, or broad operator certification.
+- No production support policy for releases, container images or CLI binaries; no performance SLO or broad operator certification.
 
 ## Bounded requests
 

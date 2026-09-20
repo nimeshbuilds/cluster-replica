@@ -10,7 +10,7 @@ Replicove is declarative. A GitOps controller or Kubernetes client can submit th
 4. Apply source read RBAC and administrator grants.
 5. Submit replica requests only after their dependencies are ready.
 
-The native [installer](../../config/install/) is generated from the operator chart. Use a Kustomize overlay to choose your built image. If changing the completed bootstrap Job's pod template, explicitly replace that Job; Kubernetes does not allow an in-place Job template update. Reinitialization reuses the immutable key.
+The native [installer](../../config/install/) is generated from the operator chart. Use the versioned release manifests with a digest-pinned image, or a Kustomize overlay for your own build. When rendering the Helm chart offline, manage the destination namespace separately (`createDestinationNamespace: false`) and use the explicit bootstrap Job (`stateKey.bootstrap: true`) so repeated renders do not generate new encryption keys. If changing the completed bootstrap Job's pod template, explicitly replace that Job; Kubernetes does not allow an in-place Job template update. Reinitialization reuses the immutable key.
 
 Exclude dynamically created encryption/state/credential Secrets and runtime resources from declarative pruning. Those are controller-owned runtime state, not desired manifests to copy into Git. Do not enable namespace or CRD pruning as a shortcut for replica cleanup.
 

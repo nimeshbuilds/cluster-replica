@@ -4,6 +4,8 @@ An administrator can register an existing guest instead of asking Replicove to i
 
 It does not automatically discover and adopt arbitrary vClusters. Registration requires a trusted route, data-only kubeconfig, and pinned guest identity.
 
+Install the operator using the same [one-command Helm installation](../getting-started/helm.md#1-install). The existing vCluster can predate the operator; no replacement runtime is required. Then register it below.
+
 ## 1. Prepare the target
 
 Create the destination namespaces **inside the guest** before requesting replication. The configured target credential must authorize the guest resources and access identities Replicove will manage. Start with a disposable target and a minimal selection.

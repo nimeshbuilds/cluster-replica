@@ -8,11 +8,11 @@ The supported workflow is portable Kubernetes desired state. Cloud identity exch
 
 ## Install and create
 
-Build `make build`, build/push the operator image, and use a disposable cluster. The image tag below is your own pushed build until a release is published:
+Download the CLI from the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1), or use `make build` for contributor work. Use a disposable cluster. The [Helm quickstart](getting-started/helm.md) installs the operator with one command; the CLI installation below uses the same embedded chart:
 
 ```sh
 bin/replicove install --context YOUR_TEST_CONTEXT \
-  --image YOUR_REGISTRY/replicove:dev --values operator-values.yaml
+  --image ghcr.io/nimeshbuilds/replicove:0.1.0-alpha.1 --values operator-values.yaml
 kubectl --context YOUR_TEST_CONTEXT apply -f administrator-grant.yaml
 bin/replicove create integration --context YOUR_TEST_CONTEXT \
   --grant source-dev-lab --ttl 2h --manual \

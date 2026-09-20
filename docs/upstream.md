@@ -13,7 +13,7 @@ Initial candidate, 19 September 2026:
 | controller-gen | v0.22.0 | [Release](https://github.com/kubernetes-sigs/controller-tools/releases/tag/v0.22.0) |
 | envtest API server | v1.37.0 | [Test binaries](https://github.com/kubernetes-sigs/controller-tools/releases/tag/envtest-v1.37.0) |
 
-These are development pins, not a certified compatibility claim. No upstream source or chart archive is vendored here. Downloads are checked before use; container images are still tag-pinned, so image digests and provenance remain release work.
+These are development pins, not a certified compatibility claim. No upstream source or chart archive is vendored here. Downloads are checked before use; upstream vCluster and guest images are still tag-pinned, so their digest locking remains runtime maintenance work. The published Replicove operator chart and YAML pin the operator image digest.
 
 ## Update checklist
 

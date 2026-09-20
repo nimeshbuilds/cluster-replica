@@ -1,9 +1,14 @@
 # Install into an administrator-only namespace, separate from destinationNamespace.
 image:
   repository: ghcr.io/nimeshbuilds/replicove
-  tag: "0.1.0"
+  tag: "0.1.0-alpha.1"
+  # When set, digest takes precedence over tag (sha256: followed by 64 hex digits).
+  digest: ""
   pullPolicy: IfNotPresent
 destinationNamespace: replica-lab
+# Create if absent; reuse an existing namespace without taking ownership.
+# A namespace created by this chart is retained on uninstall.
+createDestinationNamespace: true
 # Native YAML uses a one-shot Job so no encryption key is committed to Git.
 # Helm installations retain their existing generated Secret by default.
 stateKey:

@@ -2,17 +2,17 @@
 
 Replicove is a Go operator installed on your host cluster. It watches one destination namespace and keeps encrypted capture and access state in a separate, administrator-only namespace.
 
-The alpha is distributed as source. The chart's default image name is a release placeholder; **build and load or push your own image** before installing. Neither walkthrough assumes that placeholder is available in a registry.
+Public alpha artifacts are available on [GitHub Releases](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1) and GitHub Container Registry. Installing does not require a local image build or a GitHub login.
 
 ## Choose a path
 
 | Path | Use it when | Tools |
 | --- | --- | --- |
-| [YAML quickstart](yaml.md) | You want native manifests, GitOps, or no Replicove CLI dependency | Docker, Git, kubectl; kind for the local demo |
-| [CLI quickstart](../../QUICKSTART.md) | You want plan/approval commands and a managed local tunnel | Above plus Go and make to build the CLI |
-| Helm chart | You already manage infrastructure with Helm | Built operator image and Helm compatible with the chart |
+| [Helm quickstart](helm.md) | You want a single-command operator installation | Helm and kubectl on an existing disposable host |
+| [YAML quickstart](yaml.md) | You want native manifests or GitOps | kubectl; Docker and repository tools for the local kind demo |
+| [CLI quickstart](../../QUICKSTART.md) | You want plan/approval commands and a managed local tunnel | Published Replicove CLI; Docker and repository tools for the local demo |
 
-The YAML installer is generated from the **same chart** as the CLI, keeping the Deployment and permissions aligned. The operator uses the pinned vCluster chart internally; end users do not need a Helm CLI or preinstalled vCluster.
+The YAML installer is generated from the **same chart** as the CLI. Replicove uses the pinned vCluster chart internally; end users do not need a Helm CLI or preinstalled vCluster when using the YAML path.
 
 ## Host prerequisites
 
@@ -26,40 +26,17 @@ The live host tests cover Kubernetes 1.35.8 and 1.36.4, with vCluster 0.37.1 and
 
 ## Install on your own disposable cluster
 
-Build and push a tag your nodes can pull. Supply your own registry and choose an explicit test-cluster context:
+Use your administrator test-cluster context:
 
 ```bash
-docker build --tag YOUR_REGISTRY/replicove:dev .
-docker push YOUR_REGISTRY/replicove:dev
+helm --kube-context YOUR_TEST_CONTEXT upgrade --install replicove \
+  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.1.0-alpha.1 \
+  --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
-For native YAML, copy `examples/yaml/install/kustomization.yaml` to a local overlay, keep its base pointing at `config/install`, and set `newName` and `newTag` to your image. Apply the CRDs, wait for them to be established, apply the overlay, then wait for the bootstrap Job and operator Deployment as shown in the [walkthrough](yaml.md). Keep the system and destination namespace names consistent in all resources and references if you customize them.
+The chart creates the destination namespace if needed. It starts with no source permissions; add explicit source RBAC and matching grants as shown in the [Helm quickstart](helm.md). An already-running vCluster can be [registered as an existing target](../guides/existing.md).
 
-For Helm, create the destination and source namespaces first and provide values:
-
-```yaml
-image:
-  repository: YOUR_REGISTRY/replicove
-  tag: dev
-destinationNamespace: replica-lab
-sources:
-  - namespace: source-dev
-    rules:
-      - apiGroups: [""]
-        resources: [configmaps, serviceaccounts, services]
-        verbs: [get, list]
-      - apiGroups: [apps]
-        resources: [deployments]
-        verbs: [get, list]
-```
-
-```bash
-kubectl --context YOUR_TEST_CONTEXT create namespace replica-lab
-helm --kube-context YOUR_TEST_CONTEXT install replicove ./charts/replicove \
-  --namespace replicove-system --create-namespace --values operator-values.yaml
-```
-
-These source permissions do not include Secrets or Helm release storage. Add those only when needed, together with corresponding `ReplicaGrant` entries. See [operator values](../reference/operator.md).
+For native installation, use the versioned `replicove-crds.yaml` and `replicove-install.yaml` release assets in the [YAML walkthrough](yaml.md). Both Helm and the native release installer pin the operator image by digest. Build-from-source installation remains available for [contributors](../development/local.md).
 
 ## Key initialization and persistence
 

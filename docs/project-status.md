@@ -1,6 +1,6 @@
 # Replicove project status
 
-Replicove is experimental. There is no supported production release, published operator image, or public binary release yet.
+Replicove is experimental. The [v0.1.0-alpha.1 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. This is not a supported production release.
 
 ## Portable alpha
 
@@ -12,7 +12,7 @@ The installed operator uses explicit runtime resource/verb permissions. Chart co
 
 A [native YAML quickstart](getting-started/yaml.md) installs the operator and creates, accesses, and cleans up a replica through Kubernetes manifests and kubectl. The generated installer shares its chart/RBAC with the CLI and initializes its immutable state key inside the cluster. The [YAML lifecycle CI job](https://github.com/nimeshbuilds/replicove/actions/runs/35477718800/job/105989750205) passed at `b615d8a`; see [validation](validation.md).
 
-The [developer site](https://nimeshbuilds.github.io/replicove/) includes searchable feature guides, generated API/CLI references, compatibility limits, troubleshooting and maintenance. Both entry points still build an operator image from source.
+The [developer site](https://nimeshbuilds.github.io/replicove/) includes searchable feature guides, generated API/CLI references, compatibility limits, troubleshooting and maintenance. The [Helm quickstart](getting-started/helm.md) installs with one command; the CLI and YAML guides also use published artifacts without building an image.
 
 ## Recorded behavior evidence
 
@@ -34,7 +34,6 @@ See the [configuration guide](replicove-quickstart.md), [implementation ledger](
 
 ## Remaining release gates
 
-- Publish installable binaries and a verified operator image from the integrated alpha.
 - Qualify cloud identity adapters such as IRSA, cloud storage/data restoration, and external-resource cleanup in dedicated cloud labs.
 - Qualify vCluster Platform integration and additional Kubernetes/distribution combinations.
 - Finish image-digest locking and automated runtime candidate diffs in [#6](https://github.com/nimeshbuilds/replicove/issues/6), plus scale, recovery, and production hardening in the [roadmap](../ROADMAP.md).

@@ -1,5 +1,7 @@
 .git
 .cache
 bin
+dist
+site
 docs
 *.out

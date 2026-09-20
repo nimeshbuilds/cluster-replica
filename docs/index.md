@@ -1,6 +1,6 @@
 ---
 title: Kubernetes replica environments with vCluster
-description: Replicove recreates selected Kubernetes operators, Helm components, and configuration in disposable vClusters. Start with YAML or the CLI.
+description: Replicove recreates selected Kubernetes operators, Helm components, and configuration in disposable vClusters. Start with Helm, YAML, or the CLI.
 ---
 
 <div class="hero" markdown>
@@ -11,13 +11,14 @@ description: Replicove recreates selected Kubernetes operators, Helm components,
 
 <p class="lede">Recreate selected operators, Helm components, and configuration in a disposable vCluster. Give your integration tests, developers, and agents a familiar environment—with a lifetime you control.</p>
 
-[Start with YAML](getting-started/yaml.md){ .md-button .md-button--primary }
+[Install with Helm](getting-started/helm.md){ .md-button .md-button--primary }
+[Use YAML](getting-started/yaml.md){ .md-button }
 [Start with the CLI](../QUICKSTART.md){ .md-button }
 
 </div>
 
 !!! info "Experimental portable alpha"
-    Build from source today. No public release image or production certification is available yet. See [tested behavior and remaining work](project-status.md).
+    Install public alpha images, a Helm chart, CLI binaries, or native YAML. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
 
 <div class="feature-grid" markdown>
 <div markdown>
@@ -69,7 +70,7 @@ The guest has its own API server and object identities. With the current shared-
 
 ## Find the right guide
 
-- **First installation:** [installation choices](getting-started/installation.md), [YAML](getting-started/yaml.md), or [CLI](../QUICKSTART.md).
+- **First installation:** [installation choices](getting-started/installation.md), [Helm](getting-started/helm.md), [YAML](getting-started/yaml.md), or [CLI](../QUICKSTART.md).
 - **Platform administrators:** [grants and RBAC](guides/grants.md), [secrets and storage](guides/secrets-storage.md), [security](../SECURITY.md).
 - **Application developers:** [operators and Helm](guides/operators.md), [refresh and drift](guides/lifecycle.md), [troubleshooting](guides/troubleshooting.md).
 - **Agent and CI developers:** [access](guides/access.md), [GitOps and CI](guides/gitops.md), [full API reference](reference/api.md).

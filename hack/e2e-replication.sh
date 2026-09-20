@@ -28,14 +28,19 @@ cleanup(){
 }
 trap cleanup EXIT
 node_image="${REPLICOVE_KIND_IMAGE:-kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed}"
-docker build --tag cluster-replica:e2e .
+if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then docker build --tag cluster-replica:e2e .; fi
 if kind get clusters | grep -Fxq "$cluster";then exit 1;fi
 created=true
 kind create cluster --name "$cluster" --image "$node_image" --kubeconfig "$KUBECONFIG" --wait 180s
-kind load docker-image cluster-replica:e2e --name "$cluster"
+if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then kind load docker-image cluster-replica:e2e --name "$cluster"; fi
 hk create namespace source-dev
-make build
-bin/replicove install --image cluster-replica:e2e --values test/e2e/replicove-values.yaml
+if [[ "${REPLICOVE_USE_RELEASE_CLI:-false}" != true ]]; then make build; fi
+if [[ "${REPLICOVE_INSTALLER:-cli}" == helm ]]; then
+ source test/e2e/helm.sh
+ replicove_helm_install test/e2e/replicove-values.yaml
+else
+ bin/replicove install --image "${REPLICOVE_IMAGE:-cluster-replica:e2e}" --values test/e2e/replicove-values.yaml
+fi
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 # Verify the installed operator identity's host authorization in a real cluster.
 operator_identity=system:serviceaccount:replicove-system:replicove
@@ -82,6 +87,13 @@ gk -n integration wait pod/probe --for=jsonpath='{.status.phase}'=Succeeded --ti
 # Experiments must survive a controller restart and ordinary reconciliation.
 gk -n integration annotate configmap settings experiment=keep
 runtime_uid=$(hk -n replica-lab get clusterreplica full -o jsonpath='{.status.runtime.releaseName}')
+if [[ "${REPLICOVE_INSTALLER:-cli}" == helm ]]; then
+ key_uid=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
+ destination_uid=$(hk get namespace replica-lab -o jsonpath='{.metadata.uid}')
+ replicove_helm_install test/e2e/replicove-values.yaml
+ [[ "$key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
+ [[ "$destination_uid" == "$(hk get namespace replica-lab -o jsonpath='{.metadata.uid}')" ]]
+fi
 hk -n replicove-system rollout restart deployment/replicove
 hk -n replicove-system rollout status deployment/replicove --timeout=120s
 sleep 15
@@ -213,6 +225,16 @@ sleep 15
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
+if [[ "${REPLICOVE_INSTALLER:-cli}" == helm ]]; then
+ bin/replicove delete ttl
+ hk -n replica-lab wait clusterreplica/ttl --for=delete --timeout=60s
+ helm uninstall replicove --namespace replicove-system --wait --timeout 2m
+ [[ "$key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
+ [[ "$destination_uid" == "$(hk get namespace replica-lab -o jsonpath='{.metadata.uid}')" ]]
+ hk -n replica-lab get configmap unrelated-sentinel >/dev/null
+ replicove_helm_install test/e2e/replicove-values.yaml
+ [[ "$key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
+fi
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["embedded-installer","operator-namespace-rbac","escalation-bind-denied","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
+{"result":"passed","scenarios":["${REPLICOVE_INSTALLER:-cli}-installer","operator-namespace-rbac","escalation-bind-denied","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
 JSON

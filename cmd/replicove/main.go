@@ -209,6 +209,7 @@ func (c *cli) installCommand() *cobra.Command {
 		if version != "dev" {
 			chart.Metadata.Version = strings.TrimPrefix(version, "v")
 			chart.Metadata.AppVersion = strings.TrimPrefix(version, "v")
+			chart.Values["image"].(map[string]any)["tag"] = strings.TrimPrefix(version, "v")
 		}
 		values := map[string]any{}
 		if valuesFile != "" {
@@ -226,7 +227,7 @@ func (c *cli) installCommand() *cobra.Command {
 			if index < 1 {
 				return errors.New("--image requires an explicit repository:tag")
 			}
-			values["image"] = map[string]any{"repository": image[:index], "tag": image[index+1:]}
+			values["image"] = map[string]any{"repository": image[:index], "tag": image[index+1:], "digest": ""}
 		}
 		configuration, err := helmprovider.Configuration(cfg, system)
 		if err != nil {

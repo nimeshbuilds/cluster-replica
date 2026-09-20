@@ -41,7 +41,21 @@ kubectl -n replica-lab wait clusterreplica/yaml-demo \
 
 The fixture creates a source echo application, a dummy Secret, bounded source permissions, and a one-hour `ClusterReplica`. Replicove provisions a persistent vCluster and recreates the selection in guest namespace `integration`. A 1 GiB control-plane PVC uses the host's default StorageClass. Source volume contents are not copied.
 
-Continue at [request guest access](yaml.md#5-request-temporary-access-with-yaml) to connect and inspect the result using only kubectl. The [CLI guide](../../QUICKSTART.md) provides a managed local tunnel. The fixture grants are for this disposable example; replace them with your team's explicit source and access policy.
+To connect locally, download and extract your platform’s `replicove` CLI archive from the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.1.0-alpha.1) into your working directory. Keep this command running in the same host context:
+
+```bash
+./replicove -n replica-lab connect yaml-demo --role viewer \
+  --output "$PWD/replicove-guest.kubeconfig"
+```
+
+After it reports the tunnel is listening, run in a second terminal in that directory:
+
+```bash
+kubectl --kubeconfig "$PWD/replicove-guest.kubeconfig" -n integration \
+  get configmap settings -o jsonpath='{.data.mode}'
+```
+
+Expect `guest-yaml`. The session lasts at most 15 minutes. Stop the tunnel with Ctrl-C before cleanup; the CLI removes its credential file. The [access guide](../guides/access.md) also explains direct YAML requests and network routes for agents. The fixture grants are for this disposable example; replace them with your team's explicit source and access policy.
 
 ## 3. Use a vCluster that already exists
 

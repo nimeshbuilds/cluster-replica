@@ -15,6 +15,7 @@
 {{- $ours := and $live (eq (dig "metadata" "annotations" "meta.helm.sh/release-name" "" $live) $.Release.Name) (eq (dig "metadata" "annotations" "meta.helm.sh/release-namespace" "" $live) $.Release.Namespace) }}
 {{- if or (not $live) $ours }}
 {{- $_ := set $crd.metadata "annotations" (merge (dict "helm.sh/resource-policy" "keep") (default dict $crd.metadata.annotations)) }}
+{{- $_ := set $crd.metadata "labels" (merge (dict "replicove.nimeshbuilds.dev/infrastructure" "true") (default dict $crd.metadata.labels)) }}
 ---
 {{ toYaml $crd }}
 {{- end }}
@@ -25,11 +26,15 @@ kind: ServiceAccount
 metadata:
   name: {{ $name }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ .Release.Namespace }}-{{ $name }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 rules:
   - apiGroups: [""]
     resources: [persistentvolumes]
@@ -54,6 +59,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ .Release.Namespace }}-{{ $name }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -68,6 +75,8 @@ kind: Role
 metadata:
   name: {{ $name }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 rules:
   - apiGroups: [coordination.k8s.io]
     resources: [leases]
@@ -78,6 +87,8 @@ kind: RoleBinding
 metadata:
   name: {{ $name }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -92,6 +103,8 @@ kind: Deployment
 metadata:
   name: {{ $name }}
   namespace: {{ .Release.Namespace }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
 spec:
   replicas: 1
   selector:
@@ -101,6 +114,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: {{ $name }}
+        replicove.nimeshbuilds.dev/infrastructure: "true"
     spec:
       serviceAccountName: {{ $name }}
       securityContext:

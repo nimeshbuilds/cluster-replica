@@ -129,10 +129,11 @@ def generate_api():
              'Generated at build time from the checked-in CRD OpenAPI schemas. Do not edit this page directly. '
              'API group: `replica.nimeshbuilds.dev/v1alpha1`.', '',
              'Use `kubectl explain clusterreplica.spec --recursive`, `kubectl explain replicagrant.spec --recursive`, '
-             'or `kubectl explain replicaaccess.spec --recursive` against an installed cluster. '
+             '`kubectl explain replicaaccess.spec --recursive`, `kubectl explain replicamirror.spec --recursive`, '
+             'or `kubectl explain replicamirrorrun.spec --recursive` against an installed cluster. '
              'Required means required within its containing object, not that an optional parent must exist.', '',
              'The schema is only one validation layer. Read [grants](../guides/grants.md), '
-             '[selection](../guides/selection.md), [access](../guides/access.md), and '
+             '[selection](../guides/selection.md), [access](../guides/access.md), [mirrors](../guides/mirrors.md), and '
              '[compatibility](compatibility.md) for controller-enforced policy and lifecycle rules.', '']
     count = 0
     for path in sorted((ROOT / 'config/crd').glob('*.yaml')):

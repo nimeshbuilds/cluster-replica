@@ -1,8 +1,10 @@
-Replicove v0.2.0-alpha.1 adds optional workload mirrors: writable copies of selected host workloads and CSI volume data, with manual or scheduled resets. The host remains the source of truth; resets discard guest changes within the owned scope.
+Replicove v0.2.0-alpha.2 fixes mirror infrastructure being selected as application configuration during broad capture/refresh, and documents adding mirroring after installation. New upgrade tests preserve a running ordinary replica when enabling the module from either 0.1.0-alpha.1 or 0.2.0-alpha.1.
+
+The optional mirror module creates writable copies of selected host workloads and CSI volume data, with manual or scheduled resets. The host remains the source of truth; resets discard guest changes within the owned scope.
 
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.1 \
+  --version 0.2.0-alpha.2 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
@@ -17,6 +19,8 @@ For data copies, follow the [mirror quickstart](https://nimeshbuilds.github.io/r
 - Linux amd64/arm64 operator image, macOS/Linux amd64/arm64 CLI downloads, digest-pinned OCI chart/native manifests and SHA-256 checksums. OCI SBOM/provenance metadata is not a separate signed release attestation.
 
 Upgrades must apply the release CRDs before the Helm upgrade; Helm does not upgrade its `crds/` directory automatically. Preserve the immutable state key. Keep the operator and storage/snapshot controllers running until mirror finalizers finish cleanup.
+
+Follow [enable mirroring later](https://nimeshbuilds.github.io/replicove/guides/enable-mirroring/) for an existing installation, including saved values, explicit image selection, source RBAC, native/GitOps ownership and cleanup before disabling. The [feature map](https://nimeshbuilds.github.io/replicove/features/) separates all shipped capabilities from planned integrations. Both upgrade paths run against published artifacts before this release is created.
 
 vCluster 0.37.1 allows one runtime per host namespace. Managed resets prepare recovery points, wait for test leases, then remove the old runtime before starting its replacement; expect an interruption and no automatic rollback. Existing-target mirrors can prepare separate generation namespaces within their registered runtime. An unrelated runtime blocks new managed installation with an explicit reason.
 

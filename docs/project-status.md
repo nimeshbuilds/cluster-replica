@@ -1,6 +1,6 @@
 # Replicove project status
 
-Replicove is experimental. The [v0.2.0-alpha.1 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.1) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. This is not a supported production release.
+Replicove is experimental. The [v0.2.0-alpha.2 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. This is not a supported production release.
 
 ## Portable alpha
 
@@ -13,6 +13,8 @@ The installed operator uses explicit runtime resource/verb permissions. Chart co
 The optional mirror module uses the same image and Helm deployment. It installs the upstream snapshot controller/APIs when absent, or reuses qualified host infrastructure. `ReplicaMirror` and immutable `ReplicaMirrorRun` requests support explicit CSI volume-data grants, independent writable generations, latest-source sync, saved-revision reset, schedules, test leases, bounded retention, existing-runtime namespaces, guest access, and TTL cleanup. Follow the [mirror guide](guides/mirrors.md) and [versioned verification record](validation.md).
 
 This provides per-volume crash-consistent recovery points. Database consistency, atomic multi-volume state, cloud CSI certification and external-service cloning remain separate work. The proposed MCP/certificate identity service and dashboard are not part of this release.
+
+Mirroring can be [enabled later](guides/enable-mirroring.md) without reinstalling the operator. The 0.2.0-alpha.2 chart also excludes all bundled mirror infrastructure from application capture, including the source RoleBinding. The upgrade matrix starts with published 0.1.0-alpha.1 and 0.2.0-alpha.1 installations, preserves an active ordinary replica, and then exercises the mirror lifecycle. See [validation](validation.md) for recorded outcomes and the [feature map](features.md) for current scope.
 
 Managed replacements require downtime: the pinned vCluster permits one runtime per host namespace. Existing-target mirrors can prepare separate generation namespaces within that runtime. Separate concurrent managed clusters need separate administrator-granted destinations.
 

@@ -2,7 +2,7 @@
 
 Replicove is a Go operator installed on your host cluster. It watches one destination namespace and keeps encrypted capture and access state in a separate, administrator-only namespace.
 
-Public alpha artifacts are available on [GitHub Releases](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.1) and GitHub Container Registry. Installing does not require a local image build or a GitHub login.
+Public alpha artifacts are available on [GitHub Releases](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) and GitHub Container Registry. Installing does not require a local image build or a GitHub login.
 
 ## Choose a path
 
@@ -30,7 +30,7 @@ Use your administrator test-cluster context:
 
 ```bash
 helm --kube-context YOUR_TEST_CONTEXT upgrade --install replicove \
-  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.2.0-alpha.1 \
+  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.2.0-alpha.2 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
@@ -51,5 +51,7 @@ Use the same installation method for an existing operator. Switching a live inst
 For YAML upgrades, review the generated diff, preserve the state key and state Secrets, apply CRD updates, remove only the **completed** bootstrap Job if its image/template changed, then apply your updated overlay. Kubernetes Job pod templates are immutable. Wait for the new Job and Deployment and check existing replica conditions. Do not run upgrades while a bootstrap Job is still active.
 
 For Helm upgrades, apply CRD updates separately (Helm does not automatically upgrade files in `crds/`) and use `helm upgrade` with the existing release name, protected namespace, and reviewed values. The chart reuses the existing key.
+
+For optional workload data copies, follow [enable mirroring later](../guides/enable-mirroring.md). It covers existing Helm/CLI installations, CRD changes from the earlier alpha, value preservation, snapshot dependencies, and native/GitOps rendering. `replicove install` creates a Helm release; rerunning it does not upgrade that release.
 
 Before uninstalling, delete replica requests and wait for their finalizers and all access requests to finish. See the [cleanup guide](../guides/cleanup.md). **Do not delete the installation namespaces or CRDs to bypass cleanup.** They can contain unrelated resources and the ownership records needed for recovery.

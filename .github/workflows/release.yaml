@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Committed release version (for example v0.2.0-alpha.1)
+        description: Committed release version (for example v0.2.0-alpha.2)
         required: true
         type: string
 permissions:
@@ -154,7 +154,12 @@ jobs:
     needs: publish
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        initial: [current, previous]
     env:
+      REPLICOVE_MIRROR_BASE: ${{ matrix.initial }}
       RELEASE_IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
       REPLICOVE_IMAGE: ghcr.io/nimeshbuilds/replicove@${{ needs.publish.outputs.digest }}
       REPLICOVE_CHART: oci://ghcr.io/nimeshbuilds/charts/replicove
@@ -179,7 +184,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: release-mirror-verification
+          name: release-mirror-verification-${{ matrix.initial }}
           path: .cache/mirror-e2e/run.*/artifacts/
           include-hidden-files: true
           retention-days: 30

@@ -32,7 +32,7 @@ cleanup(){
   hk get events -A --field-selector type=Warning > "$work/artifacts/warnings.txt" || true
   kind delete cluster --name "$cluster" || true
  fi
- rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/existing.kubeconfig" "$work/shared.kubeconfig"
+ rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/existing.kubeconfig" "$work/shared.kubeconfig" "$work/enable-later-access.kubeconfig"
  echo "Mirror evidence: $work/artifacts"
  exit "$result"
 }
@@ -58,7 +58,7 @@ if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then kind load docker-image cluster-replica:
 hk create namespace source-dev
 if [[ "${REPLICOVE_USE_RELEASE_CLI:-false}" != true ]]; then make build; fi
 source test/e2e/helm.sh
-replicove_helm_install test/mirror/values.yaml
+source test/mirror/enable-later.sh
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
 hk wait crd/volumesnapshots.snapshot.storage.k8s.io --for=condition=Established --timeout=60s
 # Use the upstream CSI host-path driver only in this disposable CI host.

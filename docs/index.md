@@ -72,6 +72,8 @@ The guest has its own API server and object identities. With the current shared-
 
 ## Find the right guide
 
+Start with the [feature map](features.md) for every shipped capability, its guide, and its limits. To add optional data copies to an existing deployment, use [enable mirroring later](guides/enable-mirroring.md).
+
 - **First installation:** [installation choices](getting-started/installation.md), [Helm](getting-started/helm.md), [YAML](getting-started/yaml.md), or [CLI](../QUICKSTART.md).
 - **Platform administrators:** [grants and RBAC](guides/grants.md), [secrets and storage](guides/secrets-storage.md), [security](../SECURITY.md).
 - **Workload data copies:** [mirrors, schedules, and saved-revision resets](guides/mirrors.md).

@@ -83,6 +83,20 @@ rules:
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
     verbs: [get, update, patch]
+  {{- if .Values.mirrors.enabled }}
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [clusterreplicas, replicamirrors, replicamirrorruns]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicamirrors/status, replicamirrorruns/status, replicamirrors/finalizers, replicamirrorruns/finalizers]
+    verbs: [get, update, patch]
+  - apiGroups: [snapshot.storage.k8s.io]
+    resources: [volumesnapshots]
+    verbs: [get, create, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, create, delete]
+  {{- end }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -117,6 +131,17 @@ rules:
   - apiGroups: [""]
     resources: [persistentvolumes]
     verbs: [get]
+  {{- if .Values.mirrors.enabled }}
+  - apiGroups: [snapshot.storage.k8s.io]
+    resources: [volumesnapshotclasses]
+    verbs: [get]
+  - apiGroups: [snapshot.storage.k8s.io]
+    resources: [volumesnapshotcontents]
+    verbs: [get, create, delete]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get]
+  {{- end }}
   {{- with .Values.clusterReadRules }}
   {{- toYaml . | nindent 2 }}
   {{- end }}

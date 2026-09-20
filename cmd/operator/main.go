@@ -10,6 +10,7 @@ import (
 	v1alpha1 "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 	"github.com/nimeshbuilds/cluster-replica/internal/capture"
 	"github.com/nimeshbuilds/cluster-replica/internal/controller"
+	"github.com/nimeshbuilds/cluster-replica/internal/mirror"
 	helmprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime/helm"
 	"github.com/nimeshbuilds/cluster-replica/internal/state"
 	"github.com/nimeshbuilds/cluster-replica/internal/workflow"
@@ -29,6 +30,9 @@ import (
 func main() {
 	var namespace, chartPath, probes, stateNamespace string
 	var bootstrapStateKey bool
+	var mirrors, mirrorNetworkPolicyEnforced bool
+	flag.BoolVar(&mirrors, "mirrors", false, "Enable CSI workload mirrors and scheduled resets")
+	flag.BoolVar(&mirrorNetworkPolicyEnforced, "mirror-network-policy-enforced", false, "Administrator attestation that host NetworkPolicy isolation is enforced")
 	flag.BoolVar(&bootstrapStateKey, "bootstrap-state-key", false, "Initialize the immutable state key once, then exit (installation Job only)")
 	flag.StringVar(&stateNamespace, "state-namespace", "", "Administrator-only namespace for encrypted captures and access state")
 	flag.StringVar(&namespace, "watch-namespace", "", "Required: one administrator-granted lab namespace")
@@ -80,6 +84,11 @@ func main() {
 		check(err)
 		engine := &workflow.Engine{Client: uncached, Store: &state.Store{Client: uncached, Namespace: stateNamespace, MaxBytes: 716800}, Reader: &capture.Reader{Config: config, Dynamic: dyn, Discovery: disc}, Runtime: provider}
 		reconciler.Workflow = engine
+		if mirrors {
+			mr := &mirror.Reconciler{Client: uncached, Store: engine.Store, Engine: engine, Namespace: namespace, NetworkPolicyEnforced: mirrorNetworkPolicyEnforced}
+			engine.MirrorPreparation = mr.Prepare
+			check(mr.SetupWithManager(mgr))
+		}
 		check((&workflow.AccessReconciler{Engine: engine, Namespace: namespace}).SetupWithManager(mgr))
 	}
 	check(reconciler.SetupWithManager(mgr))

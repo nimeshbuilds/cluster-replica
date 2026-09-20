@@ -1,0 +1,33 @@
+{{- if .Values.mirrors.enabled }}
+{{- range .Values.mirrors.sources }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-mirror
+  namespace: {{ . | quote }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+rules:
+  - apiGroups: [""]
+    resources: [persistentvolumeclaims]
+    verbs: [get]
+  - apiGroups: [snapshot.storage.k8s.io]
+    resources: [volumesnapshots]
+    verbs: [get, create, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-mirror
+  namespace: {{ . | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-mirror
+subjects:
+  - kind: ServiceAccount
+    name: {{ $.Release.Name }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}

@@ -33,11 +33,12 @@ type Capturer interface {
 	Capture(context.Context, *api.ClusterReplica, *api.ReplicaGrant, policy.Resolution) (*state.Plan, error)
 }
 type Engine struct {
-	Client  client.Client
-	Store   *state.Store
-	Reader  Capturer
-	Runtime runtimeprovider.Provider
-	Now     func() time.Time
+	Client            client.Client
+	Store             *state.Store
+	Reader            Capturer
+	Runtime           runtimeprovider.Provider
+	Now               func() time.Time
+	MirrorPreparation func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
 }
 
 func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.Result, error) {
@@ -52,6 +53,11 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	}
 	if obj.Status.Phase == "Expired" && obj.DeletionTimestamp.IsZero() && st == nil {
 		return ctrl.Result{}, nil
+	}
+	// Generation plans are prepared by the mirror controller, never captured by
+	// racing child reconciliation. A user annotation cannot supply protected state.
+	if obj.Annotations["replicove.nimeshbuilds.dev/mirror-run"] != "" && st == nil && obj.DeletionTimestamp.IsZero() {
+		return w.report(ctx, obj, "Preparing", failure("MirrorPreparationPending", "Waiting for the mirror controller's protected generation plan."), false)
 	}
 	ttl, err := catalog.Validate(api.ClusterReplicaSpec{Profile: obj.Spec.Profile, TTL: obj.Spec.TTL, CleanupPolicy: "HelmReleaseOnly"})
 	if err != nil {
@@ -98,6 +104,9 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		}
 	}
 	if st.Plan == nil || obj.Annotations[RefreshAnnotation] != st.RefreshToken {
+		if st.MirrorRunUID != "" {
+			return w.report(ctx, obj, "Blocked", failure("MirrorPlanPinned", "Use a mirror sync or reset request to replace a generation."), false)
+		}
 		if st.Provider == "existing" {
 			conn, err := target.Connect(ctx, w.Client, st, "")
 			if err != nil {
@@ -209,6 +218,15 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	}
 	if err := w.namespaces(ctx, conn, st); err != nil {
 		return w.report(ctx, obj, "Blocked", err, false)
+	}
+	if st.MirrorRunUID != "" {
+		if w.MirrorPreparation == nil {
+			return w.report(ctx, obj, "Blocked", failure("MirrorsDisabled", "Enable the mirror module to restore this generation."), false)
+		}
+		ready, err := w.MirrorPreparation(ctx, obj, st, conn)
+		if err != nil || !ready {
+			return w.report(ctx, obj, "Restoring", err, false)
+		}
 	}
 	refreshing := st.AppliedRevision != st.Plan.Revision
 	byID := map[string]state.Object{}

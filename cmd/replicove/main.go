@@ -166,7 +166,7 @@ func command() *cobra.Command {
 			}
 		}})
 	}
-	root.AddCommand(c.accessCommand(false), c.accessCommand(true), c.installCommand())
+	root.AddCommand(c.accessCommand(false), c.accessCommand(true), c.installCommand(), c.mirrorCommand())
 	return root
 }
 func (c *cli) installCommand() *cobra.Command {

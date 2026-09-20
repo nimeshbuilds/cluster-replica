@@ -97,6 +97,10 @@ type Volume struct {
 }
 
 type State struct {
+	Mirror    *Mirror    `json:"mirror,omitempty"`
+	MirrorRun *MirrorRun `json:"mirrorRun,omitempty"`
+	// Nonempty only on controller-prepared generation children. Their plan is pinned.
+	MirrorRunUID          string   `json:"mirrorRunUID,omitempty"`
 	Volumes               []Volume `json:"volumes,omitempty"`
 	Version               int      `json:"version"`
 	OwnerUID              string   `json:"ownerUID"`

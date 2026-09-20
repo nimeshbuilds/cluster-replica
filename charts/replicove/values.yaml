@@ -23,6 +23,20 @@ sources: []
 #     verbs: ["get", "list"]
 # Optional read-only cluster resources, such as CRDs and ClusterRoles.
 clusterReadRules: []
+# Optional host-to-guest CSI data mirrors. All Replicove controllers remain in
+# this deployment. CSI drivers stay under the host administrator's management.
+mirrors:
+  enabled: false
+  # Set after validating that the host CNI enforces NetworkPolicy egress rules.
+  networkPolicyEnforced: false
+  # Namespaces where the operator may create/delete its own capture snapshots.
+  # Workload/Secret reads still use sources above plus ReplicaGrant.
+  sources: []
+  snapshotController:
+    # auto installs the bundled controller/APIs only when absent; existing reuses
+    # host infrastructure; managed explicitly installs our controller.
+    mode: auto
+    image: registry.k8s.io/sig-storage/snapshot-controller:v8.6.0
 resources:
   requests:
     cpu: 100m

@@ -3,5 +3,5 @@ package operatorchart
 
 import "embed"
 
-//go:embed Chart.yaml values.yaml templates/*.yaml crds/*.yaml
+//go:embed Chart.yaml values.yaml templates/*.yaml crds/*.yaml files/snapshot-crds/*.yaml
 var Files embed.FS

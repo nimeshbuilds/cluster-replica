@@ -90,6 +90,9 @@ type ExistingTarget struct {
 	KubeconfigSecret NamespacedName `json:"kubeconfigSecret"`
 	// The administrator pins the expected kube-system namespace UID.
 	ClusterUID string `json:"clusterUID"`
+	// Optional administrator-qualified vCluster 0.37.1 single-namespace runtime
+	// in the destination namespace. Required for CSI mirrors into an existing target.
+	MirrorReleaseName string `json:"mirrorReleaseName,omitempty"`
 }
 
 type PlatformTarget struct {
@@ -110,7 +113,9 @@ type AccessSubject struct {
 }
 
 type ReplicaGrantSpec struct {
-	TargetNamespace string `json:"targetNamespace"`
+	// Explicit permission to read volume data. Empty-volume permission alone is insufficient.
+	Mirror          *MirrorGrant `json:"mirror,omitempty"`
+	TargetNamespace string       `json:"targetNamespace"`
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:MaxItems=32
 	SourceNamespaces []string `json:"sourceNamespaces"`

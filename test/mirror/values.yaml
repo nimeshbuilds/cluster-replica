@@ -1,0 +1,16 @@
+image:
+  repository: cluster-replica
+  tag: e2e
+mirrors:
+  enabled: true
+  networkPolicyEnforced: true
+  sources: [source-dev]
+sources:
+  - namespace: source-dev
+    rules:
+      - apiGroups: [""]
+        resources: [configmaps, persistentvolumeclaims, services]
+        verbs: [get, list]
+      - apiGroups: [apps]
+        resources: [deployments, statefulsets]
+        verbs: [get, list]

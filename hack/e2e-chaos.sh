@@ -48,12 +48,12 @@ if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then kind load docker-image cluster-replica:
 hk create namespace source-dev
 if [[ "${REPLICOVE_USE_RELEASE_CLI:-false}" != true ]]; then make build; fi
 source test/e2e/helm.sh
-replicove_helm_install test/chaos/values.yaml
+replicove_helm_install test/chaos/values.yaml --set chaos.enabled=false
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 identity=system:serviceaccount:replicove-system:replicove
 [[ "$(hk --as="$identity" -n source-dev auth can-i delete pods)" == no ]]
 [[ "$(hk --as="$identity" -n source-dev auth can-i create networkpolicies)" == no ]]
-[[ "$(hk --as="$identity" -n replica-lab auth can-i create networkpolicies)" == yes ]]
+[[ "$(hk --as="$identity" -n replica-lab auth can-i create networkpolicies)" == no ]]
 hk apply -f test/chaos/source.yaml
 hk -n source-dev rollout status deployment/echo --timeout=180s
 source_uid=$(hk -n source-dev get deployment echo -o jsonpath='{.metadata.uid}')
@@ -62,6 +62,18 @@ hk apply -f test/chaos/grant.yaml
 bin/replicove create chaos-lab --grant chaos-lab --ttl 45m --replication-file test/chaos/replication.yaml
 hk -n replica-lab wait clusterreplica/chaos-lab --for=condition=Ready --timeout=600s
 replica_uid=$(hk -n replica-lab get clusterreplica chaos-lab -o jsonpath='{.metadata.uid}')
+# Enable the optional module after an ordinary runtime already exists. Helm
+# updates the same installation; it must preserve request, runtime and state key.
+runtime_name=$(hk -n replica-lab get clusterreplica chaos-lab -o jsonpath='{.status.runtime.releaseName}')
+runtime_uid=$(hk -n replica-lab get statefulset "$runtime_name" -o jsonpath='{.metadata.uid}')
+state_key_uid=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
+replicove_helm_install test/chaos/values.yaml --set chaos.enabled=true
+hk -n replicove-system rollout status deployment/replicove --timeout=180s
+[[ "$(hk -n replica-lab get clusterreplica chaos-lab -o jsonpath='{.metadata.uid}')" == "$replica_uid" ]]
+[[ "$(hk -n replica-lab get statefulset "$runtime_name" -o jsonpath='{.metadata.uid}')" == "$runtime_uid" ]]
+[[ "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" == "$state_key_uid" ]]
+[[ "$(hk --as="$identity" -n replica-lab auth can-i create networkpolicies)" == yes ]]
+hk -n replica-lab wait clusterreplica/chaos-lab --for=condition=Ready --timeout=180s
 bin/replicove connect chaos-lab --role admin --duration-seconds 3600 --output "$work/guest.kubeconfig" > "$work/artifacts/connect.log" 2>&1 &
 tunnel_pid=$!
 for i in $(seq 1 180); do if [[ -f "$work/guest.kubeconfig" ]] && gk --request-timeout=5s get --raw=/readyz >/dev/null 2>&1; then break; fi; sleep 1; done
@@ -161,5 +173,5 @@ hk -n replica-lab wait clusterreplica/chaos-lab --for=delete --timeout=300s
 [[ "$(hk -n replica-lab get networkpolicies -o jsonpath='{.items}')" == '[]' ]]
 source_intact
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["source RBAC denial","scale outage","operator restart rollback","duration expiry","source UID rejection","protected namespace rejection","pod controller recovery","real host CNI isolation","source workload preservation","network recovery","additive policy conflict preservation","simultaneous CPU and memory stress","restricted custom Job","parent teardown waits for experiment cleanup","no host fault policy leak"]}
+{"result":"passed","scenarios":["late chaos enablement preserves existing request runtime and state key","source RBAC denial","scale outage","operator restart rollback","duration expiry","source UID rejection","protected namespace rejection","pod controller recovery","real host CNI isolation","source workload preservation","network recovery","additive policy conflict preservation","simultaneous CPU and memory stress","restricted custom Job","parent teardown waits for experiment cleanup","no host fault policy leak"]}
 JSON

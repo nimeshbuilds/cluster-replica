@@ -4,7 +4,7 @@ Replicove records resource ownership before and after guest mutations. Deletion 
 
 ## Lifetime
 
-`spec.ttl` begins at `metadata.creationTimestamp`, including time spent planning, waiting for approval, and provisioning. Use whole minutes or hours (`30m`, `2h`), from 5 minutes to 168 hours, within the grant's smaller limit. The spec is immutable; refresh does not renew the TTL.
+`spec.ttl` begins at `metadata.creationTimestamp`, including time spent planning, waiting for approval or capacity, and provisioning. Use whole minutes or hours (`30m`, `2h`), from 5 minutes to 168 hours, within the grant's smaller limit. The spec is immutable; refresh does not renew the TTL.
 
 On expiry, the operator cleans up and retains the request with terminal `Expired` status. On explicit deletion, its finalizer performs cleanup before the Kubernetes request disappears:
 
@@ -25,12 +25,12 @@ New full-workflow examples use `DeleteOwned`. Do not use the legacy `config/samp
 
 ## Cleanup order
 
-1. Persist cleanup intent and stop issuing new access.
+1. Persist cleanup intent, stop issuing access and settle owned experiments. Roll back supported faults and verify physical Job Pods have stopped before removing their host isolation policies.
 2. Revoke session Secret permissions and guest identities; remove session credentials/state.
-3. Remove inventoried guest resources in reverse dependency order while the guest API is still available.
+3. Remove inventoried guest resources while the API is available. Database cleanup removes staging/final resources and waits for translated host Pods to disappear before removing their isolation policies.
 4. Remove the owned runtime's Helm release. Preserve an externally managed target runtime.
 5. Follow recorded owner-reference UIDs for host descendants and verify relevant PVC/PV deletion.
-6. Persist terminal status, remove encrypted captures, and finish the request finalizer.
+6. Persist terminal status, remove encrypted captures, release the capacity reservation and finish the request finalizer.
 
 UID and operation checks stop deletion when a name has been reused or ownership changed. Unrelated host resources, source resources, and preexisting existing-target namespaces remain untouched.
 
@@ -42,6 +42,14 @@ The optional mirror module waits for deletion of its recorded restored PVs and s
 
 Deleting Kubernetes objects does not prove physical erasure of provider backups, external databases, object buckets, or application-created external infrastructure. Those capabilities require qualified adapters and are outside the portable contract. Source data is never deleted by replica cleanup.
 
+## Test runs, experiments and capacity
+
+The [test runner](test-runs.md) waits for fault rollback, access revocation, mirror lease release and exact-UID request cleanup. A local command failure and a cleanup failure are separate report outcomes. `keepOnFailure` can retain an environment only after the test command fails, and only until its original TTL; cancellation still cleans up.
+
+Experiment cleanup can block replica deletion while rollback or physical Job cleanup is unresolved. Keep the chaos module and its host permissions available. Database cleanup similarly depends on its journal and host policy/Pod permissions. Do not disable optional modules with outstanding finalizers.
+
+A capacity reservation is released only after verified cleanup. The empty protected capacity ledger is deliberately retained for concurrency control; it is not a leaked workload. The operator installation and state key also survive normal replica cleanup.
+
 ## Recover a blocked cleanup
 
 Inspect the request's conditions, operator logs, guest reachability, and relevant storage/finalizer state. Restore the original protected key and encrypted state together if they were lost. Restore target credentials or connectivity if those are the problem. Let the responsible workload/storage controller finish its finalizers.
@@ -50,7 +58,7 @@ Replicove intentionally retains finalizers when ownership or cleanup cannot be v
 
 ## Remove the operator
 
-First delete all replica requests in its watched namespace and verify their access requests have been cleaned. Keep the operator and protected state available until that completes.
+First stop/delete active `ReplicaExperiment` requests and wait for rollback. Delete all `ClusterReplica` and `ReplicaMirror` requests in the watched namespace, allow their `ReplicaMirrorRun` work to settle, and verify `ReplicaAccess` cleanup. Keep the operator and protected state available until that completes.
 
 Delete `ReplicaMirror` requests and wait for their finalizers before removing the mirror module or source snapshot permissions. An expired mirror keeps its terminal status but removes its owned data and access; it does not extend the TTL for an active test lease. See [mirror cleanup and retention](mirrors.md#retention-deletion-and-ttl).
 

@@ -19,7 +19,7 @@ kubectl -n replicove-b rollout status deployment/replicove --timeout=180s
 
 The renderer emits shared Replicove CRDs once, both namespaces for each member, and native chart manifests. Every destination and system namespace must be distinct across the pool; `default` and `kube-*` names are rejected. It forces `stateKey.bootstrap: true` so an encryption key is generated inside each protected namespace, not written into the output. It overrides `destinationNamespace` and `createDestinationNamespace` because namespace ownership is explicit in the pool file. It does not create `ReplicaGrant` objects or authorize test users.
 
-For mirrors, set `mirrors.snapshotController.mode` explicitly to `existing`, or select **one** member as `managed` and all other enabled members as `existing`. Offline `auto` is rejected, as are multiple bundled snapshot controllers. CSI drivers and an enforced CNI still require administrator qualification. Do not remove the member managing shared snapshot infrastructure while other consumers depend on it.
+For mirrors, set `mirrors.snapshotController.mode` explicitly to `existing`, or select **one** member as `managed` and all other enabled members as `existing`. A managed snapshot controller requires a release name of at most 43 characters so its Kubernetes labels fit. Offline `auto` is rejected, as are multiple bundled snapshot controllers. CSI drivers and an enforced CNI still require administrator qualification. Do not remove the member managing shared snapshot infrastructure while other consumers depend on it.
 
 ## Grant members explicitly
 

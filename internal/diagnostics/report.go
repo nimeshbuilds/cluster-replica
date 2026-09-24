@@ -10,6 +10,7 @@ import (
 
 	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"time"
 )
 
 type Finding struct {
@@ -18,6 +19,9 @@ type Finding struct {
 	Detail string `json:"detail"`
 }
 type Report struct {
+	ExpiresAt     string                `json:"expiresAt,omitempty"`
+	CapturedAt    string                `json:"capturedAt,omitempty"`
+	Runtime       *api.RuntimeReference `json:"runtime,omitempty"`
 	Name          string                `json:"name"`
 	Namespace     string                `json:"namespace"`
 	UID           string                `json:"uid,omitempty"`
@@ -47,8 +51,12 @@ func Transformations(source, desired *unstructured.Unstructured) []string {
 }
 
 func Explain(obj *api.ClusterReplica) Report {
-	r := Report{Name: obj.Name, Namespace: obj.Namespace, UID: string(obj.UID), Phase: obj.Status.Phase, SourceVersion: obj.Status.SourceVersion, TargetVersion: obj.Status.TargetVersion}
+	r := Report{Runtime: obj.Status.Runtime, Name: obj.Name, Namespace: obj.Namespace, UID: string(obj.UID), Phase: obj.Status.Phase, SourceVersion: obj.Status.SourceVersion, TargetVersion: obj.Status.TargetVersion}
+	if obj.Status.ExpiresAt != nil {
+		r.ExpiresAt = obj.Status.ExpiresAt.UTC().Format(time.RFC3339)
+	}
 	if obj.Status.Plan != nil {
+		r.CapturedAt = obj.Status.Plan.CapturedAt.UTC().Format(time.RFC3339)
 		r.Revision = obj.Status.Plan.Revision
 		r.Resources = obj.Status.Plan.Resources
 		r.Omitted = obj.Status.Plan.Omitted

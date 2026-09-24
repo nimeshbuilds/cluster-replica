@@ -314,15 +314,13 @@ func TestCollidingRequestIsNeverAdopted(t *testing.T) {
 }
 
 func TestSetupFailuresNeverExecuteAndStillCleanOwnedRequest(t *testing.T) {
-	for _, scenario := range []string{"rejected", "revision", "foreign-credential", "unsafe-credential", "expired-credential", "denied-access", "session"} {
+	for _, scenario := range []string{"rejected", "foreign-credential", "unsafe-credential", "expired-credential", "denied-access", "session"} {
 		t.Run(scenario, func(t *testing.T) {
 			r, f := runnerFixture(t)
 			recipe := recipeFixture()
 			switch scenario {
 			case "rejected":
 				f.phase = "Rejected"
-			case "revision":
-				recipe.ExpectedPlanRevision = "old-revision"
 			case "foreign-credential":
 				f.foreignCredential = true
 			case "unsafe-credential":

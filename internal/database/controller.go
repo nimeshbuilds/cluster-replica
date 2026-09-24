@@ -79,6 +79,9 @@ func (c *Controller) Prepare(ctx context.Context, obj *api.ClusterReplica, grant
 		if d.Grant != copy.Grant || d.PlanRevision != st.Plan.Revision {
 			return false, ErrDenied
 		}
+		if err := c.ensureApplicationIsolation(ctx, st); err != nil {
+			return false, err
+		}
 		if d.Phase == "Copying" {
 			d.Phase = "Failed"
 			if err := c.Store.Save(ctx, st); err != nil {

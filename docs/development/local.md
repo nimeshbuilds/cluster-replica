@@ -19,10 +19,13 @@ make build
 | `internal/policy`, `capture`, `planner` | Delegation, bounded reads and transformation/dependency planning |
 | `internal/state` | Encryption, durable intent/inventory and explicit key bootstrap |
 | `internal/workflow`, `target` | Apply/readiness/refresh/access/cleanup and verified guest clients |
+| `internal/database`, `chaos` | Optional PostgreSQL staging/sanitization and bounded fault controllers |
+| `internal/testrun`, `capacity` | Local recipe lifecycle and durable destination admission |
+| `internal/diagnostics`, `agentapi`, `dashboard` | Metadata evidence, namespace-scoped stdio MCP and local read-only UI |
 | `internal/catalog`, `runtime/helm` | Exact upstream profiles and runtime lifecycle |
 | `charts/replicove`, `config/install` | Chart and generated native installer |
 | `examples/yaml` | Public kubectl-only walkthrough inputs |
-| `test/integration`, `test/e2e`, `test/workloads` | API contracts and live fixtures |
+| `test/integration`, `test/e2e`, `test/workloads`, `test/database` | API contracts and live fixtures |
 | `docs`, `mkdocs.yml`, `hack/docs.py` | Documentation content, navigation and generated references |
 
 Read [architecture](../architecture.md) before adding behavior across boundaries.
@@ -78,3 +81,24 @@ Keep generated files, docs, and examples aligned with behavior. Run relevant che
 With Docker, run `./hack/fetch-e2e-tools.sh`, `./hack/fetch-helm.sh`, then `./hack/e2e-mirror.sh`. The script owns a fresh kind cluster, installs pinned Calico and CSI host-path fixtures, and removes that cluster on exit. It is also a mandatory CI job and a published-artifact release gate. Do not point the fixture at a production cluster. Evidence is written under `.cache/mirror-e2e/run.*/artifacts/`; credential files are excluded. Cloud labs remain separate qualification.
 
 The mirror suite first enables the module on a previously installed release while preserving a persistent ordinary replica. `REPLICOVE_MIRROR_BASE=current` starts with published 0.2.0-alpha.1; `previous` starts with published 0.1.0-alpha.1; `native` starts with rendered 0.2.0-alpha.1 YAML and tests bootstrap Job replacement. CI and release verification require all three. `enable-later.json` records transition checks separately from the mirror lifecycle's `report.json`.
+
+
+## Candidate feature verification
+
+Current source targets v0.3.0-alpha.1. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
+
+Run the relevant local suites, then their live boundary checks:
+
+```bash
+go test -race ./internal/database ./internal/chaos ./internal/testrun ./internal/capacity ./internal/diagnostics ./internal/agentapi ./internal/dashboard ./cmd/replicove
+./examples/postgresql/test-disposable.sh
+./hack/e2e-database.sh
+./hack/e2e-chaos.sh
+./hack/e2e-testrun.sh
+```
+
+The PostgreSQL Docker test creates only disposable containers with generated fixture data, no host mounts or external network. It checks actual pg_dump/restore, masks, explicit table subsets, foreign keys, source preservation and absence of the raw fixture value from final database files. It does not exercise Kubernetes or the production operator. Its diagnostic output is test-only; production database stderr remains suppressed.
+
+The PostgreSQL kind suite covers the operator, late enablement, host CNI isolation, blocked application/access startup during preparation, restart/refresh gating and owned PVC/PV/policy cleanup. The chaos kind suite checks real workload effects, rollback and host isolation. The test-runner suite checks fresh environments, execution outcomes, reports and verified cleanup. These scripts create their own disposable hosts; never repoint them at an existing user cluster. They are qualification gates, not evidence of success until their exact-revision runs pass.
+
+For admission changes, exercise overlapping requests and confirm queued work cannot provision a second managed runtime or lose its reservation on restart. For MCP/dashboard changes, check namespace confinement, caller RBAC, absent Secret payloads and default read-only behavior. Pool rendering is offline installation output; review shared CRD/snapshot ownership and quota settings before applying it.

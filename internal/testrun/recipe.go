@@ -29,9 +29,7 @@ type Recipe struct {
 	Mirror       *api.ReplicaMirrorSpec  `json:"mirror,omitempty"`
 	Execution    Execution               `json:"execution"`
 	Lifecycle    Lifecycle               `json:"lifecycle,omitempty"`
-	// ExpectedPlanRevision is an optional assertion, not a replay mechanism.
-	ExpectedPlanRevision string `json:"expectedPlanRevision,omitempty"`
-	Chaos                *Chaos `json:"chaos,omitempty"`
+	Chaos        *Chaos                  `json:"chaos,omitempty"`
 }
 
 type Execution struct {

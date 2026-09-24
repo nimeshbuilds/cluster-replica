@@ -1,5 +1,13 @@
 # Validation record
 
+## v0.3.0-alpha.1 candidate: qualification pending
+
+Current-source local `make check` passed, covering race-enabled Go tests, pinned chart contracts, real API-server integration, vet and builds. This is not evidence that the new live PostgreSQL, chaos, test-runner or concurrent-admission paths have passed. Their disposable fixtures are present; record exact revisions and CI results here after execution. Published-artifact verification must also pass before release.
+
+The PostgreSQL Docker fixture tests actual dump/restore, masks, explicit table subsetting, relationships and source preservation. The kind fixture additionally tests application/access gating, enforced host isolation, late enablement, restart behavior and owned storage cleanup. Chaos and test-runner fixtures cover actual workload faults, rollback and run cleanup. See [testing boundaries](testing.md) for commands and scope. No local live results are claimed: Docker was unavailable in the development session.
+
+All earlier records below remain evidence for their named historical revisions and versions, not these new candidate features.
+
 ## Enabling mirrors after installation
 
 [CI run 35520786306](https://github.com/nimeshbuilds/replicove/actions/runs/35520786306) passed all **13 jobs** at `36947dd`. The [saved transition and lifecycle reports](validation/2026-09-20-enable-mirroring.json) cover three starting points: published 0.1.0-alpha.1 Helm, published 0.2.0-alpha.1 Helm, and rendered 0.2.0-alpha.1 native YAML, all initially without mirroring enabled. The target chart/image was built from the 0.2.0-alpha.2 source in that revision.

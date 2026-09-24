@@ -16,6 +16,7 @@ func TestStrictRecipeParsing(t *testing.T) {
 		data []byte
 	}{
 		{"unknown", append(append([]byte(nil), fixture...), []byte("secretTypo: do-not-echo-this-secret\n")...)},
+		{"capture revision is not a cross-run constraint", append(append([]byte(nil), fixture...), []byte("expectedPlanRevision: old-capture\n")...)},
 		{"duplicate", append(append([]byte(nil), fixture...), []byte("kind: Other\n")...)},
 		{"multiple", append(append([]byte(nil), fixture...), []byte("---\nkind: Other\n")...)},
 		{"empty", nil},

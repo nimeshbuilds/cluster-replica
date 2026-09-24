@@ -289,6 +289,12 @@ func (s *Store) Save(ctx context.Context, value *State) error {
 		return err
 	}
 	obj := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: s.Namespace, Name: Name(value.OwnerUID), ResourceVersion: value.resourceVersion, Labels: map[string]string{"app.kubernetes.io/managed-by": "replicove", "replicove.nimeshbuilds.dev/owner": value.OwnerUID}}, Type: corev1.SecretTypeOpaque, Data: map[string][]byte{"sealed": sealed}}
+	if value.Capacity != nil {
+		// Empty admission bookkeeping survives request cleanup to prevent a
+		// delete/acquire race. It is installation infrastructure, not a capture.
+		obj.Labels["replicove.nimeshbuilds.dev/infrastructure"] = "true"
+		obj.Labels["replicove.nimeshbuilds.dev/state-kind"] = "capacity"
+	}
 	if value.resourceVersion == "" {
 		err = s.Client.Create(ctx, obj)
 	} else {

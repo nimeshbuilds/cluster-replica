@@ -121,6 +121,6 @@ bin/replicove status workload > "$work/artifacts/ready.json"
 kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" || true;tunnel_pid=''
 bin/replicove delete workload
 hk -n replica-lab wait clusterreplica/workload --for=delete --timeout=420s
-[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
+[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove,replicove.nimeshbuilds.dev/state-kind!=capacity -o name)" ]]
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
 echo "{\"workload\":\"$workload\",\"result\":\"passed\",\"sourceHelmCapture\":true,\"guestExecution\":true,\"ownedCleanup\":true}" > "$work/artifacts/report.json"

@@ -41,6 +41,14 @@ For cluster-scoped inputs, also populate `clusterResources` and install matching
 
 Secrets, Helm releases, and existing targets each require their own named grants. See [secrets](secrets-storage.md), [operators](operators.md), and [existing targets](existing.md). Volume-data mirrors additionally require exact PVC names and approved snapshot/storage classes in `spec.mirror`; ordinary resource reads and empty-volume permission do not authorize source data capture. See [mirror grants](mirrors.md#grant-access-to-data).
 
+## Data, fault and capacity grants
+
+PostgreSQL copies require `spec.databases` entries with explicit database/source selection, credentials in the protected namespace, approved masks/table filters, target image/storage and bounds. Source namespace RBAC or a PVC/Secret grant does not imply permission to read a database. The administrator must separately provision a read-only database role. See [PostgreSQL](postgresql.md).
+
+Chaos requires a grant for exact permitted fault kinds, duration, namespaces/workload kinds and Job image/resource limits. It cannot target arbitrary host/source workloads. Namespace permissions for `ReplicaExperiment` allow requesting an experiment, not changing its grant. See [bounded faults](chaos.md).
+
+`maxConcurrentReplicas` caps admitted replicas using a grant. Managed runtimes additionally have one slot per destination. A durable operator reservation prevents simultaneous requests from acquiring that slot; waiting consumes the request's original TTL. Host ResourceQuota/LimitRange budgets control resources independently. See [pools and budgets](pools.md).
+
 ## Let a user or agent create requests
 
 Install a namespaced Role and bind it to your authenticated user, group, or service account. This example defines only request management:
@@ -86,6 +94,8 @@ subjects:
 ```
 
 Mirror request permission does not grant source PVC access, snapshot-controller access, or permission to modify the host's source workloads. The operator performs only operations permitted by the administrator's separate volume-data grant.
+
+For chaos consumers, explicitly add `replicaexperiments` request verbs in the destination Role, using the [chaos guide](chaos.md). Stdio MCP and the dashboard use the same caller RBAC; neither creates a new grant or identity.
 
 Credential retrieval is a separate operation. Configure grant `accessSubjects` so Replicove creates exact-name Secret-get permissions per session, or have an administrator supply that binding. [Access](access.md) describes both host authentication and guest authorization.
 

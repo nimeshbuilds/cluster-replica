@@ -1,8 +1,10 @@
 # Workload mirrors and scheduled data resets
 
+> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+
 A `ReplicaMirror` creates an independent writable copy of selected workloads and their granted PVC data. Tests can change the copy. A manual or scheduled sync captures current source state and replaces the test generation. A reset to a retained revision reproduces that revision's configuration and volume recovery points. Access to a new generation starts only after readiness checks pass.
 
-This module was introduced in v0.2.0-alpha.1; use **v0.2.0-alpha.2** for the corrected infrastructure exclusions and documented late-enable path. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
+This module was introduced in v0.2.0-alpha.1; v0.2.0-alpha.2 corrected infrastructure exclusions and qualified late enablement. The examples below target **v0.3.0-alpha.1** after publication. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
 
 ## Behavior
 
@@ -51,10 +53,10 @@ Download the [installation values](../../examples/mirror/values.yaml) and edit t
 
 ```bash
 curl -fsSLo mirror-values.yaml \
-  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.2/examples/mirror/values.yaml
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.3.0-alpha.1/examples/mirror/values.yaml
 # Edit mirror-values.yaml for the granted source and qualified host CNI.
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.2 \
+  --version 0.3.0-alpha.1 \
   --namespace replicove-system --create-namespace \
   --values mirror-values.yaml --wait --timeout 5m
 ```
@@ -91,9 +93,9 @@ Edit and apply the complete [grant](../../examples/mirror/grant.yaml) and [mirro
 
 ```bash
 curl -fsSLo mirror-grant.yaml \
-  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.2/examples/mirror/grant.yaml
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.3.0-alpha.1/examples/mirror/grant.yaml
 curl -fsSLo mirror.yaml \
-  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.2.0-alpha.2/examples/mirror/mirror.yaml
+  https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.3.0-alpha.1/examples/mirror/mirror.yaml
 # Edit names, selectors, approved classes and grants for your source workload.
 kubectl apply -f mirror-grant.yaml
 kubectl apply -f mirror.yaml

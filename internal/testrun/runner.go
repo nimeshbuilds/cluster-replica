@@ -187,10 +187,6 @@ func (r *Runner) Run(ctx context.Context, recipe Recipe) (report Report) {
 	report.Runtime = replica.Status.Runtime.DeepCopy()
 	report.SourceVersion = replica.Status.SourceVersion
 	report.TargetVersion = replica.Status.TargetVersion
-	if recipe.ExpectedPlanRevision != "" && recipe.ExpectedPlanRevision != report.PlanRevision {
-		report.Setup.Reason = "captured plan differs from expectedPlanRevision"
-		return
-	}
 	if recipe.Mirror != nil {
 		lease, err = r.holdLease(readyCtx, request.(*api.ReplicaMirror), replica, duration(recipe.Execution.Timeout)+3*time.Minute)
 		if err != nil {

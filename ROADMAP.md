@@ -17,24 +17,30 @@ The portable alpha implements a declarative workflow for disposable Kubernetes e
 
 The original implementation checklists (#1–#5) are resolved with merged code and test evidence. The unfinished version-maintenance pipeline remains tracked in [#6](https://github.com/nimeshbuilds/replicove/issues/6).
 
+## Implemented next-candidate scope
+
+Current source targets **v0.3.0-alpha.1**. It adds read-only preflight and plan evidence; reusable test recipes with provenance/JUnit reports; destination pools and durable capacity admission; scoped PostgreSQL 17 copies with approved masks and table filters; six bounded chaos fault types; namespace-scoped stdio MCP; and a local read-only dashboard. All six CRDs share the operator, and database/chaos modules can be enabled later like mirrors. See the [feature map](docs/features.md) for limits.
+
+Local checks have passed. The next gates are exact-revision disposable tests and published-artifact verification, not more feature claims. There is no dedicated GitHub Action integration. The MCP interface has no remote certificate/CA service, and PostgreSQL masks/subsets do not promise general anonymization or an inferred tenant boundary.
+
 ## Runtime version maintenance
 
 Before treating a profile as certified, finish immutable image-digest pins and provenance review, automated candidate schema/resource/RBAC comparison, and retained-profile upgrade/recovery tests. Existing live replicas must keep their resolved identity, guest version, TTL and desired values. Cleanup must remain possible without fetching a chart. The current chart checksum, contract tests, read-only upstream checker and live matrix are the foundation; [the maintenance guide](docs/maintaining-replicove.md) records the current manual process.
 
-## Public alpha release
+## Next public alpha release
 
-Publish installable binaries and a verified operator image with checksums, signed provenance and matching installation instructions. Source builds work today. Chart defaults are not evidence that a public container tag exists. Exercise installation and upgrade from the published artifacts before announcing a release.
+The v0.2.0-alpha.2 baseline already publishes binaries, images, charts and native YAML. Release v0.3.0-alpha.1 only after its exact main revision passes all required CI jobs, followed by installation, upgrades and feature tests against its published artifacts. Update validation with those run links before changing pending claims. Separate signed attestations remain future work; OCI build metadata and checksums do not establish that claim.
 
 ## Additional adapters
 
 - Cloud identities: IRSA, EKS Pod Identity, Azure/GCP workload identity with authenticated exchange and revocation tests.
-- Data: qualify cloud CSI drivers, application-consistent/database and grouped-volume adapters, non-CSI transfer, and explicit external-resource cleanup. The optional per-volume mirror implementation and its qualification scope are described in [workload mirrors](docs/guides/mirrors.md).
+- Data: qualify the scoped PostgreSQL 17 path and cloud CSI drivers; add broader database engines/PITR, grouped-volume adapters, non-CSI transfer, and explicit external-resource cleanup only with matching ownership and recovery tests. The optional per-volume mirror implementation and its qualification scope are described in [workload mirrors](docs/guides/mirrors.md).
 - vCluster Platform: qualified provisioning and lifecycle integration; current requests block without falling back to Helm.
 - Operators: External Secrets backend recreation, lifecycle hooks, bootstrap cycles and additional behavior tests.
 
 ## Production qualification
 
-Add stronger host admission/network isolation guidance and tests, per-user gateway delegation, larger encrypted capture storage, scale and recovery/chaos coverage, distribution-specific admission/storage adapters, and external design-partner validation.
+Add stronger host admission/network isolation guidance and tests, per-user gateway delegation, larger encrypted capture storage, scale and recovery coverage beyond the bounded shared-worker chaos implementation, distribution-specific admission/storage adapters, and external design-partner validation.
 
 Kubernetes versions, served APIs and required capabilities are the core compatibility axes. EKS, AKS, GKE, OpenShift and RKE2 require separate evidence for their identity, storage, admission and networking behavior. Cloud labs are deferred; current validation uses disposable CI clusters.
 

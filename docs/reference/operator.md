@@ -7,7 +7,7 @@ The operator chart is in [`charts/replicove`](../../charts/replicove/). The CLI 
 | Value | Default | Meaning |
 | --- | --- | --- |
 | `image.repository` | `ghcr.io/nimeshbuilds/replicove` | Public operator image repository |
-| `image.tag` | `0.2.0-alpha.2` | Versioned alpha image tag |
+| `image.tag` | `0.3.0-alpha.1` | Versioned alpha image tag |
 | `image.digest` | Empty in source; set by release packaging | SHA-256 image digest; takes precedence over tag |
 | `image.pullPolicy` | `IfNotPresent` | Kubernetes image pull behavior |
 | `destinationNamespace` | `replica-lab` | The one namespace watched by this operator |
@@ -20,6 +20,12 @@ The operator chart is in [`charts/replicove`](../../charts/replicove/). The CLI 
 | `mirrors.sources` | `[]` | Source namespace names receiving explicit PVC-read/snapshot permissions |
 | `mirrors.snapshotController.mode` | `auto` | Install snapshot APIs/controller if absent; `existing` reuses host infrastructure; `managed` explicitly installs the bundled controller |
 | `mirrors.snapshotController.image` | `registry.k8s.io/sig-storage/snapshot-controller:v8.6.0` | Qualified upstream controller image |
+| `databases.enabled` | `false` | Enable granted PostgreSQL preparation/cleanup and its host/storage permissions |
+| `chaos.enabled` | `false` | Enable ReplicaExperiment reconciliation and bounded fault permissions |
+| `chaos.networkPolicyEnforced` | `false` | Administrator qualification of host CNI enforcement for network/Job faults |
+| `capacity.enabled` | `false` | Install retained destination ResourceQuota and optional LimitRange |
+| `capacity.hard` | `{}` | Explicit host resource quota limits; required when rendering a pool |
+| `capacity.defaultContainer` | `{}` | Optional LimitRange container defaults |
 | `resources.requests.cpu` | `100m` | Operator CPU request |
 | `resources.requests.memory` | `256Mi` | Operator memory request |
 | `resources.limits.memory` | `1Gi` | Operator memory limit |
@@ -40,6 +46,9 @@ The chart does not expose arbitrary vCluster values. Runtime configuration is an
 | `--health-probe-bind-address` | `:8081` | HTTP health/readiness probe listener |
 | `--mirrors` | `false` | Register the mirror controller and generation preparation/cleanup hooks |
 | `--mirror-network-policy-enforced` | `false` | Require the administrator's CNI qualification before mirroring |
+| `--databases` | `false` | Enable PostgreSQL preparation before application/access and journal-based cleanup |
+| `--chaos` | `false` | Register bounded guest experiment reconciliation |
+| `--chaos-network-policy-enforced` | `false` | Require the administrator's host CNI qualification for network/Job faults |
 | `--bootstrap-state-key` | `false` | One-shot immutable key initialization/validation, then exit |
 
 Running without a state namespace retains only the legacy runtime controller. It is not a complete replica deployment. Use the supported installers for full functionality.
@@ -61,3 +70,8 @@ Edit the chart templates and run `make generate` to regenerate CRDs, embedded ch
 Follow [installation upgrades](../getting-started/installation.md#upgrades-and-removal) and [runtime maintenance](../maintaining-replicove.md) for key retention, CRD updates, immutable Job replacement, and compatibility qualification.
 
 `mirrors.enabled` may be enabled after installation. Use the [complete upgrade procedure](../guides/enable-mirroring.md), including image selection, retained user values, source authorization and dependency checks. Changing it back to false requires completing mirror cleanup first.
+
+
+PostgreSQL and chaos can likewise be enabled on the existing installation using matching candidate/release CRDs, image, values and RBAC. Database NetworkPolicy enforcement is attested in each administrator database grant, not by a separate operator flag. Keep affected modules and permissions enabled while requests or finalizers remain. See [optional modules](../getting-started/installation.md#optional-modules).
+
+ResourceQuota/LimitRange installation is separate from durable capacity admission. The operator always applies its managed-runtime slot check and any grant `maxConcurrentReplicas` cap; `capacity.enabled` controls host quota objects, not the reservation ledger. Both queueing and provisioning consume the original request TTL. The default disabled quota setting is not a production sizing recommendation.

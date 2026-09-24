@@ -29,7 +29,7 @@ roleRef:
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-mirror
 subjects:
   - kind: ServiceAccount
-    name: {{ $.Release.Name }}
-    namespace: {{ $.Release.Namespace }}
+    name: {{ $.Release.Name | quote }}
+    namespace: {{ $.Release.Namespace | quote }}
 {{- end }}
 {{- end }}

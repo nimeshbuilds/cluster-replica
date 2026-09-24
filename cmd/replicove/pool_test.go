@@ -2,13 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"strings"
 	"testing"
 
 	"github.com/nimeshbuilds/cluster-replica/internal/testrun"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilyaml "k8s.io/apimachinery/pkg/util/yaml"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/yaml"
 )
 
@@ -91,6 +96,10 @@ func TestPoolRejectsUnsafeOrAmbiguousMembers(t *testing.T) {
 				p.Members[i].Values["mirrors"] = map[string]any{"enabled": true, "snapshotController": map[string]any{"mode": "managed"}}
 			}
 		},
+		"oversized snapshot label": func(p *poolFile) {
+			p.Members[0].ReleaseName = strings.Repeat("a", 44)
+			p.Members[0].Values["mirrors"] = map[string]any{"enabled": true, "snapshotController": map[string]any{"mode": "managed"}}
+		},
 		"protected sources": func(p *poolFile) {
 			p.Members[0].Values["sources"] = []any{map[string]any{"namespace": p.Members[1].SystemNamespace}}
 		},
@@ -148,6 +157,63 @@ func TestPoolStrictParser(t *testing.T) {
 	for _, suffix := range []string{"unknown: value\n", "---\nkind: Other\n", "kind: Other\n"} {
 		if _, err := parsePool(append(append([]byte(nil), data...), []byte(suffix)...)); err == nil {
 			t.Fatal("accepted malformed pool")
+		}
+	}
+}
+
+// Kubernetes permits identifiers which YAML 1.1 otherwise interprets as
+// numbers, booleans or null. Decode every rendered object into its actual API
+// type so metadata, RBAC subject names and Pod selectors cannot silently coerce.
+func TestPoolPreservesYAMLScalarIdentifiersAsStrings(t *testing.T) {
+	pool := poolFixture()
+	pool.Members[0].Namespace = "123"
+	pool.Members[0].SystemNamespace = "null"
+	pool.Members[0].ReleaseName = "true"
+	pool.Members[1].Namespace = "yes"
+	pool.Members[1].SystemNamespace = "on"
+	pool.Members[1].ReleaseName = "false"
+	for i := range pool.Members {
+		pool.Members[i].Values["sources"] = []any{map[string]any{"namespace": "456", "rules": []any{map[string]any{"apiGroups": []any{""}, "resources": []any{"configmaps"}, "verbs": []any{"get", "list"}}}}}
+		mode := "existing"
+		if i == 0 {
+			mode = "managed"
+		}
+		pool.Members[i].Values["mirrors"] = map[string]any{"enabled": true, "networkPolicyEnforced": true, "sources": []any{"no"}, "snapshotController": map[string]any{"mode": mode}}
+	}
+	output, err := renderPool(context.Background(), pool)
+	if err != nil {
+		t.Fatal(err)
+	}
+	scheme := runtime.NewScheme()
+	_ = clientgoscheme.AddToScheme(scheme)
+	_ = apiextensionsv1.AddToScheme(scheme)
+	typed := serializer.NewCodecFactory(scheme).UniversalDeserializer()
+	decoder := utilyaml.NewYAMLOrJSONDecoder(strings.NewReader(string(output)), 4096)
+	names := map[string]bool{}
+	for {
+		obj := &unstructured.Unstructured{}
+		if err := decoder.Decode(obj); err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		if len(obj.Object) == 0 {
+			continue
+		}
+		data, err := json.Marshal(obj.Object)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := typed.Decode(data, nil, nil); err != nil {
+			t.Fatalf("invalid typed %s: %v", obj.GetKind(), err)
+		}
+		if obj.GetKind() == "Namespace" {
+			names[obj.GetName()] = true
+		}
+	}
+	for _, name := range []string{"123", "null", "yes", "on"} {
+		if !names[name] {
+			t.Fatalf("namespace %q lost its string identity", name)
 		}
 	}
 }

@@ -1,5 +1,5 @@
 // Package dashboard serves a read-only, capability-protected local view. It
-// never returns captured payloads, request specs, credentials or Secret names.
+// never returns captured payloads, request specs, credentials or Secret values.
 package dashboard
 
 import (

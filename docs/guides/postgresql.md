@@ -23,7 +23,7 @@ ReplicaGrant's `sourceNamespaces`.
 
 The source Secret must be in the protected operator state namespace, with
 `username` and `password` keys. Provision it through your normal secret-management
-process. The role should have only CONNECT, schema USAGE, table SELECT, and the
+process. The role needs LOGIN, CONNECT, schema USAGE, table SELECT, and the
 sequence reads needed for the selected database. It must not own source objects,
 have write grants, inherit privileged roles, or be a superuser. Source credentials
 remain in the operator process and its `pg_dump` environment; they are never
@@ -57,6 +57,24 @@ the pinned runtime does not synchronize them to the host. PostgreSQL TCP auth al
 rejects all connections during staging. The operator uses guest exec and a local
 Unix socket to restore and validate.
 
+Replicated application Pods also receive a host egress boundary before capture.
+In every guest namespace recorded in the plan, applications can reach peers in
+that replica's planned namespaces, its CoreDNS on ports 53/1053, and its virtual
+API on ports 443/6443/8443. Other host services, original database endpoints, and
+external destinations are denied. The synthesized database Pods are excluded
+from these allowances and retain zero egress throughout staging and after
+publication. All additional host egress allow policies in the destination
+namespace are conservatively rejected, because Kubernetes policies are additive.
+This adapter therefore requires a destination without those conflicting policies.
+
+This boundary protects captured application namespaces under the qualified host
+CNI. Host administrators and guest cluster-admin recipients remain trusted;
+creating workloads in an additional guest namespace is outside the captured
+policy scope. Use namespace-scoped sessions for less-trusted test clients. Plans
+containing workloads in Kubernetes system namespaces are rejected. The boundary
+does not replace review of copied Secrets, URLs, application behavior, or access
+roles. External dependency allowances are not part of this adapter.
+
 ## Request and application wiring
 
 Adapt [the replication example](../../examples/postgresql/replication.yaml), including
@@ -75,7 +93,8 @@ Exclude the original database workload, its Service, PVCs, and credential Secret
 from source capture. A captured Secret or Service colliding with a synthesized
 name is rejected; Replicove never silently replaces or adopts it. Other original
 application connection strings must be patched explicitly. The adapter does not
-automatically discover every embedded database URL.
+automatically discover every embedded database URL. An unchanged original endpoint
+will fail behind the application egress boundary; it is not transparently redirected.
 
 ```sh
 replicove database validate \
@@ -142,7 +161,10 @@ An interrupted transfer is recorded as failed; reconciliation does not silently
 read a different source snapshot or replay a partially completed transfer. Delete
 and recreate the request after correcting its cause. Cleanup uses durable intent
 records, ownership markers, and UID checks; TTL deletion removes owned database
-Pods, PVCs, credentials, Services, host policies, and protected state.
+Pods, PVCs, credentials, Services, host policies, and protected state. Application
+egress policies remain until the managed runtime and its translated workload Pods
+have disappeared. Disabling the database module does not bypass this cleanup;
+re-enable it to finish deleting owned resources and policies.
 
 ## Disposable verification
 
@@ -154,3 +176,10 @@ TCP rejection before publication, and absence of the original test string from
 the final database files. Controller unit tests cover restart/failure gating and
 overlapping network policy rejection. The Docker fixture does not qualify a real
 cluster's CNI, vCluster translation, CSI provisioner, or TLS trust configuration.
+
+`hack/e2e-database.sh` additionally installs a disposable kind cluster with Calico
+and a real vCluster. It checks application access to the sanitized database through
+guest DNS, denies source Pod and Service IPs from that application while proving
+the source endpoints remain available, and verifies complete policy/data cleanup.
+See the [validation record](../validation.md) for results actually obtained for
+the current revision.

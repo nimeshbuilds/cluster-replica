@@ -1,8 +1,10 @@
 # Quick start: your first replica
 
+> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+
 Create a disposable Kubernetes cluster, install Replicove, and recreate a small application’s configuration and Helm component inside a vCluster. You will inspect the plan, connect to the replica, verify the copied resources, and remove the environment.
 
-> **Experimental alpha:** this guide uses the published `v0.2.0-alpha.2` CLI and operator image with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
+> **Experimental alpha:** this guide targets the `v0.3.0-alpha.1` CLI and operator image after publication with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
 
 Prefer a one-command Helm installation? Start with the **[Helm quickstart](docs/getting-started/helm.md)**. Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
 
@@ -26,7 +28,7 @@ cd replicove-demo
 ./hack/fetch-e2e-tools.sh
 ./hack/fetch-helm.sh
 export PATH="$PWD/.cache/e2e-tools:$PATH"
-export REPLICOVE_RELEASE=v0.2.0-alpha.2
+export REPLICOVE_RELEASE=v0.3.0-alpha.1
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 case "$(uname -m)" in
   x86_64) arch=amd64 ;;
@@ -43,7 +45,7 @@ tar -xzf ".cache/release/$asset" -C bin replicove
 docker info >/dev/null
 ```
 
-You stay on the normal `main` branch. The CLI reports `v0.2.0-alpha.2`; the operator image is pulled automatically from GHCR. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
+You stay on the normal `main` branch. The CLI reports `v0.3.0-alpha.1`; the operator image is pulled automatically from GHCR. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
 
 <details>
 <summary>Already cloned the repository or followed the older guide?</summary>
@@ -88,7 +90,7 @@ Wait for the node to report `Ready`. `hk` always targets the host, `rk` manages 
 
 ```bash
 hk create namespace source-dev
-rk install --image ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.2 --values test/e2e/replicove-values.yaml
+rk install --image ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1 --values test/e2e/replicove-values.yaml
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 
 hk apply -f test/e2e/source.yaml
@@ -196,7 +198,7 @@ hk -n replicove-system logs deployment/replicove --tail=100
 | --- | --- |
 | `bin/replicove` or a fixture is missing | Run from the repository root. `git branch --show-current` should print `main`; follow the existing-checkout instructions in step 1 to update and download. |
 | Docker is unreachable | Start your Docker engine, confirm `docker info`, and rerun the failed step. |
-| Operator `ImagePullBackOff` | Check node access to `ghcr.io` and confirm the image is `ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.2`. |
+| Operator `ImagePullBackOff` | Check node access to `ghcr.io` and confirm the image is `ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1`. |
 | `AwaitingApproval` | Read `rk plan demo`, then approve that plan with `rk approve demo`. |
 | A PVC is `Pending` | Check `hk get storageclass` and the pod/PVC events. The persistent profile needs a functioning default StorageClass. |
 | `Blocked` | Read the request’s condition reason. Grant, ownership, capability, and capture limits are intentional checks. |
@@ -216,6 +218,18 @@ This walkthrough uses the existing tested source and fixtures. Cloud identity, s
 
 ## Copy workload data and reset it on a schedule
 
-For selected CSI-backed workload data, use the optional [workload mirror guide](docs/guides/mirrors.md). It covers the Helm module, exact PVC grants, YAML requests, manual/scheduled sync, saved-revision reset, access, leases, retention, and TTL cleanup. Ordinary `ClusterReplica` requests continue to provision fresh volumes; selecting a Secret or PVC does not implicitly grant access to its data.
+For selected CSI-backed workload data, use the optional [workload mirror guide](docs/guides/mirrors.md). It covers the Helm module, exact PVC grants, YAML requests, manual/scheduled sync, saved-revision reset, access, leases, retention, and TTL cleanup. Ordinary selected PVCs continue to provision fresh volumes; selecting a Secret or PVC does not implicitly grant access to its data.
 
-If you completed this CLI installation with mirroring disabled, [enable it later with an in-place Helm upgrade](docs/guides/enable-mirroring.md). Do not rerun `replicove install` or delete the existing release. The [feature map](docs/features.md) links every shipped capability and its current limits.
+If you completed this CLI installation with mirroring disabled, [enable it later with an in-place Helm upgrade](docs/guides/enable-mirroring.md). Do not rerun `replicove install` or delete the existing release. The [feature map](docs/features.md) links every implemented capability and its current limits.
+
+## Extend the workflow
+
+The candidate adds optional features through the same operator and CLI. Start with [preflight and plan evidence](docs/guides/diagnostics.md), then use [test recipes](docs/guides/test-runs.md) to create an environment, run your command, write metadata/JUnit artifacts and verify cleanup. Recipes repeat a requested setup against a fresh capture; they do not replay exact historical source state.
+
+- [PostgreSQL 17 copies](docs/guides/postgresql.md): explicit source credentials and database grants, approved masks/table filters, and validated relationships before application/access startup.
+- [Bounded chaos](docs/guides/chaos.md): six fault types on owned test workloads with limits and rollback.
+- [Destination pools](docs/guides/pools.md): separate managed-runtime destinations, host quotas and operator admission.
+- [Stdio MCP](docs/guides/agents-mcp.md): namespace-scoped caller authority, read-only by default; no remote identity/CA service.
+- [Local dashboard](docs/guides/dashboard.md): read-only metadata and lifecycle inspection.
+
+Database and chaos modules are disabled by default and can be [enabled later](docs/getting-started/installation.md#optional-modules). Check [validation](docs/validation.md) for candidate qualification before relying on a new path.

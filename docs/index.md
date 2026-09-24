@@ -18,7 +18,7 @@ description: Replicove recreates selected Kubernetes operators, Helm components,
 </div>
 
 !!! info "Experimental portable alpha"
-    Install public alpha images, a Helm chart, CLI binaries, or native YAML. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
+    Current source targets v0.3.0-alpha.1; qualification and publication are pending. The published v0.2.0-alpha.2 baseline remains available. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
 
 <div class="feature-grid" markdown>
 <div markdown>
@@ -61,6 +61,9 @@ The CLI submits Kubernetes resources. You can use those same resources directly 
 | `ReplicaAccess` | Authorized credential consumer | Request a bounded guest credential |
 | `ReplicaMirror` | Developer, CI, or agent | Select workload/PVC copies, schedule resets, and bound their lifetime |
 | `ReplicaMirrorRun` | Developer, CI, or agent | Request an immutable manual Sync or saved-revision Reset |
+| `ReplicaExperiment` | Authorized test runner, developer, or agent | Apply bounded faults to owned test workloads and verify rollback |
+
+`TestRecipe` and `ReplicaPool` are local CLI documents, not additional CRDs.
 
 The [YAML quickstart](getting-started/yaml.md) covers the operator installation, the core replica resource types, connecting with `kubectl`, and verified cleanup. You do not need the Replicove or Helm CLI for that workflow.
 
@@ -72,13 +75,15 @@ The guest has its own API server and object identities. With the current shared-
 
 ## Find the right guide
 
-Start with the [feature map](features.md) for every shipped capability, its guide, and its limits. To add optional data copies to an existing deployment, use [enable mirroring later](guides/enable-mirroring.md).
+Start with the [feature map](features.md) for every implemented capability, its guide, and its limits. To add optional data copies to an existing deployment, use [enable mirroring later](guides/enable-mirroring.md).
 
 - **First installation:** [installation choices](getting-started/installation.md), [Helm](getting-started/helm.md), [YAML](getting-started/yaml.md), or [CLI](../QUICKSTART.md).
 - **Platform administrators:** [grants and RBAC](guides/grants.md), [secrets and storage](guides/secrets-storage.md), [security](../SECURITY.md).
-- **Workload data copies:** [mirrors, schedules, and saved-revision resets](guides/mirrors.md).
+- **Workload data copies:** [CSI mirrors and resets](guides/mirrors.md), [PostgreSQL masks and table filters](guides/postgresql.md).
 - **Application developers:** [operators and Helm](guides/operators.md), [refresh and drift](guides/lifecycle.md), [troubleshooting](guides/troubleshooting.md).
-- **Agent and CI developers:** [access](guides/access.md), [GitOps and CI](guides/gitops.md), [full API reference](reference/api.md).
+- **Test authors:** [recipes and reports](guides/test-runs.md), [bounded chaos](guides/chaos.md), [preflight and plan evidence](guides/diagnostics.md), [destination pools](guides/pools.md).
+- **Agent and CI developers:** [access](guides/access.md), [GitOps and CI](guides/gitops.md), [namespace-scoped stdio MCP](guides/agents-mcp.md), [full API reference](reference/api.md).
+- **Local inspection:** [read-only dashboard](guides/dashboard.md).
 - **Contributors:** [architecture](architecture.md), [local development](development/local.md), [runtime maintenance](maintaining-replicove.md).
 
 Built in public by [Nimesh Builds](https://github.com/nimeshbuilds). Replicove is an independent Apache-2.0 project; it is not affiliated with the vCluster maintainers.

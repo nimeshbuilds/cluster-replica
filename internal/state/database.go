@@ -17,4 +17,7 @@ type Database struct {
 	SanitizedSHA256 string    `json:"sanitizedSHA256,omitempty"`
 	Entries         []Entry   `json:"entries,omitempty"`
 	HostEntries     []Entry   `json:"hostEntries,omitempty"`
+	// The first database owns the shared application egress boundary. It remains
+	// after database cleanup until translated application Pods have disappeared.
+	ApplicationPolicies []Entry `json:"applicationPolicies,omitempty"`
 }

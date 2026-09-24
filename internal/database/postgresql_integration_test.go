@@ -3,13 +3,14 @@ package database
 import (
 	"bytes"
 	"context"
-	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 	"time"
+
+	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 )
 
 // This fixture creates only disposable containers with no network or host mounts.
@@ -35,8 +36,15 @@ func TestPostgreSQLDisposable(t *testing.T) {
 	call := func(input io.Reader, args ...string) ([]byte, error) {
 		cmd := exec.CommandContext(ctx, "docker", args...)
 		cmd.Stdin = input
-		cmd.Stderr = io.Discard
-		return cmd.Output()
+		var diagnostics bytes.Buffer
+		cmd.Stderr = &diagnostics
+		out, err := cmd.Output()
+		if err != nil {
+			// This opt-in fixture owns only generated disposable data. Never
+			// copy this diagnostic behavior into the production runner.
+			t.Logf("disposable fixture command failed: %v; stderr: %s", err, diagnostics.String())
+		}
+		return out, err
 	}
 	for _, name := range names {
 		name := name
@@ -76,30 +84,31 @@ func TestPostgreSQLDisposable(t *testing.T) {
 		}
 		return out
 	}
-	sql(names[0], `CREATE TABLE public.users(id integer PRIMARY KEY,email text UNIQUE NOT NULL,tenant_id integer); CREATE TABLE public.orders(id integer PRIMARY KEY,email text REFERENCES public.users(email),tenant_id integer); INSERT INTO public.users VALUES(1,'raw-person@example.invalid',10),(2,'excluded-person@example.invalid',20); INSERT INTO public.orders VALUES(1,'raw-person@example.invalid',10),(2,'excluded-person@example.invalid',20); CREATE ROLE replica_reader; GRANT CONNECT ON DATABASE accounts TO replica_reader; GRANT USAGE ON SCHEMA public TO replica_reader; GRANT SELECT ON ALL TABLES IN SCHEMA public TO replica_reader;`)
+	sql(names[0], `CREATE TABLE public.users(id integer PRIMARY KEY,email text UNIQUE NOT NULL,tenant_id integer); CREATE TABLE public.orders(id integer PRIMARY KEY,email text REFERENCES public.users(email),tenant_id integer); INSERT INTO public.users VALUES(1,'raw-person@example.invalid',10),(2,'excluded-person@example.invalid',20); INSERT INTO public.orders VALUES(1,'raw-person@example.invalid',10),(2,'excluded-person@example.invalid',20); CREATE ROLE replica_reader LOGIN; GRANT CONNECT ON DATABASE accounts TO replica_reader; GRANT USAGE ON SCHEMA public TO replica_reader; GRANT SELECT ON ALL TABLES IN SCHEMA public TO replica_reader;`)
 	// Reject TCP even with the correct disposable password before publication.
 	if _, err := call(nil, "exec", "--env", "PGPASSWORD=disposable-fixture-password", names[1], "psql", "-h", "127.0.0.1", "-U", "replicove", "-d", "accounts", "-c", "SELECT 1"); err == nil {
 		t.Fatal("staging accepts TCP before sanitization")
 	}
 	stream := func(from, to, user string) {
 		t.Helper()
+		var dumpDiagnostics, restoreDiagnostics bytes.Buffer
 		_, err := transfer(ctx, 256<<20, func(ctx context.Context, w io.Writer) error {
 			args := []string{"exec", "--env", "PGOPTIONS=-c default_transaction_read_only=on", from, "pg_dump", "--username=" + user}
 			args = append(args, dumpArgs("accounts")...)
 			cmd := exec.CommandContext(ctx, "docker", args...)
 			cmd.Stdout = w
-			cmd.Stderr = io.Discard
+			cmd.Stderr = &dumpDiagnostics
 			return cmd.Run()
 		}, func(ctx context.Context, r io.Reader) error {
 			args := append([]string{"exec", "--interactive", to}, restoreArgs("accounts")...)
 			cmd := exec.CommandContext(ctx, "docker", args...)
 			cmd.Stdin = r
 			cmd.Stdout = io.Discard
-			cmd.Stderr = io.Discard
+			cmd.Stderr = &restoreDiagnostics
 			return cmd.Run()
 		})
 		if err != nil {
-			t.Fatal("logical transfer failed (output suppressed)")
+			t.Fatalf("disposable logical transfer failed; dump stderr: %s; restore stderr: %s", dumpDiagnostics.String(), restoreDiagnostics.String())
 		}
 	}
 	stream(names[0], names[1], "replica_reader")

@@ -57,6 +57,12 @@ hk -n source-database rollout status deployment/source-db --timeout=240s
 hk -n source-database rollout status deployment/app --timeout=180s
 source_uid=$(hk -n source-database get deployment source-db -o jsonpath='{.metadata.uid}')
 source_ip=$(hk -n source-database get pod -l app=source-db -o jsonpath='{.items[0].status.podIP}')
+source_service_ip=$(hk -n source-database get service source-db -o jsonpath='{.spec.clusterIP}')
+# Prove both source endpoints are reachable before testing guest isolation;
+# a failed guest probe must not pass merely because the source is unavailable.
+for endpoint in "$source_ip" "$source_service_ip"; do
+ hk -n source-database exec deployment/app -- pg_isready -h "$endpoint" -t 2 >/dev/null
+done
 hk apply -f test/database/grant.yaml
 bin/replicove create database-lab --grant database-lab --ttl 45m --replication-file test/database/replication.yaml
 # A request cannot bypass the default-off module. Opting in preserves its request.
@@ -90,6 +96,13 @@ db=replicove-db-test-database
 [[ "$(gk -n integration exec "$db" -- psql -U replicove -d application -qAt -c "SELECT count(*) FROM pg_constraint WHERE contype='f' AND convalidated")" == 1 ]]
 # Verify host CNI enforcement from the actual copied PostgreSQL Pod to production.
 if gk -n integration exec "$db" -- pg_isready -h "$source_ip" -t 2 >/dev/null 2>&1; then echo 'Database Pod could reach source through host policy' >&2; exit 1; fi
+# Application connectivity must resolve the generated Service and reach the
+# sanitized copy, while original Pod IP and Service IP endpoints stay blocked.
+[[ "$(gk -n integration exec deployment/app -- psql -qAt -c 'SELECT count(*) FROM public.customers WHERE length(email)=64')" == 1 ]]
+for endpoint in "$source_ip" "$source_service_ip"; do
+ if gk -n integration exec deployment/app -- pg_isready -h "$endpoint" -t 2 >/dev/null 2>&1; then echo 'Replicated application could reach the source database' >&2; exit 1; fi
+ hk -n source-database exec deployment/app -- pg_isready -h "$endpoint" -t 2 >/dev/null
+done
 gk -n integration exec "$db" -- psql -U replicove -d application -qAt -c CHECKPOINT >/dev/null
 [[ "$(gk -n integration exec "$db" -- sh -c "if grep -a -r -l 'original-user@example.invalid' /var/lib/postgresql/data >/dev/null 2>&1; then printf FOUND; else printf CLEAN; fi")" == CLEAN ]]
 source_intact(){
@@ -121,5 +134,5 @@ while IFS= read -r pv; do [[ -z "$(hk get pv "$pv" --ignore-not-found -o name)" 
 [[ "$(hk -n replica-lab get pvc -o jsonpath='{.items}')" == '[]' ]]
 source_intact
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["default-off module and late opt-in","explicit read-only source account and RBAC","host TLS source connection","application blocked during raw staging","actual PostgreSQL schema/data restore","domain masking and validated foreign keys","raw staging removed before access","no original fixture rows in final data or WAL","host Calico egress isolation from copied database","source unchanged","operator restart retains sanitized database","in-place refresh denied","TTL-compatible owned PVC/PV/host-policy cleanup"]}
+{"result":"passed","scenarios":["default-off module and late opt-in","explicit read-only source account and RBAC","host TLS source connection","application blocked during raw staging","actual PostgreSQL schema/data restore","domain masking and validated foreign keys","raw staging removed before access","no original fixture rows in final data or WAL","host Calico egress isolation from copied database","application DNS and sanitized database connectivity","application denied source Pod and Service IPs while source remains reachable","source unchanged","operator restart retains sanitized database","in-place refresh denied","TTL-compatible owned PVC/PV/host-policy cleanup"]}
 JSON

@@ -11,6 +11,7 @@ import (
 	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 	"github.com/nimeshbuilds/cluster-replica/internal/capacity"
 	"github.com/nimeshbuilds/cluster-replica/internal/catalog"
+	"github.com/nimeshbuilds/cluster-replica/internal/database"
 	"github.com/nimeshbuilds/cluster-replica/internal/planner"
 	"github.com/nimeshbuilds/cluster-replica/internal/policy"
 	runtimeprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime"
@@ -34,16 +35,17 @@ type Capturer interface {
 	Capture(context.Context, *api.ClusterReplica, *api.ReplicaGrant, policy.Resolution) (*state.Plan, error)
 }
 type Engine struct {
-	ExperimentCleanup   func(context.Context, *state.State) (bool, error)
-	DatabasePreparation func(context.Context, *api.ClusterReplica, *api.ReplicaGrant, *state.State, *target.Connection) (bool, error)
-	DatabaseCleanup     func(context.Context, *state.State, *target.Connection) (bool, error)
-	Client              client.Client
-	Store               *state.Store
-	Reader              Capturer
-	Runtime             runtimeprovider.Provider
-	Now                 func() time.Time
-	MirrorCleanup       func(context.Context, *state.State, bool) (bool, error)
-	MirrorPreparation   func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
+	ExperimentCleanup        func(context.Context, *state.State) (bool, error)
+	DatabasePreparation      func(context.Context, *api.ClusterReplica, *api.ReplicaGrant, *state.State, *target.Connection) (bool, error)
+	DatabaseCleanup          func(context.Context, *state.State, *target.Connection) (bool, error)
+	DatabaseIsolationCleanup func(context.Context, *state.State) (bool, error)
+	Client                   client.Client
+	Store                    *state.Store
+	Reader                   Capturer
+	Runtime                  runtimeprovider.Provider
+	Now                      func() time.Time
+	MirrorCleanup            func(context.Context, *state.State, bool) (bool, error)
+	MirrorPreparation        func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
 }
 
 func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.Result, error) {
@@ -367,6 +369,12 @@ func (w *Engine) report(ctx context.Context, obj *api.ClusterReplica, phase stri
 			reason, message = p.Reason, p.Detail
 		case errors.As(err, &denied):
 			reason, message = denied.Reason, denied.Detail
+		case errors.Is(err, database.ErrDenied):
+			reason, message = "DatabasePolicyDenied", "The database selection, isolation, or storage configuration does not satisfy the administrator grant."
+		case errors.Is(err, database.ErrOwnership):
+			reason, message = "DatabaseOwnershipChanged", "A database resource no longer matches its recorded identity; automatic mutation is blocked."
+		case errors.Is(err, database.ErrFailed):
+			reason, message = "DatabasePreparationFailed", "Database preparation could not finish. Check the qualified PostgreSQL image, source read permissions, storage and isolation; recreate after a failed or interrupted copy."
 		case errors.Is(err, state.ErrTooLarge):
 			reason, message = "CaptureLimit", "The encrypted capture exceeds the configured storage limit; narrow the selection."
 		case errors.Is(err, state.ErrIntegrity):
@@ -530,6 +538,14 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			return w.report(ctx, obj, "Deleting", failure("MirrorsDisabled", "Enable the mirror module to finish restored volume cleanup."), false)
 		}
 		if done, err := w.MirrorCleanup(ctx, st, true); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+	}
+	if len(st.Databases) > 0 {
+		if w.DatabaseIsolationCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("DatabasesDisabled", "Re-enable the database module to finish application network isolation cleanup."), false)
+		}
+		if done, err := w.DatabaseIsolationCleanup(ctx, st); err != nil || !done {
 			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}

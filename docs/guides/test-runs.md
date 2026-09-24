@@ -63,7 +63,6 @@ lifecycle:
 | `lifecycle.readyTimeout` | Defaults to `20m`; at most `2h`. Includes provisioning, mirror lease acceptance, access issuance and optional chaos activation. |
 | `lifecycle.cleanupTimeout` | Defaults to `15m`; at most `1h`. Shared deadline for fault rollback, credential revocation, lease release and finalizer completion. |
 | `lifecycle.keepOnFailure` | Defaults to `false`. After an executed command fails, keep only this request until its **original TTL**. Provisioning failures and cancellation still trigger deletion. |
-| `expectedPlanRevision` | Optional exact captured-plan revision assertion. A mismatch prevents command execution and cleans up the new request. |
 | `chaos` | Optional bounded guest experiment, described below. Requires the chaos module and administrator delegation. |
 
 Choose a request TTL that **exceeds** readiness + execution + cleanup timeouts and also leaves at least ten minutes for credential issuance after the readiness allowance. TTL starts when Kubernetes creates the request, including provisioning. The runner never extends TTL to keep failed environments alive.
@@ -103,7 +102,7 @@ Runs that reach provisioning write `report.json` and `junit.xml` into a new priv
 
 The report records the normalized recipe hash, exact request and guest UIDs, plan revision and capture time, safe resource identity/provenance, runtime profile/chart checksum/Kubernetes version, optional mirror capture and chaos target references, test exit code, and independent setup/test/cleanup outcomes. It excludes the recipe body, command arguments, captured configuration, arbitrary API error messages, credentials, kubeconfig paths and test output. Command stdout/stderr stream directly to your terminal; your test program controls what it prints.
 
-Reusing a recipe repeats the **requested setup** against a fresh host capture. It does not guarantee historical image contents, external-service state, database contents or identical live source resource versions. A recorded plan revision identifies a captured plan; it is not an importable snapshot. Use immutable image digests, retain the original recipe in your own source control, and use [retained mirror reset revisions](mirrors.md) when you need captured data again. `expectedPlanRevision` is a strict assertion and can reject otherwise similar live captures. There is no automatic download or replay of the encrypted captured configuration.
+Reusing a recipe repeats the **requested setup** against a fresh host capture. It does not guarantee historical image contents, external-service state, database contents or identical live source resource versions. A recorded plan revision identifies that specific capture and includes its capture time, so even unchanged source configuration receives a new revision on a fresh capture. It cannot compare configuration equality across runs or import a snapshot. Use immutable image digests, retain the original recipe in your own source control, and use [retained mirror reset revisions](mirrors.md) when you need captured data again. There is no automatic download or replay of the encrypted captured configuration.
 
 ## Cleanup and failed tests
 

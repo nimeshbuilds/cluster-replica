@@ -1,6 +1,8 @@
 # Enable mirroring on an existing installation
 
-You can add mirroring after installing Replicove. For a Helm installation, use an **in-place Helm upgrade** of the same release. Keep the existing encryption key, protected namespace, destination namespace, and custom values. There is no separate Replicove image to install: v0.2.0-alpha.2 already includes the optional controller.
+> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+
+You can add mirroring after installing Replicove. For a Helm installation, use an **in-place Helm upgrade** of the same release. Keep the existing encryption key, protected namespace, destination namespace, and custom values. There is no separate Replicove image to install: the current candidate includes the optional controller.
 
 Enabling the module adds permissions and, when needed, snapshot infrastructure. The operator rolls out; existing `ClusterReplica` requests and vCluster workloads remain in place. It does **not** automatically convert them into mirrors, copy any source data, or reset their guest changes. Creating a `ReplicaMirror` is a separate, explicitly granted action.
 
@@ -29,18 +31,18 @@ Use your existing protected backup process for state Secrets. Do not commit key 
 
 ## 1. Update the CRDs
 
-Use matching operator/chart/CRD/CLI versions. This example targets the published **0.2.0-alpha.2** release, including upgrades from 0.1.0-alpha.1:
+Use matching operator/chart/CRD/CLI versions. This example targets the **0.3.0-alpha.1** candidate after publication, including upgrades from 0.1.0-alpha.1:
 
 ```bash
 helm show crds oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.2 > replicove-crds.yaml
+  --version 0.3.0-alpha.1 > replicove-crds.yaml
 kubectl apply -f replicove-crds.yaml
 kubectl wait --for=condition=Established --timeout=60s -f replicove-crds.yaml
 kubectl explain replicagrant.spec.mirror
 kubectl explain replicamirror.spec
 ```
 
-Update all five CRDs, including the volume-data policy on `ReplicaGrant`; merely adding `ReplicaMirror` and `ReplicaMirrorRun` is insufficient. [Helm does not upgrade existing CRDs](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/). The commands above use client-side apply for the versioned schemas; an initial missing-last-applied-annotation warning on Helm-installed CRDs is expected. If a GitOps system owns these schemas, update its desired manifests instead of creating competing reconcilers.
+Update all six CRDs, including the volume-data policy on `ReplicaGrant`; merely adding `ReplicaMirror` and `ReplicaMirrorRun` is insufficient. [Helm does not upgrade existing CRDs](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/). The commands above use client-side apply for the versioned schemas; an initial missing-last-applied-annotation warning on Helm-installed CRDs is expected. If a GitOps system owns these schemas, update its desired manifests instead of creating competing reconcilers.
 
 ## 2. Add a small values overlay
 
@@ -49,7 +51,7 @@ Create `enable-mirrors.yaml`. Replace `source-dev` with the source namespaces th
 ```yaml
 image:
   repository: ghcr.io/nimeshbuilds/replicove
-  tag: 0.2.0-alpha.2
+  tag: 0.3.0-alpha.1
   digest: ""
 mirrors:
   enabled: true
@@ -59,7 +61,7 @@ mirrors:
     mode: auto
 ```
 
-The image is explicit because a previously saved `image.digest` overrides a new tag or chart default. The empty digest clears any old pin and selects the explicit 0.2.0-alpha.2 tag. For immutable pinning, copy the target release's `image.digest` from `helm show values oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.2.0-alpha.2` into this overlay. If you use a private image mirror, substitute your reviewed equivalent image and digest. The older 0.1 operator cannot run the new controller.
+The image is explicit because a previously saved `image.digest` overrides a new tag or chart default. The empty digest clears any old pin and selects the explicit 0.3.0-alpha.1 tag. For immutable pinning, copy the target release's `image.digest` from `helm show values oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.3.0-alpha.1` into this overlay. If you use a private image mirror, substitute your reviewed equivalent image and digest. The older 0.1 operator cannot run the new controller.
 
 `auto` installs snapshot infrastructure when the host snapshot APIs are absent, and otherwise reuses existing infrastructure. It retains this release's bundled controller on subsequent upgrades. Use `existing` when the host administrator manages the snapshot system. An incomplete existing installation needs repair; `managed` must not be used to add a competing controller. See the [mode reference](mirrors.md#install-the-optional-module).
 
@@ -80,7 +82,7 @@ If the wait fails, diagnose bootstrap instead of deleting an active or failed Jo
 
 ```bash
 helm upgrade replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.2 \
+  --version 0.3.0-alpha.1 \
   --namespace replicove-system \
   --reset-then-reuse-values \
   --values enable-mirrors.yaml \
@@ -112,7 +114,7 @@ Check that your pre-existing replica is still Ready and its guest data/access st
 
 ## CLI, native YAML and GitOps installations
 
-`replicove install` creates a Helm release. If you originally used the CLI, upgrade that existing release with the Helm procedure above. Rerunning `replicove install` is not an upgrade command. Use the matching [released CLI](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) for the mirror commands.
+`replicove install` creates a Helm release. If you originally used the CLI, upgrade that existing release with the Helm procedure above. Rerunning `replicove install` is not an upgrade command. Use the matching [released CLI](https://github.com/nimeshbuilds/replicove/releases/tag/v0.3.0-alpha.1) for the mirror commands.
 
 For a native YAML installation, keep managing it as native YAML. Switching it to Helm requires a separate ownership migration. Render the same released chart with the original installation's names/customizations and the mirror overlay, using these additional settings:
 
@@ -131,7 +133,7 @@ For an otherwise default native installation, render a reviewable bundle:
 
 ```bash
 helm template replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.2.0-alpha.2 --namespace replicove-system --include-crds \
+  --version 0.3.0-alpha.1 --namespace replicove-system --include-crds \
   --values enable-mirrors.yaml --values native-render.yaml \
   > replicove-with-mirrors.yaml
 ```

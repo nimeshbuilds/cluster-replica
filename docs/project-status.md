@@ -1,6 +1,6 @@
 # Replicove project status
 
-Replicove is experimental. The [v0.2.0-alpha.2 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. This is not a supported production release.
+Replicove is experimental. The [v0.2.0-alpha.2 prerelease](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) distributes a public operator image, OCI Helm chart, CLI binaries, and native manifests. Current source targets **v0.3.0-alpha.1**, with release qualification pending. Neither is a supported production release.
 
 ## Portable alpha
 
@@ -12,11 +12,26 @@ The installed operator uses explicit runtime resource/verb permissions. Chart co
 
 The optional mirror module uses the same image and Helm deployment. It installs the upstream snapshot controller/APIs when absent, or reuses qualified host infrastructure. `ReplicaMirror` and immutable `ReplicaMirrorRun` requests support explicit CSI volume-data grants, independent writable generations, latest-source sync, saved-revision reset, schedules, test leases, bounded retention, existing-runtime namespaces, guest access, and TTL cleanup. Follow the [mirror guide](guides/mirrors.md) and [versioned verification record](validation.md).
 
-This provides per-volume crash-consistent recovery points. Database consistency, atomic multi-volume state, cloud CSI certification and external-service cloning remain separate work. The proposed MCP/certificate identity service and dashboard are not part of this release.
+Mirrors provide per-volume crash-consistent recovery points. They do not establish database consistency or atomic multi-volume state. The current candidate adds a separate scoped PostgreSQL adapter, stdio MCP and local dashboard; these are not part of the historical mirror qualification below.
 
 Mirroring can be [enabled later](guides/enable-mirroring.md) without reinstalling the operator. The 0.2.0-alpha.2 chart also excludes all bundled mirror infrastructure from application capture, including the source RoleBinding. The upgrade matrix starts with published 0.1.0-alpha.1 and 0.2.0-alpha.1 Helm installations and rendered 0.2.0-alpha.1 native YAML, preserves an active ordinary replica, and then exercises the mirror lifecycle. See [validation](validation.md) for recorded outcomes and the [feature map](features.md) for current scope.
 
 Managed replacements require downtime: the pinned vCluster permits one runtime per host namespace. Existing-target mirrors can prepare separate generation namespaces within that runtime. Separate concurrent managed clusters need separate administrator-granted destinations.
+
+## Current candidate extensions
+
+The following paths are implemented in source for v0.3.0-alpha.1. Local `make check` has passed, including race, chart, API, vet and build checks. Live and published-artifact qualification for this candidate remains pending; the historical runs on this page do not cover these additions.
+
+| Area | Implemented scope | Remaining qualification |
+| --- | --- | --- |
+| [Diagnostics](guides/diagnostics.md) | Caller/API preflight; metadata-only plan provenance, dependency and omission reports | Current-revision CLI/operator integration |
+| [Test recipes](guides/test-runs.md) | Fresh replica/mirror, bounded local execution, access/lease cleanup and JSON/JUnit results | Disposable success/failure/cancellation lifecycle |
+| [Pools and capacity](guides/pools.md) | Offline multi-destination installation, grant caps and durable admission reservations | Concurrent live admission and cleanup |
+| [PostgreSQL](guides/postgresql.md) | PostgreSQL 17 consistent logical copy, explicit masks and table filters, validated relationships, application/access gating | Real PostgreSQL and Calico-backed operator suites; source preservation and storage cleanup |
+| [Chaos](guides/chaos.md) | Six bounded fault types, exact owned targets, grant budgets, durable rollback | Live isolation, restart/expiry and physical Job cleanup |
+| [MCP](guides/agents-mcp.md) and [dashboard](guides/dashboard.md) | Namespace-scoped stdio using caller identity; loopback read-only metadata UI | Current-revision integration and release packaging |
+
+All six CRDs are installed together. Mirrors, databases and chaos remain optional, disabled by default, and use the same operator image. Enabling a module later requires its complete values/RBAC update and prerequisite checks. `TestRecipe` and `ReplicaPool` are local documents, not CRDs. There is no GitHub Action product wrapper, remote MCP identity/certificate service, or hosted dashboard.
 
 ## YAML and developer documentation
 
@@ -44,7 +59,8 @@ See the [configuration guide](replicove-quickstart.md), [implementation ledger](
 
 ## Remaining release gates
 
-- Qualify cloud identity adapters such as IRSA, cloud CSI mirror behavior, application-consistent database recovery, and external-resource cleanup in dedicated cloud labs.
+- Pass current-source disposable PostgreSQL, chaos, test-runner and admission suites, then verify the published candidate artifacts before release.
+- Qualify cloud identity adapters such as IRSA, cloud CSI mirror behavior, broader database/PITR adapters and external-resource cleanup in dedicated labs.
 - Qualify vCluster Platform integration and additional Kubernetes/distribution combinations.
 - Finish image-digest locking and automated runtime candidate diffs in [#6](https://github.com/nimeshbuilds/replicove/issues/6), plus scale, recovery, and production hardening in the [roadmap](../ROADMAP.md).
 

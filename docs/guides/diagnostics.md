@@ -12,7 +12,7 @@ replicove plan example -n replica-lab --json
 replicove status example -n replica-lab
 ```
 
-`plan` now renders an explanation rather than duplicating raw status. Its report contains the exact plan revision, source object names/UIDs/resource versions, mapped identities, selection reasons, known dependency paths, transformation categories and observed omission counts. `status` continues to emit Kubernetes status JSON. The plan report is deliberately metadata-only: it never prints source/target values, Secret contents, Helm values, literal patches, or opaque custom field names. Older captures may lack the new provenance fields until a supported refresh or recreation.
+`plan` now renders an explanation rather than duplicating raw status. Its report contains the exact plan revision, capture time, expiry, pinned runtime profile, source object names/UIDs/resource versions, mapped identities, selection reasons, known dependency paths, transformation categories and observed omission counts. `status` continues to emit Kubernetes status JSON. The plan report is deliberately metadata-only: it never prints source/target values, Secret contents, Helm values, literal patches, or opaque custom field names. Older captures may lack the new provenance fields until a supported refresh or recreation.
 
 Omission counts cover observed objects within the grant. They are not a census of the host cluster. Counts distinguish explicit exclusions, generated/infrastructure objects, and eligible objects not selected through a root or dependency. A required missing dependency blocks capture; it is not silently skipped. Helm inputs are identified as reconstructed desired resources, not an atomic copy of running controllers.
 

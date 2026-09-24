@@ -99,6 +99,7 @@ func main() {
 			db := &database.Controller{Client: uncached, Store: engine.Store}
 			engine.DatabasePreparation = db.Prepare
 			engine.DatabaseCleanup = db.Cleanup
+			engine.DatabaseIsolationCleanup = db.CleanupIsolation
 		}
 		if mirrors {
 			mr := &mirror.Reconciler{Client: uncached, Store: engine.Store, Engine: engine, Namespace: namespace, NetworkPolicyEnforced: mirrorNetworkPolicyEnforced}

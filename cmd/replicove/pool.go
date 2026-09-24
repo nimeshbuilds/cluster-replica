@@ -147,6 +147,9 @@ func validatePool(pool *poolFile) error {
 			switch controller["mode"] {
 			case "existing":
 			case "managed":
+				if len(m.ReleaseName) > 43 {
+					return errors.New("pool member managing the snapshot controller requires releaseName of at most 43 characters")
+				}
 				managed++
 			default:
 				return errors.New("offline pool mirrors require explicit snapshotController.mode existing or managed")
@@ -241,7 +244,7 @@ func renderPool(ctx context.Context, pool poolFile) ([]byte, error) {
 			return nil, errors.New("cannot read rendered installation")
 		}
 		for _, name := range []string{m.SystemNamespace, m.Namespace} {
-			fmt.Fprintf(&output, "---\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: %s\n  labels:\n    replicove.nimeshbuilds.dev/infrastructure: \"true\"\n", name)
+			fmt.Fprintf(&output, "---\napiVersion: v1\nkind: Namespace\nmetadata:\n  name: %q\n  labels:\n    replicove.nimeshbuilds.dev/infrastructure: \"true\"\n", name)
 		}
 		output.WriteString("---\n")
 		output.WriteString(accessor.Manifest())

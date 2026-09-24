@@ -1,0 +1,11 @@
+databases:
+  enabled: false
+sources:
+  - namespace: source-database
+    rules:
+      - apiGroups: [apps]
+        resources: [deployments]
+        verbs: [get, list]
+      - apiGroups: [""]
+        resources: [services, serviceaccounts, configmaps]
+        verbs: [get, list]

@@ -9,7 +9,9 @@ import (
 
 	v1alpha1 "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 	"github.com/nimeshbuilds/cluster-replica/internal/capture"
+	"github.com/nimeshbuilds/cluster-replica/internal/chaos"
 	"github.com/nimeshbuilds/cluster-replica/internal/controller"
+	"github.com/nimeshbuilds/cluster-replica/internal/database"
 	"github.com/nimeshbuilds/cluster-replica/internal/mirror"
 	helmprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime/helm"
 	"github.com/nimeshbuilds/cluster-replica/internal/state"
@@ -30,6 +32,10 @@ import (
 func main() {
 	var namespace, chartPath, probes, stateNamespace string
 	var bootstrapStateKey bool
+	var chaosEnabled, chaosNetworkPolicyEnforced, databasesEnabled bool
+	flag.BoolVar(&chaosEnabled, "chaos", false, "Enable bounded guest chaos experiments")
+	flag.BoolVar(&chaosNetworkPolicyEnforced, "chaos-network-policy-enforced", false, "Administrator qualification that host NetworkPolicy is enforced")
+	flag.BoolVar(&databasesEnabled, "databases", false, "Enable granted PostgreSQL copies and sanitation")
 	var mirrors, mirrorNetworkPolicyEnforced bool
 	flag.BoolVar(&mirrors, "mirrors", false, "Enable CSI workload mirrors and scheduled resets")
 	flag.BoolVar(&mirrorNetworkPolicyEnforced, "mirror-network-policy-enforced", false, "Administrator attestation that host NetworkPolicy isolation is enforced")
@@ -84,6 +90,17 @@ func main() {
 		check(err)
 		engine := &workflow.Engine{Client: uncached, Store: &state.Store{Client: uncached, Namespace: stateNamespace, MaxBytes: 716800}, Reader: &capture.Reader{Config: config, Dynamic: dyn, Discovery: disc}, Runtime: provider}
 		reconciler.Workflow = engine
+		experiments := &chaos.Reconciler{Client: uncached, Store: engine.Store, Namespace: namespace, NetworkPolicyEnforced: chaosNetworkPolicyEnforced}
+		engine.ExperimentCleanup = experiments.CleanupReplica
+		if chaosEnabled {
+			check(experiments.SetupWithManager(mgr))
+		}
+		if databasesEnabled {
+			db := &database.Controller{Client: uncached, Store: engine.Store}
+			engine.DatabasePreparation = db.Prepare
+			engine.DatabaseCleanup = db.Cleanup
+			engine.DatabaseIsolationCleanup = db.CleanupIsolation
+		}
 		if mirrors {
 			mr := &mirror.Reconciler{Client: uncached, Store: engine.Store, Engine: engine, Namespace: namespace, NetworkPolicyEnforced: mirrorNetworkPolicyEnforced}
 			engine.MirrorPreparation = mr.Prepare

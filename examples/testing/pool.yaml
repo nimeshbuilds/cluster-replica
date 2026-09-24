@@ -1,0 +1,60 @@
+# Local administrator file for `replicove pool render -f`; not a Kubernetes CRD.
+# Source namespace source-dev must already exist. ReplicaGrants are separate.
+apiVersion: replicove.nimeshbuilds.dev/v1alpha1
+kind: ReplicaPool
+kubernetesVersion: v1.36.0
+members:
+  - namespace: test-a
+    systemNamespace: replicove-a
+    values:
+      capacity:
+        enabled: true
+        hard:
+          requests.cpu: "4"
+          requests.memory: 8Gi
+          requests.storage: 20Gi
+          pods: "30"
+          persistentvolumeclaims: "10"
+        defaultContainer:
+          defaultRequest:
+            cpu: 100m
+            memory: 128Mi
+          default:
+            cpu: "1"
+            memory: 1Gi
+      sources:
+        - namespace: source-dev
+          rules:
+            - apiGroups: [""]
+              resources: [configmaps, services, serviceaccounts]
+              verbs: [get, list]
+            - apiGroups: [apps]
+              resources: [deployments]
+              verbs: [get, list]
+  - namespace: test-b
+    systemNamespace: replicove-b
+    values:
+      capacity:
+        enabled: true
+        hard:
+          requests.cpu: "4"
+          requests.memory: 8Gi
+          requests.storage: 20Gi
+          pods: "30"
+          persistentvolumeclaims: "10"
+        defaultContainer:
+          defaultRequest:
+            cpu: 100m
+            memory: 128Mi
+          default:
+            cpu: "1"
+            memory: 1Gi
+      sources:
+        - namespace: source-dev
+          rules:
+            - apiGroups: [""]
+              resources: [configmaps, services, serviceaccounts]
+              verbs: [get, list]
+            - apiGroups: [apps]
+              resources: [deployments]
+              verbs: [get, list]

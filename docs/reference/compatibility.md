@@ -11,7 +11,7 @@ Replicove compatibility depends on Kubernetes APIs, vCluster profile, storage, a
 
 The pinned chart archive SHA-256 is `afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969`. Runtime catalog provenance is recorded in [upstream notes](../upstream.md) and [`internal/catalog`](../../internal/catalog/). Images are not all digest-locked; that work remains tracked in [issue #6](https://github.com/nimeshbuilds/replicove/issues/6).
 
-vCluster 0.37.1 permits one runtime per host namespace. New managed requests block when another runtime occupies the destination; use a registered existing target or another administrator-granted destination. Managed mirror resets retire their old runtime before provisioning a replacement and therefore have downtime. Replicove never removes unrelated runtimes to make room.
+vCluster 0.37.1 permits one runtime per host namespace. New managed requests wait for capacity when another managed reservation/runtime occupies the destination; waiting consumes the original TTL. Use another administrator-granted destination or an explicitly supported existing target. A [pool](../guides/pools.md) renders separate managed destinations and host quotas; it does not remove the one-runtime constraint. Managed mirror resets retire their old runtime before provisioning a replacement and therefore have downtime. Replicove never removes unrelated runtimes to make room.
 
 ## What has been tested
 
@@ -34,6 +34,15 @@ Exact revisions, CI runs, and scope are linked on [project status](../project-st
 - New pinned vClusters or explicitly registered existing guests.
 - Short-lived guest roles, exact-session Secret permissions, and an optional local CLI tunnel.
 - TTL, durable ownership records, access revocation and verified supported cleanup.
+
+## Additional adapters and interfaces
+
+Version v0.3.0-alpha.1 adds local preflight/provenance, test recipes, pool/admission, PostgreSQL 17, six bounded chaos types, stdio MCP and a local dashboard. The [validation record](../validation.md) identifies their source tests and fixture limits. Historical host-version results above must not be extended beyond their matching runs.
+
+- PostgreSQL uses a single-database logical snapshot, new managed target, approved masks/explicit table filters and enforced host policy. No mirror combination, existing-target use, in-place refresh, arbitrary extension qualification, automatic tenant extraction or general anonymization claim.
+- Network/Job chaos requires managed runtimes with enforced host policies and rejects overlapping allow rules, including mirror/ready-database policies. PodDelete/ScaleZero permit other eligible owned targets. No privileged host/node fault presets.
+- Test recipes repeat desired setup against current source capture. Their local commands are trusted; reports do not recreate historical source state.
+- MCP is namespace-scoped stdio using caller Kubernetes authority. The dashboard is loopback-only and read-only. No remote certificate/CA service or shared authenticated UI.
 
 ## Current boundaries
 

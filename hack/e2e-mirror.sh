@@ -135,12 +135,31 @@ if [[ "$mirror_base" == native ]]; then [[ -z "$snapshot_owner" ]]; else [[ "$sn
 helm uninstall mirror-probe --namespace mirror-probe-system --wait --timeout 120s
 [[ "$controller_uid" == "$(hk -n replicove-system get deployment replicove-snapshot-controller -o jsonpath='{.metadata.uid}')" ]]
 
-# A separate managed request reports the occupied namespace without installing
-# a second vCluster or adopting/deleting the working mirror runtime.
+# A separate managed request queues before reaching the provider. Its original
+# TTL continues and it cannot install, adopt or delete the working mirror runtime.
+occupied_peer_release=$(hk -n replica-lab get clusterreplica "$first_replica" -o jsonpath='{.status.runtime.releaseName}')
+occupied_peer_uid=$(hk -n replica-lab get statefulset "$occupied_peer_release" -o jsonpath='{.metadata.uid}')
+occupied_peer_expiry=$(hk -n replica-lab get clusterreplica "$first_replica" -o jsonpath='{.status.expiresAt}')
 hk -n replica-lab get clusterreplica "$first_replica" -o json | python3 -c 'import json,sys;r=json.load(sys.stdin);r["metadata"]={"namespace":"replica-lab","name":"occupied-runtime"};r.pop("status",None);json.dump(r,sys.stdout)' | hk apply -f -
-hk -n replica-lab wait clusterreplica/occupied-runtime --for=jsonpath='{.status.conditions[0].reason}'=RuntimeNamespaceInUse --timeout=120s
-[[ "$(hk -n replica-lab get statefulsets -l app=vcluster -o name | wc -l | tr -d ' ')" == 1 ]]
+hk -n replica-lab wait clusterreplica/occupied-runtime --for=jsonpath='{.status.phase}'=Queued --timeout=120s
+hk -n replica-lab get clusterreplica occupied-runtime -o json | python3 -c '
+import datetime,json,re,sys
+r=json.load(sys.stdin);s=r["status"]
+ready=next(c for c in s["conditions"] if c["type"]=="Ready")
+assert s["phase"]=="Queued" and ready["reason"]=="CapacityLimit" and ready["status"]=="False", "expected capacity queue, not another failure"
+parts=re.fullmatch(r"(?:(\d+)h)?(?:(\d+)m)?",r["spec"]["ttl"])
+assert parts and any(parts.groups()), "fixture TTL must be whole hours/minutes"
+seconds=int(parts[1] or 0)*3600+int(parts[2] or 0)*60
+created=datetime.datetime.fromisoformat(r["metadata"]["creationTimestamp"].replace("Z","+00:00"))
+expires=datetime.datetime.fromisoformat(s["expiresAt"].replace("Z","+00:00"))
+assert expires==created+datetime.timedelta(seconds=seconds), "queue changed original TTL"
+json.dump({"result":"passed","phase":s["phase"],"reason":ready["reason"],"originalTTL":True},sys.stdout)
+' > "$work/artifacts/capacity-queue.json"
+[[ "$(hk -n replica-lab get deployments,statefulsets -l app=vcluster -o name | wc -l | tr -d ' ')" == 1 ]]
+[[ "$occupied_peer_uid" == "$(hk -n replica-lab get statefulset "$occupied_peer_release" -o jsonpath='{.metadata.uid}')" ]]
 hk -n replica-lab delete clusterreplica occupied-runtime --wait=true --timeout=120s
+[[ "$occupied_peer_uid" == "$(hk -n replica-lab get statefulset "$occupied_peer_release" -o jsonpath='{.metadata.uid}')" ]]
+[[ "$occupied_peer_expiry" == "$(hk -n replica-lab get clusterreplica "$first_replica" -o jsonpath='{.status.expiresAt}')" ]]
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == guest-only ]]
 
 # Captures can be prepared while leased. Managed replacement must keep the old

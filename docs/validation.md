@@ -1,5 +1,23 @@
 # Validation record
 
+## v0.3.0-alpha.1 source qualification
+
+**All 16 jobs passed** at source revision [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553) in [CI run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593). The [sanitized aggregate record](validation/2026-09-24-features.json) preserves job links, PostgreSQL/chaos/runner reports, and all three mirror transition/lifecycle/queue reports. This is source-build PR evidence, not a published-release assertion. Verification includes race-enabled Go tests, pinned chart contracts, real API-server integration, vet and builds. Source CI is separate from the required exact-main and published-artifact release gates.
+
+| Source job | Observed behavior | Scope |
+| --- | --- | --- |
+| Core and installation | Both host-minor workflows, original live vCluster lifecycle, Helm existing-target installation, native YAML and all four cert-manager/Spark/Trino/admission-policy fixtures passed | Same pinned runtime; small functional workloads, no scale or cloud certification |
+| Mirrors | All three current/native/previous paths passed 11 late-enable checks, 25 lifecycle scenarios and the explicit CapacityLimit queue/TTL assertion | CSI host-path and Calico; independent per-volume recovery points; no atomic multi-volume or database-consistency claim |
+| [PostgreSQL](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092764) | Actual PostgreSQL 17 dump/restore, masks and explicit table subsets, validated foreign keys, source read-only account/preservation, raw fixture value absent from final storage; 15 operator scenarios include late enablement, application/access staging gates, Calico isolation, restart, rejected refresh and owned cleanup | One generated database, new managed target, host-path storage; no general anonymization, private-CA or arbitrary-schema qualification; deletion tested, not a real database TTL wait |
+| [Chaos](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092601) | 16 scenarios covering late enablement, target/source denial, six fault types, restart/expiry rollback, host isolation/conflict checks, source preservation and parent cleanup | Bounded shared-worker workloads; no privileged host/node faults or production reliability claim |
+| [Test runner](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092788) | Fresh success, exit-17 failure, timeout and retain-on-failure runs; resolved ScaleZero rollback, JSON/JUnit outcomes, original TTL, credential revocation and owned cleanup | Managed ClusterReplica runs; mirror leases covered by local tests and the separate mirror suite, not this runner fixture |
+
+These new live paths use a Kubernetes 1.36.4 kind host, vCluster 0.37.1 and guest Kubernetes 1.36.0. PostgreSQL and chaos use pinned Calico v3.32.2. The source PostgreSQL fixture explicitly selects TLS `require`; it does not qualify private-CA `verify-full` deployment. Local metadata/API tests cover preflight, plan provenance, pool rendering/admission, stdio MCP and the loopback dashboard. They do not certify a remote multi-user service.
+
+After this source run, both raw-data absence probes were strengthened to require `PG_VERSION` and distinguish grep errors from no matches. Local tests cover found/absent/error/missing-directory cases; the strengthened fixtures must pass the later exact-main and release suites. The `93bcfbc` report retains its original probe scope.
+
+The release workflow creates the version tag only after exact-main CI and published-artifact verification pass. The release notes link that separate artifact run. All earlier records below remain evidence for their named historical revisions and versions.
+
 ## Enabling mirrors after installation
 
 [CI run 35520786306](https://github.com/nimeshbuilds/replicove/actions/runs/35520786306) passed all **13 jobs** at `36947dd`. The [saved transition and lifecycle reports](validation/2026-09-20-enable-mirroring.json) cover three starting points: published 0.1.0-alpha.1 Helm, published 0.2.0-alpha.1 Helm, and rendered 0.2.0-alpha.1 native YAML, all initially without mirroring enabled. The target chart/image was built from the 0.2.0-alpha.2 source in that revision.

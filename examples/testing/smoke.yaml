@@ -1,0 +1,27 @@
+# This is a local CLI recipe. Use `replicove run -f`, not `kubectl apply`.
+apiVersion: replicove.nimeshbuilds.dev/v1alpha1
+kind: TestRecipe
+namePrefix: smoke
+replica:
+  profile: vcluster-0.37.1-persistent
+  ttl: 2h
+  cleanupPolicy: DeleteOwned
+  approval: Automatic
+  grantRef: source-dev
+  target:
+    provider: helm
+  replication:
+    namespaces: [source-dev]
+    namespaceMap:
+      source-dev: smoke
+    secrets: None
+    data: None
+execution:
+  command: [kubectl, get, pods, --all-namespaces]
+  timeout: 10m
+  role: viewer
+  credentialSeconds: 900
+lifecycle:
+  readyTimeout: 20m
+  cleanupTimeout: 15m
+  keepOnFailure: false

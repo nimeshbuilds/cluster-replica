@@ -10,6 +10,7 @@ import (
 	"time"
 
 	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
+	"github.com/nimeshbuilds/cluster-replica/internal/diagnostics"
 	"github.com/nimeshbuilds/cluster-replica/internal/planner"
 	"github.com/nimeshbuilds/cluster-replica/internal/policy"
 	"github.com/nimeshbuilds/cluster-replica/internal/state"
@@ -46,7 +47,7 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 	if err != nil {
 		return nil, failed("DiscoveryUnavailable", "Cannot determine the source Kubernetes version.")
 	}
-	plan := &state.Plan{CapturedAt: time.Now().UTC(), SourceVersion: version.GitVersion}
+	plan := &state.Plan{CapturedAt: time.Now().UTC(), SourceVersion: version.GitVersion, Omitted: map[string]int32{}}
 	if request.Spec.Replication == nil {
 		return plan, nil
 	}
@@ -93,6 +94,7 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 	}
 	add := func(source *unstructured.Unstructured, res resource, fromChart bool) error {
 		if planner.IsGenerated(source) || planner.IsInfrastructure(source) || policy.ReservedKind(res.gvr.Group, res.kind) {
+			plan.Omitted["generated-or-infrastructure"]++
 			return nil
 		}
 		if !fromChart && packages[source.GetAnnotations()["meta.helm.sh/release-namespace"]+"/"+source.GetAnnotations()["meta.helm.sh/release-name"]] {
@@ -109,6 +111,7 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 			return nil
 		}
 		if excluded {
+			plan.Omitted["explicitly-excluded"]++
 			return nil
 		}
 		desired, err := planner.Transform(source, request.Spec.Replication)
@@ -132,7 +135,14 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 			}
 		}
 
-		pool[id] = candidate{object: state.Object{ID: id, APIVersion: desired.GetAPIVersion(), Kind: res.kind, Resource: res.gvr.Resource, SourceNamespace: source.GetNamespace(), SourceName: source.GetName(), SourceUID: string(source.GetUID()), SourceVersion: source.GetResourceVersion(), Namespace: desired.GetNamespace(), Name: desired.GetName(), Desired: desired.Object, Dependencies: planner.Dependencies(desired)}, selected: selected, excluded: excluded, fromChart: fromChart}
+		reason := "dependency"
+		if selected {
+			reason = "selected"
+		}
+		if fromChart {
+			reason = "helm"
+		}
+		pool[id] = candidate{object: state.Object{SelectionReason: reason, Transformations: diagnostics.Transformations(source, desired), ID: id, APIVersion: desired.GetAPIVersion(), Kind: res.kind, Resource: res.gvr.Resource, SourceNamespace: source.GetNamespace(), SourceName: source.GetName(), SourceUID: string(source.GetUID()), SourceVersion: source.GetResourceVersion(), Namespace: desired.GetNamespace(), Name: desired.GetName(), Desired: desired.Object, Dependencies: planner.Dependencies(desired)}, selected: selected, excluded: excluded, fromChart: fromChart}
 		return nil
 	}
 	for _, res := range ordered {
@@ -301,6 +311,12 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 			pool[id] = c
 		}
 	}
+	provided := map[string]bool{}
+	for _, db := range request.Spec.Replication.Databases {
+		id := planner.ID("", "Secret", db.Namespace, db.Name)
+		provided[id] = true
+		plan.ExternalDependencies = append(plan.ExternalDependencies, id)
+	}
 	included := map[string]bool{}
 	var include func(string) error
 	include = func(id string) error {
@@ -308,6 +324,9 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 			return nil
 		}
 		c, ok := pool[id]
+		if !ok && provided[id] {
+			return nil
+		}
 		if !ok || c.excluded {
 			return failed("MissingDependency", "Required dependency %s was excluded, not granted, or unavailable.", id)
 		}
@@ -324,6 +343,11 @@ func (r *Reader) Capture(ctx context.Context, request *api.ClusterReplica, grant
 			if err := include(id); err != nil {
 				return nil, err
 			}
+		}
+	}
+	for id := range pool {
+		if !included[id] {
+			plan.Omitted["not-selected"]++
 		}
 	}
 	ids := make([]string, 0, len(included))

@@ -1,0 +1,166 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.22.0
+  name: replicaexperiments.replica.nimeshbuilds.dev
+spec:
+  group: replica.nimeshbuilds.dev
+  names:
+    kind: ReplicaExperiment
+    listKind: ReplicaExperimentList
+    plural: replicaexperiments
+    shortNames:
+    - rexperiment
+    singular: replicaexperiment
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
+    - jsonPath: .spec.replicaRef.name
+      name: Replica
+      type: string
+    - jsonPath: .status.expiresAt
+      name: Expires
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              durationSeconds:
+                default: 30
+                format: int64
+                maximum: 900
+                minimum: 1
+                type: integer
+              faults:
+                description: Simultaneous faults. One active experiment per replica
+                  avoids competing rollback.
+                items:
+                  description: |-
+                    ChaosFault is a single bounded fault. Faults in one experiment run together.
+                    Only PodDelete/ScaleZero take a target. NetworkIsolation covers one whole namespace.
+                    Job faults accept an image and resource limits, never a raw Pod specification.
+                  properties:
+                    command:
+                      description: CustomJob only. No service account, Secret, volume,
+                        or host access is exposed.
+                      items:
+                        type: string
+                      maxItems: 32
+                      type: array
+                    cpuMilli:
+                      format: int64
+                      maximum: 2000
+                      minimum: 1
+                      type: integer
+                    image:
+                      type: string
+                    kind:
+                      enum:
+                      - PodDelete
+                      - ScaleZero
+                      - NetworkIsolation
+                      - CPUStress
+                      - MemoryStress
+                      - CustomJob
+                      type: string
+                    memoryMiB:
+                      format: int64
+                      maximum: 1024
+                      minimum: 16
+                      type: integer
+                    namespace:
+                      minLength: 1
+                      type: string
+                    target:
+                      properties:
+                        kind:
+                          enum:
+                          - Pod
+                          - Deployment
+                          - StatefulSet
+                          type: string
+                        name:
+                          minLength: 1
+                          type: string
+                        uid:
+                          description: Exact current guest UID, never a host/source
+                            UID.
+                          minLength: 1
+                          type: string
+                      required:
+                      - kind
+                      - name
+                      - uid
+                      type: object
+                  required:
+                  - kind
+                  - namespace
+                  type: object
+                maxItems: 8
+                minItems: 1
+                type: array
+              replicaRef:
+                properties:
+                  name:
+                    maxLength: 253
+                    minLength: 1
+                    type: string
+                  uid:
+                    maxLength: 128
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - uid
+                type: object
+            required:
+            - faults
+            - replicaRef
+            type: object
+            x-kubernetes-validations:
+            - message: experiment is immutable
+              rule: self == oldSelf
+          status:
+            properties:
+              expiresAt:
+                format: date-time
+                type: string
+              message:
+                type: string
+              phase:
+                type: string
+              startedAt:
+                format: date-time
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

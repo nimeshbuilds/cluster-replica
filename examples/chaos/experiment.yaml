@@ -1,0 +1,17 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaExperiment
+metadata:
+  name: outage
+  namespace: replica-lab
+spec:
+  replicaRef:
+    name: demo
+    uid: REPLACE_WITH_REPLICA_UID
+  durationSeconds: 60
+  faults:
+    - kind: ScaleZero
+      namespace: integration
+      target:
+        kind: Deployment
+        name: echo
+        uid: REPLACE_WITH_GUEST_DEPLOYMENT_UID

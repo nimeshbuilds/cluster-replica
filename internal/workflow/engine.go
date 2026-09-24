@@ -9,7 +9,9 @@ import (
 	"time"
 
 	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
+	"github.com/nimeshbuilds/cluster-replica/internal/capacity"
 	"github.com/nimeshbuilds/cluster-replica/internal/catalog"
+	"github.com/nimeshbuilds/cluster-replica/internal/database"
 	"github.com/nimeshbuilds/cluster-replica/internal/planner"
 	"github.com/nimeshbuilds/cluster-replica/internal/policy"
 	runtimeprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime"
@@ -33,13 +35,17 @@ type Capturer interface {
 	Capture(context.Context, *api.ClusterReplica, *api.ReplicaGrant, policy.Resolution) (*state.Plan, error)
 }
 type Engine struct {
-	Client            client.Client
-	Store             *state.Store
-	Reader            Capturer
-	Runtime           runtimeprovider.Provider
-	Now               func() time.Time
-	MirrorCleanup     func(context.Context, *state.State, bool) (bool, error)
-	MirrorPreparation func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
+	ExperimentCleanup        func(context.Context, *state.State) (bool, error)
+	DatabasePreparation      func(context.Context, *api.ClusterReplica, *api.ReplicaGrant, *state.State, *target.Connection) (bool, error)
+	DatabaseCleanup          func(context.Context, *state.State, *target.Connection) (bool, error)
+	DatabaseIsolationCleanup func(context.Context, *state.State) (bool, error)
+	Client                   client.Client
+	Store                    *state.Store
+	Reader                   Capturer
+	Runtime                  runtimeprovider.Provider
+	Now                      func() time.Time
+	MirrorCleanup            func(context.Context, *state.State, bool) (bool, error)
+	MirrorPreparation        func(context.Context, *api.ClusterReplica, *state.State, *target.Connection) (bool, error)
 }
 
 func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.Result, error) {
@@ -75,6 +81,17 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 	scope, err := policy.Resolve(grant, obj, w.Store.Namespace)
 	if err != nil {
 		return w.report(ctx, obj, "Rejected", err, false)
+	}
+	if obj.Spec.Replication != nil && len(obj.Spec.Replication.Databases) > 0 {
+		if w.DatabasePreparation == nil {
+			return w.report(ctx, obj, "Blocked", failure("DatabasesDisabled", "Enable the database module before requesting a PostgreSQL copy."), false)
+		}
+		if scope.Provider != "helm" || st != nil && st.MirrorRunUID != "" {
+			return w.report(ctx, obj, "Rejected", failure("DatabaseTargetUnsupported", "Database copies require a fresh managed replica and cannot be combined with CSI mirror generations."), false)
+		}
+		if st != nil && len(st.Databases) > 0 && obj.Annotations[RefreshAnnotation] != st.RefreshToken {
+			return w.report(ctx, obj, "Blocked", failure("DatabaseRefreshRequiresRecreate", "Create a new replica for a fresh database capture; in-place recapture would expose unsanitized state to running applications."), false)
+		}
 	}
 	if scope.Provider == "platform" {
 		return w.report(ctx, obj, "Blocked", failure("PlatformQualificationRequired", "This grant selects Platform; a qualified Platform adapter is required. Helm fallback is disabled."), false)
@@ -141,12 +158,12 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		}
 		obj.Status.Runtime = &resolved
 	}
-	obj.Status.Plan = &api.PlanSummary{Revision: st.Plan.Revision, CapturedAt: metav1.NewTime(st.Plan.CapturedAt), ObjectCount: int32(len(st.Plan.Objects)), PackageCount: int32(len(st.Plan.Packages)), Message: "Encrypted source capture; Helm charts are reconstructed as inventoried resources."}
+	obj.Status.Plan = &api.PlanSummary{Omitted: st.Plan.Omitted, Revision: st.Plan.Revision, CapturedAt: metav1.NewTime(st.Plan.CapturedAt), ObjectCount: int32(len(st.Plan.Objects)), PackageCount: int32(len(st.Plan.Packages)), Message: "Encrypted source capture; Helm charts are reconstructed as inventoried resources."}
 	if st.AppliedRevision == st.Plan.Revision {
 		obj.Status.Plan.AppliedCount = int32(len(st.Plan.Objects))
 	}
 	for _, item := range st.Plan.Objects {
-		obj.Status.Plan.Resources = append(obj.Status.Plan.Resources, api.PlannedResource{ObjectReference: api.ObjectReference{APIVersion: item.APIVersion, Kind: item.Kind, Namespace: item.Namespace, Name: item.Name}, SourceNamespace: item.SourceNamespace, Dependencies: item.Dependencies})
+		obj.Status.Plan.Resources = append(obj.Status.Plan.Resources, api.PlannedResource{ObjectReference: api.ObjectReference{APIVersion: item.APIVersion, Kind: item.Kind, Namespace: item.Namespace, Name: item.Name}, SourceNamespace: item.SourceNamespace, SourceName: item.SourceName, SourceUID: item.SourceUID, SourceVersion: item.SourceVersion, SelectionReason: item.SelectionReason, Transformations: item.Transformations, Dependencies: item.Dependencies})
 	}
 	if !reflect.DeepEqual(before.Status, obj.Status) {
 		if err := w.Client.Status().Patch(ctx, obj, client.MergeFrom(before)); err != nil {
@@ -157,6 +174,13 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		return w.report(ctx, obj, "AwaitingApproval", nil, false)
 	}
 
+	admitted, err := capacity.Acquire(ctx, w.Store, obj, grant, st.Provider)
+	if err != nil {
+		return w.report(ctx, obj, "Queued", failure("CapacityUnavailable", "Cannot verify the protected capacity reservation."), false)
+	}
+	if !admitted {
+		return w.report(ctx, obj, "Queued", failure("CapacityLimit", "Waiting for an available runtime slot or grant concurrency allowance; the original TTL still applies."), false)
+	}
 	if st.Provider == "helm" {
 		observed, err := w.Runtime.Ensure(ctx, runtimeprovider.Request{Namespace: obj.Namespace, OwnerUID: st.OwnerUID, Reference: *obj.Status.Runtime})
 		if err != nil {
@@ -230,6 +254,12 @@ func (w *Engine) Reconcile(ctx context.Context, obj *api.ClusterReplica) (ctrl.R
 		ready, err := w.MirrorPreparation(ctx, obj, st, conn)
 		if err != nil || !ready {
 			return w.report(ctx, obj, "Restoring", err, false)
+		}
+	}
+	if obj.Spec.Replication != nil && len(obj.Spec.Replication.Databases) > 0 {
+		ready, err := w.DatabasePreparation(ctx, obj, grant, st, conn)
+		if err != nil || !ready {
+			return w.report(ctx, obj, "PreparingData", err, false)
 		}
 	}
 	refreshing := st.AppliedRevision != st.Plan.Revision
@@ -339,6 +369,12 @@ func (w *Engine) report(ctx context.Context, obj *api.ClusterReplica, phase stri
 			reason, message = p.Reason, p.Detail
 		case errors.As(err, &denied):
 			reason, message = denied.Reason, denied.Detail
+		case errors.Is(err, database.ErrDenied):
+			reason, message = "DatabasePolicyDenied", "The database selection, isolation, or storage configuration does not satisfy the administrator grant."
+		case errors.Is(err, database.ErrOwnership):
+			reason, message = "DatabaseOwnershipChanged", "A database resource no longer matches its recorded identity; automatic mutation is blocked."
+		case errors.Is(err, database.ErrFailed):
+			reason, message = "DatabasePreparationFailed", "Database preparation could not finish. Check the qualified PostgreSQL image, source read permissions, storage and isolation; recreate after a failed or interrupted copy."
 		case errors.Is(err, state.ErrTooLarge):
 			reason, message = "CaptureLimit", "The encrypted capture exceeds the configured storage limit; narrow the selection."
 		case errors.Is(err, state.ErrIntegrity):
@@ -393,6 +429,12 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
+	if w.ExperimentCleanup != nil {
+		done, err := w.ExperimentCleanup(ctx, st)
+		if err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+	}
 	accesses := &api.ReplicaAccessList{}
 	if err := w.Client.List(ctx, accesses, client.InNamespace(obj.Namespace)); err != nil {
 		return w.report(ctx, obj, "Deleting", failure("AccessRevocationFailed", "Cannot enumerate replica access requests."), false)
@@ -422,6 +464,23 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			return w.report(ctx, obj, "Deleting", failure("MirrorsDisabled", "Enable the mirror module to clean up owned snapshots and restored volumes."), false)
 		}
 		if done, err := w.MirrorCleanup(ctx, st, false); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+	}
+	if len(st.Databases) > 0 && !st.GuestCleaned {
+		if w.DatabaseCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("DatabasesDisabled", "Re-enable the database module to clean up its owned data resources."), false)
+		}
+		release := ""
+		if obj.Status.Runtime != nil {
+			release = obj.Status.Runtime.ReleaseName
+		}
+		conn, err := target.Connect(ctx, w.Client, st, release)
+		if err != nil {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+		done, err := w.DatabaseCleanup(ctx, st, conn)
+		if err != nil || !done {
 			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
@@ -482,12 +541,23 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			return w.report(ctx, obj, "Deleting", err, false)
 		}
 	}
+	if len(st.Databases) > 0 {
+		if w.DatabaseIsolationCleanup == nil {
+			return w.report(ctx, obj, "Deleting", failure("DatabasesDisabled", "Re-enable the database module to finish application network isolation cleanup."), false)
+		}
+		if done, err := w.DatabaseIsolationCleanup(ctx, st); err != nil || !done {
+			return w.report(ctx, obj, "Deleting", err, false)
+		}
+	}
 	terminal := "Expired"
 	if !obj.DeletionTimestamp.IsZero() {
 		terminal = "Cleaned"
 	}
 	if _, err := w.report(ctx, obj, terminal, nil, false); err != nil {
 		return ctrl.Result{}, err
+	}
+	if err := capacity.Release(ctx, w.Store, obj.Namespace, st.OwnerUID); err != nil {
+		return w.report(ctx, obj, "Deleting", err, false)
 	}
 	if err := w.Store.Delete(ctx, st.OwnerUID); err != nil {
 		return w.report(ctx, obj, "Deleting", err, false)

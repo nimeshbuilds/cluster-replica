@@ -1,0 +1,33 @@
+{{- if .Values.capacity.enabled }}
+{{- if not .Values.capacity.hard }}
+{{- fail "capacity.enabled requires explicit capacity.hard resource limits including runtime overhead" }}
+{{- end }}
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: {{ .Release.Name }}-capacity
+  namespace: {{ .Values.destinationNamespace | quote }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  hard:
+    {{- toYaml .Values.capacity.hard | nindent 4 }}
+{{- with .Values.capacity.defaultContainer }}
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: {{ $.Release.Name }}-defaults
+  namespace: {{ $.Values.destinationNamespace | quote }}
+  labels:
+    replicove.nimeshbuilds.dev/infrastructure: "true"
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  limits:
+    - type: Container
+      {{- toYaml . | nindent 6 }}
+{{- end }}
+{{- end }}

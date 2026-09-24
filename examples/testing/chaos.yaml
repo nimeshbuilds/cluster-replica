@@ -1,0 +1,32 @@
+# The source-dev grant must explicitly delegate this guest namespace and fault.
+# This tests API access during guest workload network isolation; replace the
+# command with your application's integration/resilience test executable.
+apiVersion: replicove.nimeshbuilds.dev/v1alpha1
+kind: TestRecipe
+namePrefix: chaos-test
+replica:
+  profile: vcluster-0.37.1-persistent
+  ttl: 2h
+  cleanupPolicy: DeleteOwned
+  grantRef: source-dev
+  target:
+    provider: helm
+  replication:
+    namespaces: [source-dev]
+    namespaceMap:
+      source-dev: smoke
+    secrets: None
+    data: None
+execution:
+  command: [kubectl, get, deployments, --namespace, smoke]
+  timeout: 10m
+  role: viewer
+  credentialSeconds: 900
+chaos:
+  durationSeconds: 60
+  faults:
+    - kind: NetworkIsolation
+      namespace: smoke
+lifecycle:
+  readyTimeout: 20m
+  cleanupTimeout: 15m

@@ -5,7 +5,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: replicove-bootstrap
-  namespace: replicove-system
+  namespace: "replicove-system"
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 ---
@@ -13,7 +13,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: replicove-bootstrap
-  namespace: replicove-system
+  namespace: "replicove-system"
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 rules:
@@ -25,7 +25,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: replicove-bootstrap
-  namespace: replicove-system
+  namespace: "replicove-system"
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 roleRef:
@@ -35,13 +35,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: replicove-bootstrap
-    namespace: replicove-system
+    namespace: "replicove-system"
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: replicove-bootstrap
-  namespace: replicove-system
+  namespace: "replicove-system"
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 spec:
@@ -62,7 +62,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: bootstrap
-          image: "ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.2"
+          image: "ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1"
           imagePullPolicy: IfNotPresent
           args:
             - --bootstrap-state-key
@@ -85,27 +85,27 @@ kind: ServiceAccount
 metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
-  name: replicove
-  namespace: replicove-system
+  name: "replicove"
+  namespace: "replicove-system"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
-  name: replicove
-  namespace: replicove-system
+  name: "replicove"
+  namespace: "replicove-system"
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/instance: replicove
+      app.kubernetes.io/instance: "replicove"
   template:
     metadata:
       labels:
-        app.kubernetes.io/instance: replicove
+        app.kubernetes.io/instance: "replicove"
     spec:
-      serviceAccountName: replicove
+      serviceAccountName: "replicove"
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
@@ -115,7 +115,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: operator
-          image: "ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.2"
+          image: "ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1"
           imagePullPolicy: IfNotPresent
           args:
             - --watch-namespace=replica-lab
@@ -158,7 +158,7 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: replicove-state
-  namespace: replicove-system
+  namespace: "replicove-system"
 rules:
   - apiGroups: [""]
     resources: [secrets]
@@ -170,15 +170,15 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: replicove-state
-  namespace: replicove-system
+  namespace: "replicove-system"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: replicove-state
 subjects:
   - kind: ServiceAccount
-    name: replicove
-    namespace: replicove-system
+    name: "replicove"
+    namespace: "replicove-system"
 ---
 # The pinned vCluster Role plus installation, inventory, and controller rights.
 # No bind/escalate bypass: Kubernetes checks each Role/RoleBinding we create.
@@ -189,7 +189,7 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: replicove-runtime
-  namespace: replica-lab
+  namespace: "replica-lab"
 rules:
   - apiGroups: [""]
     resources: [configmaps, secrets, services, endpoints, pods, pods/attach, pods/portforward, pods/exec, persistentvolumeclaims]
@@ -237,6 +237,9 @@ rules:
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
     verbs: [get, update, patch]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaexperiments]
+    verbs: [get, list, watch, update, patch, delete]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -244,15 +247,15 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: replicove-runtime
-  namespace: replica-lab
+  namespace: "replica-lab"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: replicove-runtime
 subjects:
   - kind: ServiceAccount
-    name: replicove
-    namespace: replicove-system
+    name: "replicove"
+    namespace: "replicove-system"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -284,5 +287,5 @@ roleRef:
   name: replicove-system-replicove-reader
 subjects:
   - kind: ServiceAccount
-    name: replicove
-    namespace: replicove-system
+    name: "replicove"
+    namespace: "replicove-system"

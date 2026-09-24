@@ -30,6 +30,20 @@ The repository now has separate full-workflow and workload suites:
 - `hack/e2e-workload.sh cert-manager|spark|trino|policy`: independently install the source toolset, capture it, reconstruct it in a persistent vCluster, execute a real functional probe, and verify cleanup. Pinned chart archives are vendored with upstream licenses and hashes.
 - `hack/release-artifacts.sh VERSION`: package Linux/macOS amd64/arm64 CLI binaries, operator chart and checksums. This local command does not publish. The manual release workflow publishes only from a CI-tested main commit and repeats live tests against the anonymous registry artifacts.
 
-The [recorded results](validation.md) identify the passing commit and scenario. Cloud identity, CSI snapshot/content restoration, production data workloads and broader vendor/scale behavior remain separate gates.
+The [recorded results](validation.md) identify the passing commit and scenario. Historical CSI mirror qualification is recorded separately. Cloud identity, cloud CSI drivers, additional unqualified integrations, production data workloads and broader vendor/scale behavior require their own exact-revision evidence.
 
 Never use production kubeconfigs or secrets as test fixtures. Failed test output, status and public issues must not include credentials.
+
+
+## v0.3.0-alpha.1 feature checks
+
+| Suite | Checks | Limits |
+| --- | --- | --- |
+| Local database/chaos/recipe/admission tests | Policy denial, bounded transfer, masking SQL, durable transitions, UID ownership, rollback and cleanup outcomes | No running database, CNI or workload |
+| Local diagnostics/MCP/dashboard tests | Metadata filtering, namespace bounds, permissions, read-only defaults and local session controls | No remote multi-user identity claim |
+| `examples/postgresql/test-disposable.sh` | Real PostgreSQL 17 dump/restore, approved masks and selected-table subsets, FK equality, source unchanged, final raw-data exclusion | Disposable Docker only; no operator or CNI |
+| `hack/e2e-database.sh` | Full operator copy, source read role/TLS, staging/application/access gates, Calico egress enforcement, restart/refresh behavior and owned cleanup | Small generated fixture; not general anonymization, cloud storage or arbitrary schemas |
+| `hack/e2e-chaos.sh` | Six bounded fault types, target/grant denial, real effects, rollback, expiry/restart and physical cleanup | Shared-worker presets; no node faults or production reliability claim |
+| `hack/e2e-testrun.sh` | Fresh managed replica execution, JSON/JUnit, access/fault cleanup, timeout and retain-on-failure | Local command is trusted; no historical source replay |
+
+At `93bcfbc`, all 16 source CI jobs passed, including real PostgreSQL/operator, chaos, test-runner and all three mirror paths; [validation](validation.md) records exact links and scopes. The runner fixture uses ClusterReplica requests; mirror lease behavior is covered by local tests and the separate mirror suite. Exact-main and published-artifact verification remain independent release gates. Keep source credentials, raw dumps, masks and kubeconfigs out of uploaded artifacts. Generated disposable fixture diagnostics are distinct from production logging.

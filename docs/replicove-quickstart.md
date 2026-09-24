@@ -8,11 +8,11 @@ The supported workflow is portable Kubernetes desired state. Cloud identity exch
 
 ## Install and create
 
-Download the CLI from the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2), or use `make build` for contributor work. Use a disposable cluster. The [Helm quickstart](getting-started/helm.md) installs the operator with one command; the CLI installation below uses the same embedded chart:
+This guide uses v0.3.0-alpha.1. Download its matching CLI from [releases](https://github.com/nimeshbuilds/replicove/releases), or use `make build` and a matching source-built operator image for an unreleased revision. Use a disposable cluster. The [Helm quickstart](getting-started/helm.md) installs the operator with one command; the CLI installation below uses the same embedded chart:
 
 ```sh
 bin/replicove install --context YOUR_TEST_CONTEXT \
-  --image ghcr.io/nimeshbuilds/replicove:0.2.0-alpha.2 --values operator-values.yaml
+  --image ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1 --values operator-values.yaml
 kubectl --context YOUR_TEST_CONTEXT apply -f administrator-grant.yaml
 bin/replicove create integration --context YOUR_TEST_CONTEXT \
   --grant source-dev-lab --ttl 2h --manual \
@@ -57,3 +57,8 @@ The CLI defaults to `vcluster-0.37.1-persistent`: a 1 GiB control-plane PVC usin
 `make check` runs race tests, the pinned upstream chart contract, real API-server admission/integration tests, vet, and both builds. `hack/e2e-replication.sh` runs the embedded installer, manual plan, source Helm reconstruction, real guest workload/Service, secret follow, restart, explicit refresh, guest viewer RBAC and cleanup in its own kind cluster. CI runs this against two pinned Kubernetes minors. Check the [current CI results](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml); a fixture's existence is not evidence it passed.
 
 See [implementation status](IMPLEMENTATION_STATUS.md) for remaining work and the user's decision to defer cloud labs.
+
+
+## Additional features
+
+For v0.3.0-alpha.1, see [diagnostics and plan evidence](guides/diagnostics.md), [test recipes](guides/test-runs.md), [PostgreSQL masks and subsets](guides/postgresql.md), [bounded chaos](guides/chaos.md), [destination pools](guides/pools.md), [stdio MCP](guides/agents-mcp.md) and the [local read-only dashboard](guides/dashboard.md). Optional data/fault modules require explicit administrator setup and can be enabled later. [Validation](validation.md) records tested source behavior and published-artifact checks separately.

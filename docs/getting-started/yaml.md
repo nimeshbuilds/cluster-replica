@@ -1,8 +1,10 @@
 # Quickstart with YAML
 
+> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
+
 Install Replicove and create a replica using native Kubernetes manifests. The Replicove CLI and Helm CLI are not required. Replicove installs vCluster inside the host cluster for you.
 
-This walkthrough uses a new disposable kind cluster and the published alpha image. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
+This walkthrough uses a new disposable kind cluster and the versioned alpha image. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
 
 ## 1. Create a disposable host
 
@@ -30,12 +32,15 @@ Keep Terminal A open; subsequent commands use its variables. Stop if any command
 ## 2. Install the operator from manifests
 
 ```bash
-export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.2.0-alpha.2
+export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.3.0-alpha.1
 hk apply -f "$REPLICOVE_RELEASE_URL/replicove-crds.yaml"
 hk wait --for=condition=Established --timeout=60s \
   crd/clusterreplicas.replica.nimeshbuilds.dev \
   crd/replicagrants.replica.nimeshbuilds.dev \
-  crd/replicaaccesses.replica.nimeshbuilds.dev
+  crd/replicaaccesses.replica.nimeshbuilds.dev \
+  crd/replicamirrors.replica.nimeshbuilds.dev \
+  crd/replicamirrorruns.replica.nimeshbuilds.dev \
+  crd/replicaexperiments.replica.nimeshbuilds.dev
 hk apply -f "$REPLICOVE_RELEASE_URL/replicove-install.yaml"
 hk -n replicove-system wait job/replicove-bootstrap \
   --for=condition=Complete --timeout=180s
@@ -184,6 +189,6 @@ The destination should have no owned runtime resources and the source Deployment
 
 ## Automated verification
 
-For optional data mirroring after this installation, see [native YAML and GitOps enablement](../guides/enable-mirroring.md#cli-native-yaml-and-gitops-installations). Keep native ownership and the existing state key, and apply the complete optional RBAC/dependencies alongside the flags. The [feature map](../features.md) separates shipped functionality from proposed integrations.
+For optional data mirroring after this installation, see [native YAML and GitOps enablement](../guides/enable-mirroring.md#cli-native-yaml-and-gitops-installations). Keep native ownership and the existing state key, and apply the complete optional RBAC/dependencies alongside the flags. The [feature map](../features.md) separates implemented functionality from proposed integrations.
 
 [`hack/e2e-yaml.sh`](../../hack/e2e-yaml.sh) exercises these checked-in installation and request manifests in a fresh kind cluster, including idempotent key bootstrap, guest access, configuration checks, access revocation, source preservation, and owned cleanup. It does not use the Replicove or Helm CLI. The release workflow repeats it with the published digest-pinned YAML and image. See the **yaml-workflow** job in [CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml).

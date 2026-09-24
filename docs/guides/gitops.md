@@ -1,10 +1,10 @@
 # GitOps and CI
 
-Replicove is declarative. A GitOps controller or Kubernetes client can submit the same `ClusterReplica` and `ReplicaAccess` resources as the CLI. No Replicove CLI is required in an agent or pipeline.
+Replicove is declarative. A GitOps controller or Kubernetes client can submit the same `ClusterReplica` and `ReplicaAccess` resources as the CLI. No Replicove CLI is required to use the Kubernetes APIs. The optional local recipe runner automates this lifecycle for a trusted command.
 
 ## Reconcile installation in order
 
-1. Install/update all Replicove CRDs and wait for them to become established.
+1. Install/update all six Replicove CRDs and wait for them to become established.
 2. Apply the protected/destination namespaces, operator RBAC, bootstrap Job, and Deployment.
 3. Wait for successful key bootstrap and the Deployment rollout.
 4. Apply source read RBAC and administrator grants.
@@ -12,7 +12,7 @@ Replicove is declarative. A GitOps controller or Kubernetes client can submit th
 
 The native [installer](../../config/install/) is generated from the operator chart. Use the versioned release manifests with a digest-pinned image, or a Kustomize overlay for your own build. When rendering the Helm chart offline, manage the destination namespace separately (`createDestinationNamespace: false`) and use the explicit bootstrap Job (`stateKey.bootstrap: true`) so repeated renders do not generate new encryption keys. If changing the completed bootstrap Job's pod template, explicitly replace that Job; Kubernetes does not allow an in-place Job template update. Reinitialization reuses the immutable key.
 
-Exclude dynamically created encryption/state/credential Secrets and runtime resources from declarative pruning. Those are controller-owned runtime state, not desired manifests to copy into Git. Do not enable namespace or CRD pruning as a shortcut for replica cleanup.
+Exclude dynamically created encryption/state/capacity/credential Secrets, fault journals and runtime resources from declarative pruning. Those are controller-owned runtime state, not desired manifests to copy into Git. Do not enable namespace or CRD pruning as a shortcut for replica cleanup.
 
 ## Long-lived GitOps versus ephemeral requests
 
@@ -21,6 +21,12 @@ Use GitOps for the operator, RBAC, and grants. Treat per-run replicas as ephemer
 An expired request remains with terminal status; reapplying its YAML does not renew it. If an external reconciler recreates a deleted request, that creates a new lifetime and potentially a new runtime. Explicitly model that intent instead of relying on pruning/recreation loops.
 
 For manual approval, the approved revision is runtime status data. Your approval step must read and review the current plan before writing its annotation. Never put a guessed or permanently reusable plan revision in Git.
+
+## Reusable local test recipes
+
+Use `replicove run -f recipe.yaml -- COMMAND...` when the CLI is available. A [TestRecipe](test-runs.md) creates a fresh managed replica or mirror, acquires bounded access and a mirror lease when needed, runs the explicit local command, and verifies access/fault/request cleanup. Automatic report/JUnit artifacts contain metadata and source identities; the output directory is configurable. The recipe is a local document, not a CRD, a command sandbox or an exact historical replay bundle.
+
+[Pool destinations](pools.md) allow an administrator to list separate namespace/grant pairs for concurrent managed runtimes. The runner chooses a readable member; the operator independently reserves capacity. The same commands work from a trusted CI runner, shell or agent. There is no dedicated GitHub Action product wrapper. A namespace-scoped [stdio MCP facade](agents-mcp.md) is optional and uses that process's Kubernetes identity.
 
 ## Pipeline algorithm
 
@@ -33,6 +39,7 @@ watch until the session is Ready
 read the exact named credential Secret into protected process memory/file
 run integration tests through the guest route
 finally:
+  settle any ReplicaExperiment rollback and verify fault Job cleanup
   delete ReplicaAccess and wait for revocation
   delete ClusterReplica and wait for verified cleanup
   remove local credential files
@@ -56,3 +63,8 @@ The optional mirror module uses `ReplicaMirror` for selection/TTL and immutable 
 Agents authenticate to the host Kubernetes API using their normal kubeconfig or ServiceAccount and need namespace RBAC for the mirror/run/access operations they use. Administrators alone define the separate PVC data grants. A CI run should obtain its bounded guest credential, hold the active generation while testing, and release/delete it in its cleanup path. See [the complete mirror guide](mirrors.md) for YAML, CLI, retention and test leases.
 
 If the installation predates mirror enablement, apply the [late-enable procedure](enable-mirroring.md#cli-native-yaml-and-gitops-installations) to the installation's source of truth. Preserve native versus Helm ownership, render all optional RBAC, select snapshot ownership explicitly offline, and keep dynamic state out of pruning. Updating only the Deployment flags is insufficient.
+
+
+## Enabling optional modules later
+
+PostgreSQL and chaos follow the same installation owner and immutable key rules as mirrors. Apply the complete current CRDs, image, reviewed values and optional RBAC; qualify the host CNI/storage/image prerequisites and administrator grants before submitting requests. `databases.enabled` and `chaos.enabled` default to false. Preserve controller-owned state and wait for finalizers before disabling either module. See [optional modules](../getting-started/installation.md#optional-modules).

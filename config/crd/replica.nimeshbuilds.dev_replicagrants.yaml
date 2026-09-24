@@ -71,6 +71,55 @@ spec:
                 type: array
               allowEmptyVolumes:
                 type: boolean
+              chaos:
+                description: |-
+                  ChaosGrant is an explicit administrator delegation for guest-only faults.
+                  It grants no host, node, privileged-container, or cloud API access.
+                properties:
+                  images:
+                    description: Exact immutable image references (name@sha256:digest),
+                      including stress images.
+                    items:
+                      type: string
+                    maxItems: 16
+                    type: array
+                  kinds:
+                    items:
+                      type: string
+                    maxItems: 6
+                    minItems: 1
+                    type: array
+                  maxCPUMilli:
+                    default: 500
+                    description: Total across all stress and custom Jobs in an experiment.
+                    format: int64
+                    maximum: 2000
+                    minimum: 1
+                    type: integer
+                  maxDurationSeconds:
+                    default: 60
+                    format: int64
+                    maximum: 900
+                    minimum: 1
+                    type: integer
+                  maxMemoryMiB:
+                    default: 128
+                    format: int64
+                    maximum: 1024
+                    minimum: 16
+                    type: integer
+                  namespaces:
+                    description: Exact guest namespace names; each must also be exclusively
+                      replica-owned.
+                    items:
+                      type: string
+                    maxItems: 32
+                    minItems: 1
+                    type: array
+                required:
+                - kinds
+                - namespaces
+                type: object
               clusterResources:
                 items:
                   properties:
@@ -84,6 +133,179 @@ spec:
                   - group
                   - kind
                   type: object
+                type: array
+              databases:
+                items:
+                  description: |-
+                    DatabaseGrant is an administrator-only explicit database read delegation.
+                    PVC, Secret-copy and namespace grants do not imply database permission.
+                  properties:
+                    credentialsSecret:
+                      description: Secret keys are username/password. It must be in
+                        the protected operator namespace.
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    database:
+                      type: string
+                    host:
+                      type: string
+                    image:
+                      description: Administrator-qualified docker-library PostgreSQL
+                        17 image, pinned by sha256 digest.
+                      type: string
+                    masking:
+                      description: Masking is admin controlled and required; every
+                        copy uses these rules.
+                      items:
+                        properties:
+                          column:
+                            type: string
+                          domain:
+                            type: string
+                          schema:
+                            type: string
+                          strategy:
+                            description: Token is salted SHA-256 text pseudonymization,
+                              not general anonymization.
+                            enum:
+                            - Token
+                            - "Null"
+                            - Constant
+                            type: string
+                          table:
+                            type: string
+                          value:
+                            type: string
+                        required:
+                        - column
+                        - schema
+                        - strategy
+                        - table
+                        type: object
+                      maxItems: 128
+                      minItems: 1
+                      type: array
+                    maxBytes:
+                      description: Bounds archive stream bytes, staging memory volume
+                        and final requested storage.
+                      format: int64
+                      maximum: 4294967296
+                      minimum: 16777216
+                      type: integer
+                    name:
+                      type: string
+                    networkPolicyEnforced:
+                      description: Explicit assertion that the host CNI enforces host
+                        NetworkPolicy.
+                      type: boolean
+                    port:
+                      default: 5432
+                      format: int32
+                      maximum: 65535
+                      minimum: 1
+                      type: integer
+                    relationships:
+                      items:
+                        description: DatabaseRelationship declares an equality relationship
+                          that must survive masking.
+                        properties:
+                          from:
+                            description: DatabaseColumn identifies one column; SQL
+                              expressions are never accepted.
+                            properties:
+                              column:
+                                type: string
+                              schema:
+                                type: string
+                              table:
+                                type: string
+                            required:
+                            - column
+                            - schema
+                            - table
+                            type: object
+                          to:
+                            description: DatabaseColumn identifies one column; SQL
+                              expressions are never accepted.
+                            properties:
+                              column:
+                                type: string
+                              schema:
+                                type: string
+                              table:
+                                type: string
+                            required:
+                            - column
+                            - schema
+                            - table
+                            type: object
+                        required:
+                        - from
+                        - to
+                        type: object
+                      maxItems: 64
+                      type: array
+                    sourceNamespace:
+                      type: string
+                    sslMode:
+                      default: verify-full
+                      enum:
+                      - require
+                      - verify-full
+                      type: string
+                    storageClass:
+                      type: string
+                    subsets:
+                      description: Filters run in the isolated copy before masking.
+                        Undeclared tables remain intact.
+                      items:
+                        description: |-
+                          DatabaseSubset retains rows whose selected column's text equals this value.
+                          It applies only to this declared table, never implicitly to related tables.
+                        properties:
+                          column:
+                            type: string
+                          equals:
+                            maxLength: 256
+                            type: string
+                          schema:
+                            type: string
+                          table:
+                            type: string
+                        required:
+                        - column
+                        - equals
+                        - schema
+                        - table
+                        type: object
+                      maxItems: 64
+                      type: array
+                    timeoutSeconds:
+                      default: 300
+                      format: int32
+                      maximum: 1800
+                      minimum: 30
+                      type: integer
+                  required:
+                  - credentialsSecret
+                  - database
+                  - host
+                  - image
+                  - masking
+                  - maxBytes
+                  - name
+                  - networkPolicyEnforced
+                  - sourceNamespace
+                  - storageClass
+                  type: object
+                maxItems: 32
                 type: array
               defaultProvider:
                 default: helm
@@ -146,6 +368,14 @@ spec:
                 format: int32
                 maximum: 716800
                 minimum: 1024
+                type: integer
+              maxConcurrentReplicas:
+                description: |-
+                  Maximum admitted replicas using this grant. Zero leaves only runtime capacity limits.
+                  Queued requests retain their original TTL. Host resource limits are enforced by ResourceQuota.
+                format: int32
+                maximum: 100
+                minimum: 0
                 type: integer
               maxObjects:
                 default: 500

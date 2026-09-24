@@ -23,6 +23,7 @@ import (
 	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 	operatorchart "github.com/nimeshbuilds/cluster-replica/charts/replicove"
 	"github.com/nimeshbuilds/cluster-replica/internal/catalog"
+	"github.com/nimeshbuilds/cluster-replica/internal/diagnostics"
 	helmprovider "github.com/nimeshbuilds/cluster-replica/internal/runtime/helm"
 	"github.com/nimeshbuilds/cluster-replica/internal/state"
 	"github.com/nimeshbuilds/cluster-replica/internal/target"
@@ -123,7 +124,7 @@ func command() *cobra.Command {
 	root.AddCommand(create)
 	for _, name := range []string{"status", "plan", "approve", "refresh", "delete"} {
 		op := name
-		root.AddCommand(&cobra.Command{Use: op + " NAME", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		operation := &cobra.Command{Use: op + " NAME", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			k, _, err := c.clients()
 			if err != nil {
 				return err
@@ -133,7 +134,12 @@ func command() *cobra.Command {
 				return errors.New("cannot read the ClusterReplica")
 			}
 			switch op {
-			case "status", "plan":
+			case "plan":
+				if jsonOutput, _ := cmd.Flags().GetBool("json"); jsonOutput {
+					return json.NewEncoder(cmd.OutOrStdout()).Encode(diagnostics.Explain(obj))
+				}
+				return diagnostics.Write(cmd.OutOrStdout(), diagnostics.Explain(obj))
+			case "status":
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(obj.Status)
@@ -166,8 +172,13 @@ func command() *cobra.Command {
 				fmt.Fprintln(cmd.OutOrStdout(), op+" requested")
 				return nil
 			}
-		}})
+		}}
+		if op == "plan" {
+			operation.Flags().Bool("json", false, "Emit a metadata-only structured plan report")
+		}
+		root.AddCommand(operation)
 	}
+	root.AddCommand(c.doctorCommand(), c.runCommand(), c.poolCommand(), c.chaosCommand(), c.mcpCommand(), c.dashboardCommand(), c.databaseCommand())
 	root.AddCommand(c.accessCommand(false), c.accessCommand(true), c.installCommand(), c.mirrorCommand())
 	return root
 }

@@ -435,6 +435,9 @@ func Order(plan *state.Plan) error {
 		}
 		refs, ok := dependencies[id]
 		if !ok {
+			if slices.Contains(plan.ExternalDependencies, id) {
+				return nil
+			}
 			return problem("MissingDependency", "Required dependency %s was excluded, not granted, or not captured.", id)
 		}
 		visited[id] = 1

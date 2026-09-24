@@ -47,6 +47,8 @@ type HelmOverride struct {
 }
 
 type ReplicationSpec struct {
+	// +kubebuilder:validation:MaxItems=4
+	Databases []DatabaseCopy `json:"databases,omitempty"`
 	// Empty means all source namespaces explicitly delegated by the grant.
 	Namespaces      []string           `json:"namespaces,omitempty"`
 	Include         []ResourceSelector `json:"include,omitempty"`
@@ -113,6 +115,14 @@ type AccessSubject struct {
 }
 
 type ReplicaGrantSpec struct {
+	// Maximum admitted replicas using this grant. Zero leaves only runtime capacity limits.
+	// Queued requests retain their original TTL. Host resource limits are enforced by ResourceQuota.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=100
+	MaxConcurrentReplicas int32 `json:"maxConcurrentReplicas,omitempty"`
+	// +kubebuilder:validation:MaxItems=32
+	Databases []DatabaseGrant `json:"databases,omitempty"`
+	Chaos     *ChaosGrant     `json:"chaos,omitempty"`
 	// Explicit permission to read volume data. Empty-volume permission alone is insufficient.
 	Mirror          *MirrorGrant `json:"mirror,omitempty"`
 	TargetNamespace string       `json:"targetNamespace"`
@@ -171,11 +181,19 @@ type ReplicaGrantList struct {
 
 type PlannedResource struct {
 	ObjectReference `json:",inline"`
-	SourceNamespace string   `json:"sourceNamespace,omitempty"`
+	SourceNamespace string `json:"sourceNamespace,omitempty"`
+	SourceName      string `json:"sourceName,omitempty"`
+	SourceUID       string `json:"sourceUID,omitempty"`
+	SourceVersion   string `json:"sourceVersion,omitempty"`
+	SelectionReason string `json:"selectionReason,omitempty"`
+	// Transformation categories contain no source or destination field values.
+	Transformations []string `json:"transformations,omitempty"`
 	Dependencies    []string `json:"dependencies,omitempty"`
 }
 
 type PlanSummary struct {
+	// Counts describe objects observed within granted reads, not a full cluster census.
+	Omitted      map[string]int32  `json:"omitted,omitempty"`
 	Resources    []PlannedResource `json:"resources,omitempty"`
 	Revision     string            `json:"revision"`
 	CapturedAt   metav1.Time       `json:"capturedAt"`

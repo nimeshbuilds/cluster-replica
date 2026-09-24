@@ -211,7 +211,7 @@ hk -n replica-lab wait clusterreplica/full --for=delete --timeout=300s
 if hk --as=replica-developer -n replica-lab auth can-i get "secret/$viewer_secret";then exit 1;fi
 [[ -z "$(hk -n replica-lab get role "$viewer_secret" --ignore-not-found -o name)" ]]
 [[ -z "$(hk -n replica-lab get rolebinding "$viewer_secret" --ignore-not-found -o name)" ]]
-[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
+[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove,replicove.nimeshbuilds.dev/state-kind!=capacity -o name)" ]]
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
 hk -n replica-lab get configmap unrelated-sentinel >/dev/null
 hk -n source-dev get deployment echo >/dev/null
@@ -223,7 +223,7 @@ hk -n replica-lab wait clusterreplica/ttl --for=jsonpath='{.status.phase}'=Expir
 hk -n replica-lab annotate clusterreplica ttl e2e-after-expiry=yes
 sleep 15
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
-[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove -o name)" ]]
+[[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove,replicove.nimeshbuilds.dev/state-kind!=capacity -o name)" ]]
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 if [[ "${REPLICOVE_INSTALLER:-cli}" == helm ]]; then
  bin/replicove delete ttl

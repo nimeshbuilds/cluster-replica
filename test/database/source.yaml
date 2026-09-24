@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: source-db-init, namespace: source-database}
+data:
+  init.sql: |
+    CREATE TABLE public.customers(id integer PRIMARY KEY, email text UNIQUE NOT NULL, tenant_id integer);
+    CREATE TABLE public.orders(id integer PRIMARY KEY, customer_email text REFERENCES public.customers(email), tenant_id integer);
+    INSERT INTO public.customers VALUES (1,'original-user@example.invalid',10),(2,'excluded-user@example.invalid',20);
+    INSERT INTO public.orders VALUES (1,'original-user@example.invalid',10),(2,'excluded-user@example.invalid',20);
+    CREATE ROLE replica_reader LOGIN PASSWORD 'disposable-reader-password';
+    GRANT CONNECT ON DATABASE application TO replica_reader;
+    GRANT USAGE ON SCHEMA public TO replica_reader;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO replica_reader;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: source-db, namespace: source-database}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: source-db}}
+  template:
+    metadata: {labels: {app: source-db}}
+    spec:
+      initContainers:
+        - name: tls
+          image: docker.io/library/postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+          command: [sh, -ec, 'cp /certs/tls.crt /tls/server.crt; cp /certs/tls.key /tls/server.key; chmod 600 /tls/server.key; chown -R 999:999 /tls']
+          volumeMounts:
+            - {name: certs, mountPath: /certs, readOnly: true}
+            - {name: tls, mountPath: /tls}
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+          args: [postgres, -c, ssl=on, -c, ssl_cert_file=/tls/server.crt, -c, ssl_key_file=/tls/server.key]
+          env:
+            - {name: POSTGRES_USER, value: fixture_admin}
+            - {name: POSTGRES_PASSWORD, value: disposable-admin-password}
+            - {name: POSTGRES_DB, value: application}
+          ports: [{containerPort: 5432}]
+          readinessProbe:
+            exec: {command: [pg_isready, -h, 127.0.0.1, -U, fixture_admin, -d, application]}
+            periodSeconds: 2
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/postgresql/data}
+            - {name: tls, mountPath: /tls, readOnly: true}
+            - {name: init, mountPath: /docker-entrypoint-initdb.d, readOnly: true}
+      volumes:
+        - {name: data, emptyDir: {}}
+        - {name: tls, emptyDir: {}}
+        - {name: certs, secret: {secretName: source-db-tls}}
+        - {name: init, configMap: {name: source-db-init}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: source-db, namespace: source-database}
+spec:
+  selector: {app: source-db}
+  ports: [{port: 5432, targetPort: 5432}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: app, namespace: source-database}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: db-consumer}}
+  template:
+    metadata: {labels: {app: db-consumer}}
+    spec:
+      containers:
+        - name: app
+          image: docker.io/library/postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+          command: [sh, -ec, 'exec sleep 86400']

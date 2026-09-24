@@ -4,7 +4,7 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-state
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
 rules:
   - apiGroups: [""]
     resources: [secrets]
@@ -16,15 +16,15 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-state
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: {{ .Release.Name }}-state
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}
-    namespace: {{ .Release.Namespace }}
+    name: {{ .Release.Name | quote }}
+    namespace: {{ .Release.Namespace | quote }}
 ---
 # The pinned vCluster Role plus installation, inventory, and controller rights.
 # No bind/escalate bypass: Kubernetes checks each Role/RoleBinding we create.
@@ -35,7 +35,7 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-runtime
-  namespace: {{ .Values.destinationNamespace }}
+  namespace: {{ .Values.destinationNamespace | quote }}
 rules:
   - apiGroups: [""]
     resources: [configmaps, secrets, services, endpoints, pods, pods/attach, pods/portforward, pods/exec, persistentvolumeclaims]
@@ -83,6 +83,19 @@ rules:
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
     verbs: [get, update, patch]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaexperiments]
+    verbs: [get, list, watch, update, patch, delete]
+  {{- if .Values.chaos.enabled }}
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaexperiments/status, replicaexperiments/finalizers]
+    verbs: [get, update, patch]
+  {{- end }}
+  {{- if or .Values.chaos.enabled .Values.databases.enabled }}
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, create, update, patch, delete]
+  {{- end }}
   {{- if .Values.mirrors.enabled }}
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas, replicamirrors, replicamirrorruns]
@@ -104,15 +117,15 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ .Release.Name }}-runtime
-  namespace: {{ .Values.destinationNamespace }}
+  namespace: {{ .Values.destinationNamespace | quote }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: {{ .Release.Name }}-runtime
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}
-    namespace: {{ .Release.Namespace }}
+    name: {{ .Release.Name | quote }}
+    namespace: {{ .Release.Namespace | quote }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -142,6 +155,11 @@ rules:
     resources: [storageclasses]
     verbs: [get]
   {{- end }}
+  {{- if and .Values.databases.enabled (not .Values.mirrors.enabled) }}
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get]
+  {{- end }}
   {{- with .Values.clusterReadRules }}
   {{- toYaml . | nindent 2 }}
   {{- end }}
@@ -158,8 +176,8 @@ roleRef:
   name: {{ .Release.Namespace }}-{{ .Release.Name }}-reader
 subjects:
   - kind: ServiceAccount
-    name: {{ .Release.Name }}
-    namespace: {{ .Release.Namespace }}
+    name: {{ .Release.Name | quote }}
+    namespace: {{ .Release.Namespace | quote }}
 {{- range .Values.sources }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -168,7 +186,7 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
-  namespace: {{ .namespace }}
+  namespace: {{ .namespace | quote }}
 rules:
   {{- toYaml .rules | nindent 2 }}
 ---
@@ -178,13 +196,13 @@ metadata:
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
-  namespace: {{ .namespace }}
+  namespace: {{ .namespace | quote }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: {{ $.Release.Namespace }}-{{ $.Release.Name }}-source
 subjects:
   - kind: ServiceAccount
-    name: {{ $.Release.Name }}
-    namespace: {{ $.Release.Namespace }}
+    name: {{ $.Release.Name | quote }}
+    namespace: {{ $.Release.Namespace | quote }}
 {{- end }}

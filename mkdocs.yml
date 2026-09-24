@@ -77,6 +77,13 @@ nav:
       - Workload mirrors: guides/mirrors.md
       - Enable mirroring later: guides/enable-mirroring.md
       - Plans, refresh, and drift: guides/lifecycle.md
+      - Preflight and plan evidence: guides/diagnostics.md
+      - One-command test runs: guides/test-runs.md
+      - Chaos experiments: guides/chaos.md
+      - Sanitized PostgreSQL copies: guides/postgresql.md
+      - Concurrent pools and budgets: guides/pools.md
+      - Optional agent MCP: guides/agents-mcp.md
+      - Read-only dashboard: guides/dashboard.md
       - Access for people and agents: guides/access.md
       - Existing vClusters: guides/existing.md
       - TTL and cleanup: guides/cleanup.md

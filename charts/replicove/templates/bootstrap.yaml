@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .Release.Name }}-bootstrap
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 ---
@@ -11,7 +11,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ .Release.Name }}-bootstrap
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 rules:
@@ -23,7 +23,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: {{ .Release.Name }}-bootstrap
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 roleRef:
@@ -33,13 +33,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ .Release.Name }}-bootstrap
-    namespace: {{ .Release.Namespace }}
+    namespace: {{ .Release.Namespace | quote }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ .Release.Name }}-bootstrap
-  namespace: {{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     replicove.nimeshbuilds.dev/infrastructure: "true"
 spec:

@@ -1,6 +1,6 @@
 # Secrets and storage
 
-Secrets and volume contents are separate capabilities. Replicove supports explicitly granted Secret replication and fresh PVC provisioning. The optional [workload mirror module](mirrors.md) adds per-volume crash-consistent CSI snapshot copies. It does not recreate cloud identities.
+Secrets and volume contents are separate capabilities. Replicove supports explicitly granted Secret replication and fresh PVC provisioning. The optional [workload mirror module](mirrors.md) adds per-volume crash-consistent CSI snapshot copies. A separate [PostgreSQL 17 adapter](postgresql.md) makes explicitly granted logical database copies with approved masks and table filters. None of these paths recreates cloud identities.
 
 ## Secret modes
 
@@ -55,6 +55,12 @@ storageClassMap:
 The persistent **control-plane** PVC is distinct from application PVCs. The default persistent profile uses a fresh 1 GiB PVC on the host default StorageClass. It preserves the guest control-plane identity across pod rescheduling.
 
 For recorded bound volumes, cleanup requires `Delete` reclaim behavior and waits for the exact PV identity to disappear. A Retain policy or unavailable storage controller can block cleanup; Replicove does not force-delete arbitrary PVs or promise physical erasure of provider backups.
+
+## Logical PostgreSQL copies
+
+`ClusterReplica.spec.replication.databases` selects an explicitly named administrator database grant. This is separate from `data: EmptyVolumes`, raw Secret copying and CSI volume grants. Source credentials remain in the protected operator namespace; generated target credentials are placed in a new guest Secret for application references. Exclude original database workloads, Services, PVCs and credentials from source capture, and patch application references explicitly.
+
+The adapter prepares isolated staging, applies approved masks and selected-table filters, validates relationships, and makes a second logical copy into fresh persistent target storage. Application installation and guest access wait for success. The path requires a new managed target, PostgreSQL 17, qualified host CNI and Delete storage. Existing targets, mirrors and in-place refresh are rejected. Undeclared fields/tables may remain sensitive; see the [complete database boundaries](postgresql.md).
 
 ## Cloud identity and host-specific resources
 

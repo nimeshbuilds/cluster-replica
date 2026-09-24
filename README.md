@@ -13,7 +13,7 @@
 
 [Download or build the CLI](docs/getting-started/download.md) · [Helm quickstart](docs/getting-started/helm.md) · [Ten executable scenarios](docs/scenarios/index.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-> **Experimental portable alpha.** These instructions target `v0.3.0-alpha.2`, which fixes cleanup when guest-created Pods reference copied PVCs in replica-owned namespaces. Its release qualification is pending; [validation](docs/validation.md) tracks the regression and separates historical results from current checks. Test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces were introduced in v0.3.0-alpha.1. Production support and cloud certification are not available.
+> **Experimental portable alpha.** These instructions target `v0.3.0-alpha.2`, which fixes cleanup when guest-created Pods reference copied PVCs in replica-owned namespaces. All 16 exact-source CI jobs and all 11 release jobs passed; [validation](docs/validation.md#alpha2-release-qualification) records the release, download checks and separate scenario evidence. Test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces were introduced in v0.3.0-alpha.1. Production support and cloud certification are not available.
 
 ## Why Replicove?
 
@@ -44,7 +44,7 @@ Optional mirror, PostgreSQL, and chaos modules can be enabled through a values-p
 
 The diagnostics, test-runner/pool, PostgreSQL, chaos, MCP and dashboard paths have separate checks described in [validation](docs/validation.md). Test recipes are CLI documents, not another controller or a GitHub Action integration.
 
-**Historical v0.3.0-alpha.1 evidence: all 16 source CI jobs passed at [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553)** in [run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593): Kubernetes 1.35.8/1.36.4 core workflows, Helm/YAML installation, all four workload fixtures, three mirror upgrade paths, PostgreSQL, chaos, and test recipes. These are disposable functional results; exact-main and published-artifact checks remain separate release gates. See [scope and saved evidence](docs/validation.md), including the limits of the data and shared-worker tests.
+**v0.3.0-alpha.2 passed all 16 exact-source CI jobs** at [`afa15cb`](https://github.com/nimeshbuilds/replicove/commit/afa15cb1723ccb9d2a204b8aeafe88231e782d24) in [run 36045569511](https://github.com/nimeshbuilds/replicove/actions/runs/36045569511), followed by **all 11 release jobs** in [run 36049603331](https://github.com/nimeshbuilds/replicove/actions/runs/36049603331). The [validation record](docs/validation.md#alpha2-release-qualification) separates these gates from the ten guides' 16 released-artifact variants and preserves older results. These are disposable functional checks, with explicit limits for data, shared workers and cloud compatibility.
 
 ## Quick start
 

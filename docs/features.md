@@ -1,6 +1,6 @@
 # Features and their limits
 
-This map describes the implemented scope targeted for **Replicove v0.3.0-alpha.2**, including its owned-PVC cleanup fix. Release qualification is [pending verification](validation.md#owned-pvc-cleanup-regression-alpha2-verification-pending). PostgreSQL, chaos, test recipes/pools, diagnostics and local agent interfaces were introduced in v0.3.0-alpha.1. That version's historical 16-job source pass at `93bcfbc` remains separate from the new regression and published-artifact checks.
+This map describes the implemented scope targeted for **Replicove v0.3.0-alpha.2**, including its owned-PVC cleanup fix. All 16 exact-source CI jobs and all 11 release jobs passed; [validation](validation.md#alpha2-release-qualification) records those gates and the separate scenario evidence. PostgreSQL, chaos, test recipes/pools, diagnostics and local agent interfaces were introduced in v0.3.0-alpha.1. That version's historical 16-job source pass at `93bcfbc` remains separate from the new regression and published-artifact checks.
 
 Use the **[ten executable scenarios and coverage matrix](scenarios/index.md)** to try these feature families in disposable clusters. The scenarios cover supported workflows, not every possible API field combination or host distribution.
 

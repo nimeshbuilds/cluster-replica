@@ -1,13 +1,13 @@
 {
   "release": {
-    "version": "v0.3.0-alpha.1",
-    "sourceCommit": "003b59a9ecdc2729034fa21e5d2a3478686ef704",
-    "image": "ghcr.io/nimeshbuilds/replicove@sha256:fa57593efc4fbfbfc1bf7539930fb3fa23799517b989aa69c27cfe0349edb817",
+    "version": "v0.3.0-alpha.2",
+    "sourceCommit": "afa15cb1723ccb9d2a204b8aeafe88231e782d24",
+    "image": "ghcr.io/nimeshbuilds/replicove@sha256:92072ef308880bc93aa429c5e10e0ddc3dce79b4f99cd3b0c2cee2e9c1e62775",
     "assets": {
-      "replicove-v0.3.0-alpha.1-linux-amd64.tar.gz": "0fbc30cec5c55650ae4521babd63aac8efd7e983df64ee96208c44133fc28ab1",
-      "replicove-0.3.0-alpha.1.tgz": "f2ca2d9b8f5102299fa1ae011757f3ac09a759f12880c1010eaa0631b2a06c5b",
+      "replicove-v0.3.0-alpha.2-linux-amd64.tar.gz": "b616649157c65336dc2eb8db091b2ff0c6136d9da72e4b01ef72a797cfeb5964",
+      "replicove-0.3.0-alpha.2.tgz": "be5e61d8c963880c7628e7adefce26a64c31361e879535b1e97a4f305b834bbd",
       "replicove-crds.yaml": "4d10b3e28aed00804dceafbe40234671337d1eca88ba04913e0d59278dd26329",
-      "replicove-install.yaml": "bba152c21763c865e912ecb1ebeede1f1c1b5097d588721d456857986dcc49ef"
+      "replicove-install.yaml": "9c52691faabe3026029c48328e4aed2f8681c896698e267e32fbe39ecf49b639"
     }
   },
   "scenarios": [

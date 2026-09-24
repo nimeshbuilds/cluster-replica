@@ -7,7 +7,7 @@ The operator chart is in [`charts/replicove`](../../charts/replicove/). The CLI 
 | Value | Default | Meaning |
 | --- | --- | --- |
 | `image.repository` | `ghcr.io/nimeshbuilds/replicove` | Public operator image repository |
-| `image.tag` | `0.3.0-alpha.1` | Versioned alpha image tag |
+| `image.tag` | `0.3.0-alpha.2` | Versioned alpha image tag |
 | `image.digest` | Empty in source; set by release packaging | SHA-256 image digest; takes precedence over tag |
 | `image.pullPolicy` | `IfNotPresent` | Kubernetes image pull behavior |
 | `destinationNamespace` | `replica-lab` | The one namespace watched by this operator |

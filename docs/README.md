@@ -6,8 +6,10 @@ The searchable site includes Helm, YAML, and CLI quickstarts, detailed feature g
 
 | Start here | Guide |
 | --- | --- |
+| Get a prebuilt CLI or compile a matching release | [Download or build](getting-started/download.md) |
 | Install and create using native manifests | [YAML quickstart](getting-started/yaml.md) |
 | Create with the CLI and managed tunnel | [CLI quickstart](../QUICKSTART.md) |
+| Try ten feature workflows in disposable clusters | [Executable scenarios](scenarios/index.md) |
 | Choose an installation method | [Installation](getting-started/installation.md) |
 | Create writable data copies with scheduled resets | [Workload mirrors](guides/mirrors.md) |
 | Add mirrors after installing Replicove | [Enable mirroring later](guides/enable-mirroring.md) |
@@ -22,4 +24,4 @@ The searchable site includes Helm, YAML, and CLI quickstarts, detailed feature g
 | Build and extend Replicove | [Local development](development/local.md) and [architecture](architecture.md) |
 | Update or preview the website | [Docs maintenance](development/docs.md) |
 
-Version v0.3.0-alpha.1 adds features beyond v0.2.0-alpha.2; [validation](validation.md) records the 16-job source pass at `93bcfbc` separately from release-artifact verification. Historical [design proposals](design/cluster-replica-implementation-plan.md) include unimplemented ideas. Current guides and the status page distinguish those from implemented behavior.
+The installation guides target published v0.3.0-alpha.2. All 16 exact-source CI jobs and all 11 release jobs passed; [validation](validation.md#alpha2-release-qualification) records the release, download checks and separate scenario evidence. Version v0.3.0-alpha.1 introduced the additional data, test and local interface features; its historical 16-job source pass at `93bcfbc` remains attached to that revision. Historical [design proposals](design/cluster-replica-implementation-plan.md) include unimplemented ideas. Current guides and the status page distinguish those from implemented behavior.

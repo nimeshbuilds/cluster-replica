@@ -262,13 +262,58 @@ wait_run reset-a
 connect
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == host-A ]]
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
-# A periodic request is coalesced, never a second concurrent restore.
-hk -n replica-lab patch replicamirror orders --type=merge -p '{"spec":{"interval":"1m"}}'
-for i in $(seq 1 150); do active=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeRun.name}'); if [[ -n "$active" && "$active" != reset-a ]]; then break; fi; sleep 3; done
-[[ -n "$active" && "$active" != reset-a ]]
+# Suspend across a full interval before resuming automatic capture. A suspended
+# mirror keeps its active generation, while already admitted work may finish.
 bin/replicove mirror suspend orders
+hk -n replica-lab patch replicamirror orders --type=merge -p '{"spec":{"interval":"1m"}}'
+hk -n replica-lab wait replicamirror/orders --for=jsonpath='{.status.phase}'=Suspended --timeout=120s
+for i in $(seq 1 14); do
+ sleep 5
+ [[ "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeRun.name}')" == reset-a ]]
+ [[ -z "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.pendingRun.name}')" ]]
+done
+hk -n source-dev get volumesnapshots -o json | python3 -c 'import json,sys;xs=json.load(sys.stdin)["items"];assert len(xs)>=2;out=[{"name":x["metadata"]["name"],"uid":x["metadata"]["uid"],"content":x["status"]["boundVolumeSnapshotContentName"]} for x in xs];json.dump(out,sys.stdout)' > "$work/artifacts/retention-before.json"
+bin/replicove mirror resume orders
+# Pause after the first scheduled request appears, so that its completed
+# generation is stable while retention is checked.
+scheduled_run=''
+for i in $(seq 1 150); do
+ scheduled_run=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.pendingRun.name}')
+ if [[ -n "$scheduled_run" ]]; then break; fi
+ active=$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeRun.name}')
+ if [[ -n "$active" && "$active" != reset-a ]]; then scheduled_run="$active"; break; fi
+ sleep 3
+done
+[[ -n "$scheduled_run" && "$scheduled_run" != reset-a ]]
+bin/replicove mirror suspend orders
+wait_run "$scheduled_run"
 connect
 [[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == host-B ]]
+# Retain only the new active capture. Old recovery points and their owned CSI
+# contents must disappear before deleting the parent or its disposable host.
+hk -n replica-lab patch replicamirror orders --type=merge -p '{"spec":{"retainRevisions":1}}'
+retention_ready=false
+for i in $(seq 1 60); do
+ hk -n source-dev get volumesnapshots -o json > "$work/retention-snapshots.json"
+ hk get volumesnapshotcontents -o json > "$work/retention-contents.json"
+ if python3 - "$work/artifacts/retention-before.json" "$work/retention-snapshots.json" "$work/retention-contents.json" <<'PYRETENTION'
+import json,sys
+old=json.load(open(sys.argv[1])); snapshots=json.load(open(sys.argv[2]))['items']; contents=json.load(open(sys.argv[3]))['items']
+assert len(snapshots)==1, 'expected exactly one retained source capture'
+assert not ({x['uid'] for x in old} & {x['metadata']['uid'] for x in snapshots}), 'old source snapshot still present'
+assert not ({x['content'] for x in old} & {x['metadata']['name'] for x in contents}), 'old source snapshot content still present'
+assert snapshots[0]['status'].get('readyToUse') is True, 'active recovery point is not ready'
+PYRETENTION
+ then
+  if [[ -z "$(hk -n replica-lab get replicamirrorrun "$first_run" sync-b reset-a --ignore-not-found -o name)" ]]; then retention_ready=true; break; fi
+ fi
+ sleep 5
+done
+[[ "$retention_ready" == true ]]
+[[ -z "$(hk -n replica-lab get replicamirrorrun "$first_run" sync-b reset-a --ignore-not-found -o name)" ]]
+[[ "$(hk -n replica-lab get replicamirror orders -o jsonpath='{.status.activeRun.name}')" == "$scheduled_run" ]]
+[[ "$(gk -n orders exec deployment/orders -- cat /data/revision)" == host-B ]]
+printf '%s\n' '{"result":"passed","retainedSourceCaptures":1,"oldSnapshotContentsAbsent":true,"activeGenerationPreserved":true}' > "$work/artifacts/retention.json"
 kill "$tunnel_pid" 2>/dev/null || true; wait "$tunnel_pid" 2>/dev/null || true; tunnel_pid=''
 bin/replicove mirror delete orders
 hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
@@ -280,6 +325,28 @@ hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
 [[ "$source_pvc_uid" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.metadata.uid}')" ]]
 [[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
+# Execute the published mirror TestRecipe as written. Its runner must acquire
+# and observe a test lease before executing the guest command, then revoke
+# access, release that lease and finish the mirror's finalizers.
+bin/replicove run -n replica-lab -f examples/testing/mirror.yaml --artifacts "$work/artifacts/mirror-runner"
+python3 - "$work/artifacts/mirror-runner" <<'PYRUNNER'
+import json,pathlib,sys,xml.etree.ElementTree as ET
+root=pathlib.Path(sys.argv[1]);r=json.loads((root/'report.json').read_text())
+assert r['setup']['status']=='Passed' and r['test']['status']=='Passed' and r['cleanup']['status']=='Verified',r
+assert r['request']['kind']=='ReplicaMirror' and r['request']['uid']
+assert r['replica']['kind']=='ClusterReplica' and r['replica']['uid']!=r['request']['uid']
+assert r['mirrorCapture']['uid'] and r['mirrorCapturedAt'] and r['planRevision']
+junit=ET.parse(root/'junit.xml').getroot()
+assert junit.attrib['tests']=='3'
+assert not junit.findall('.//failure') and not junit.findall('.//error') and not junit.findall('.//skipped')
+PYRUNNER
+[[ -z "$(hk -n replica-lab get clusterreplicas,replicamirrors,replicamirrorruns,replicaaccesses,pods,persistentvolumeclaims,networkpolicies -o name)" ]]
+[[ -z "$(hk -n source-dev get volumesnapshots -o name)" ]]
+[[ -z "$(hk get volumesnapshotcontents -o name)" ]]
+[[ "$source_pvc_uid" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.metadata.uid}')" ]]
+[[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
+[[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
+
 # Reinstall after finalizers finish: retained APIs must not make auto mode
 # incorrectly assume that the removed snapshot controller is still running.
 state_key_uid=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
@@ -296,7 +363,7 @@ hk -n replicove-system rollout status deployment/replicove --timeout=180s
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
 [[ "$state_key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","cancelled-restored-namespace-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","one-runtime-per-host-namespace","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
+{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","cancelled-restored-namespace-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","one-runtime-per-host-namespace","latest-source-reset","saved-revision-reset","scheduled-reset","schedule-suspension-and-resumption","retention-prunes-unpinned-captures","owned-volume-snapshot-cleanup","source-identity-and-data-preserved","published-mirror-test-recipe","runner-mirror-capture-and-lease","runner-json-and-junit","runner-access-and-storage-cleanup"]}
 JSON
 if [[ "$mirror_base" == native ]]; then
  python3 - "$work/artifacts/report.json" <<'PY'

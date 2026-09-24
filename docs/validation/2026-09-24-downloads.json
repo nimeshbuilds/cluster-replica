@@ -1,0 +1,53 @@
+{
+  "version": "v0.3.0-alpha.2",
+  "sourceCommit": "afa15cb1723ccb9d2a204b8aeafe88231e782d24",
+  "image": "ghcr.io/nimeshbuilds/replicove@sha256:92072ef308880bc93aa429c5e10e0ddc3dce79b4f99cd3b0c2cee2e9c1e62775",
+  "assets": {
+    "replicove-0.3.0-alpha.2.tgz": "be5e61d8c963880c7628e7adefce26a64c31361e879535b1e97a4f305b834bbd",
+    "replicove-crds.yaml": "4d10b3e28aed00804dceafbe40234671337d1eca88ba04913e0d59278dd26329",
+    "replicove-install.yaml": "9c52691faabe3026029c48328e4aed2f8681c896698e267e32fbe39ecf49b639",
+    "replicove-v0.3.0-alpha.2-darwin-amd64.tar.gz": "ff9e1c0d77a8520734f2d7141b1f76fc645506fdf07985043b383fe470e6e287",
+    "replicove-v0.3.0-alpha.2-darwin-arm64.tar.gz": "c4ad59f5ca9c391276455e8cb9551677c7db0dc619ed27d65ededffdcb1ec7a7",
+    "replicove-v0.3.0-alpha.2-linux-amd64.tar.gz": "b616649157c65336dc2eb8db091b2ff0c6136d9da72e4b01ef72a797cfeb5964",
+    "replicove-v0.3.0-alpha.2-linux-arm64.tar.gz": "a6b9b06d2c6056190abc4f58b595c2253e8d1a2e4100bd4e2ada876ab2a9a144"
+  },
+  "verifiedCLIPlatforms": [
+    "linux-amd64",
+    "linux-arm64",
+    "darwin-amd64",
+    "darwin-arm64"
+  ],
+  "archiveContents": [
+    "replicove",
+    "LICENSE",
+    "QUICKSTART.md"
+  ],
+  "matchingQuickstart": true,
+  "matchingChartAndNativeDigest": true,
+  "crdCount": 6,
+  "recordedAt": "2026-09-24T20:24:02.362746+00:00",
+  "releaseURL": "https://github.com/nimeshbuilds/replicove/releases/tag/v0.3.0-alpha.2",
+  "releaseWorkflow": "https://github.com/nimeshbuilds/replicove/actions/runs/36049603331",
+  "sourceWorkflow": "https://github.com/nimeshbuilds/replicove/actions/runs/36045569511",
+  "anonymousPublicDownloads": true,
+  "checksumFileSHA256": "2cf429c13d78d3ae69bd5d3b68e93b1de3e1ecbeadfeb9144edb486a3c83fb99",
+  "archiveVerificationScope": "Archive members, checksums, architecture, embedded version and clean source revision inspected for all four CLI builds; executable smoke test below is macOS arm64 only.",
+  "downloadGuideSmoke": {
+    "result": "passed",
+    "platform": "darwin-arm64",
+    "versionOutput": "replicove version v0.3.0-alpha.2",
+    "helpSucceeded": true,
+    "onlySubstitution": "Installation directory redirected to a private test directory."
+  },
+  "sourceBuildSmoke": {
+    "result": "passed",
+    "platform": "darwin-arm64",
+    "sourceCommit": "afa15cb1723ccb9d2a204b8aeafe88231e782d24",
+    "branch": "build-v0.3.0-alpha.2",
+    "goVersion": "1.27.1",
+    "cgoEnabled": false,
+    "versionOutput": "replicove version v0.3.0-alpha.2",
+    "helpSucceeded": true
+  },
+  "scope": "Package and installation checks only. Live cluster results are recorded by the linked workflows and separate scenario evidence."
+}

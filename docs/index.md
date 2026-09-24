@@ -12,13 +12,15 @@ description: Replicove recreates selected Kubernetes operators, Helm components,
 <p class="lede">Recreate selected operators, Helm components, and configuration in a disposable vCluster. Give your integration tests, developers, and agents a familiar environment—with a lifetime you control.</p>
 
 [Install with Helm](getting-started/helm.md){ .md-button .md-button--primary }
+[Download or build the CLI](getting-started/download.md){ .md-button }
 [Use YAML](getting-started/yaml.md){ .md-button }
 [Start with the CLI](../QUICKSTART.md){ .md-button }
+[Try the ten scenarios](scenarios/index.md){ .md-button }
 
 </div>
 
 !!! info "Experimental portable alpha"
-    These docs describe v0.3.0-alpha.1. The validation record separates tested source behavior from published-artifact checks. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
+    These instructions target v0.3.0-alpha.2. All 16 exact-source CI jobs and all 11 release jobs passed. [Validation](validation.md#alpha2-release-qualification) records the release, download checks and separate scenario evidence. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
 
 <div class="feature-grid" markdown>
 <div markdown>
@@ -76,6 +78,8 @@ The guest has its own API server and object identities. With the current shared-
 ## Find the right guide
 
 Start with the [feature map](features.md) for every implemented capability, its guide, and its limits. To add optional data copies to an existing deployment, use [enable mirroring later](guides/enable-mirroring.md).
+
+The **[ten executable scenarios](scenarios/index.md)** put these features together in disposable integration labs. Every documented variant uses the pinned public release, verifies expected outcomes, and checks cleanup. The same entry points run in the documentation scenario workflow; each page explains the operations and their limits.
 
 - **First installation:** [installation choices](getting-started/installation.md), [Helm](getting-started/helm.md), [YAML](getting-started/yaml.md), or [CLI](../QUICKSTART.md).
 - **Platform administrators:** [grants and RBAC](guides/grants.md), [secrets and storage](guides/secrets-storage.md), [security](../SECURITY.md).

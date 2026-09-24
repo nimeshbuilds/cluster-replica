@@ -1,0 +1,58 @@
+name: Documentation scenarios
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scenarios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  catalog:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.catalog.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Check runner contracts and enumerate every documented variant
+        id: catalog
+        run: |
+          python3 -m unittest discover -s examples/scenarios -p '*_test.py' -v
+          echo "matrix=$(./examples/scenarios/run.sh --matrix)" >> "$GITHUB_OUTPUT"
+
+  lab:
+    needs: catalog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 85
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJSON(needs.catalog.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Execute the exact documented command against the pinned public release
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+          VARIANT: ${{ matrix.variant }}
+        run: ./examples/scenarios/run.sh "$SCENARIO" "$VARIANT"
+      - name: Retain scenario receipts and synthetic fixture evidence
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: scenario-${{ matrix.scenario }}-${{ matrix.variant }}
+          path: |
+            .cache/scenarios/run.*/report.json
+            .cache/*-e2e/run.*/artifacts/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30

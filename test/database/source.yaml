@@ -3,9 +3,9 @@ kind: ConfigMap
 metadata: {name: source-db-init, namespace: source-database}
 data:
   init.sql: |
-    CREATE TABLE public.customers(id integer PRIMARY KEY, email text UNIQUE NOT NULL, tenant_id integer);
+    CREATE TABLE public.customers(id integer PRIMARY KEY, email text UNIQUE NOT NULL, tenant_id integer, phone text, display_name text NOT NULL);
     CREATE TABLE public.orders(id integer PRIMARY KEY, customer_email text REFERENCES public.customers(email), tenant_id integer);
-    INSERT INTO public.customers VALUES (1,'original-user@example.invalid',10),(2,'excluded-user@example.invalid',20);
+    INSERT INTO public.customers VALUES (1,'original-user@example.invalid',10,'original-phone-010','Original User Ten'),(2,'excluded-user@example.invalid',20,NULL,'Excluded User Twenty');
     INSERT INTO public.orders VALUES (1,'original-user@example.invalid',10),(2,'excluded-user@example.invalid',20);
     CREATE ROLE replica_reader LOGIN PASSWORD 'disposable-reader-password';
     GRANT CONNECT ON DATABASE application TO replica_reader;

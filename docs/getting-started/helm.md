@@ -1,8 +1,10 @@
 # Quickstart with Helm
 
-> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
+> **Versioned instructions:** these commands use v0.3.0-alpha.2. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 Install Replicove with one Helm command on a disposable Kubernetes host. It works whether the host has no vCluster or already runs independently managed vClusters. The release chart, operator image, and CLI use public artifact distribution; no GitHub login is required after publication.
+
+For a complete automated lab with outcome and cleanup checks, try [scenario 01](../scenarios/01-governed-replica.md) or browse [all ten scenarios](../scenarios/index.md).
 
 ## 1. Install
 
@@ -16,7 +18,7 @@ Then run:
 
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.3.0-alpha.1 \
+  --version 0.3.0-alpha.2 \
   --namespace replicove-system --create-namespace \
   --wait --timeout 3m
 ```
@@ -32,7 +34,7 @@ Helm 4.3.0 is tested. The chart uses the v2 chart format and OCI distribution; o
 On a disposable host with a working default StorageClass, apply the same small fixture used by the YAML walkthrough:
 
 ```bash
-export REPLICOVE_EXAMPLES=https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.3.0-alpha.1/examples/yaml
+export REPLICOVE_EXAMPLES=https://raw.githubusercontent.com/nimeshbuilds/replicove/v0.3.0-alpha.2/examples/yaml
 kubectl apply -f "$REPLICOVE_EXAMPLES/source.yaml" \
   -f "$REPLICOVE_EXAMPLES/source-rbac.yaml" \
   -f "$REPLICOVE_EXAMPLES/grant.yaml" \
@@ -43,10 +45,10 @@ kubectl -n replica-lab wait clusterreplica/yaml-demo \
 
 The fixture creates a source echo application, a dummy Secret, bounded source permissions, and a one-hour `ClusterReplica`. Replicove provisions a persistent vCluster and recreates the selection in guest namespace `integration`. A 1 GiB control-plane PVC uses the host's default StorageClass. Source volume contents are not copied.
 
-To connect locally, download and extract your platform’s `replicove` CLI archive from the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.3.0-alpha.1) into your working directory. Keep this command running in the same host context:
+To connect locally, [download the prebuilt CLI or build the matching release](download.md), then keep this command running in the same host context:
 
 ```bash
-./replicove -n replica-lab connect yaml-demo --role viewer \
+replicove -n replica-lab connect yaml-demo --role viewer \
   --output "$PWD/replicove-guest.kubeconfig"
 ```
 
@@ -80,7 +82,7 @@ Download the chart values for review:
 
 ```bash
 helm show values oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.3.0-alpha.1 > operator-values.yaml
+  --version 0.3.0-alpha.2 > operator-values.yaml
 ```
 
 Set `destinationNamespace` to the one host namespace this operator should watch. Set `createDestinationNamespace: false` if another system manages that namespace; it must already exist. Add explicit read rules under `sources` for your existing source namespaces and pair them with a matching `ReplicaGrant`. Full definitions are in [operator configuration](../reference/operator.md).
@@ -112,4 +114,4 @@ For later releases, apply their CRD bundle before `helm upgrade --install`: Helm
 
 ## Verification
 
-The live suite exercises Helm installation on a fresh host, automatic vCluster provisioning, upgrades while a replica exists, TTL cleanup, and installation after an independent vCluster already exists. It checks that reuse and uninstall preserve existing resources. The release workflow repeats the new/existing tests using anonymous OCI chart and image pulls. See [CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) and the test link on the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.3.0-alpha.1).
+The live suite exercises Helm installation on a fresh host, automatic vCluster provisioning, upgrades while a replica exists, TTL cleanup, and installation after an independent vCluster already exists. It checks that reuse and uninstall preserve existing resources. The release workflow repeats the new/existing tests using anonymous OCI chart and image pulls. See [CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml) and the test link on the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.3.0-alpha.2).

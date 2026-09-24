@@ -92,19 +92,25 @@ for i in $(seq 1 180); do if [[ -f "$work/guest.kubeconfig" ]] && gk --request-t
 gk -n integration rollout status deployment/app --timeout=120s
 [[ "$(gk -n integration get pods -l replicove.nimeshbuilds.dev/database-role=stage -o jsonpath='{.items}')" == '[]' ]]
 db=replicove-db-test-database
-[[ "$(gk -n integration exec "$db" -- psql -U replicove -d application -qAt -c 'SELECT count(*) FROM public.orders o JOIN public.customers c ON o.customer_email=c.email WHERE length(c.email)=64')" == 1 ]]
+[[ "$(gk -n integration exec "$db" -- psql -U replicove -d application -v ON_ERROR_STOP=1 -qAt -c 'SELECT count(*) FROM public.customers')" == 1 ]]
+[[ "$(gk -n integration exec "$db" -- psql -U replicove -d application -v ON_ERROR_STOP=1 -qAt -c 'SELECT count(*) FROM public.orders')" == 1 ]]
+# Check every strategy against the final database, including an actually
+# populated nullable source field and a non-null display name replacement.
+masked_query="SELECT count(*) FROM public.orders o JOIN public.customers c ON o.customer_email=c.email WHERE c.id=1 AND o.id=1 AND c.tenant_id=10 AND o.tenant_id=10 AND c.email ~ '^[0-9a-f]{64}$' AND c.phone IS NULL AND c.display_name='Integration Test Customer'"
+[[ "$(gk -n integration exec "$db" -- psql -U replicove -d application -v ON_ERROR_STOP=1 -qAt -c "$masked_query")" == 1 ]]
 [[ "$(gk -n integration exec "$db" -- psql -U replicove -d application -qAt -c "SELECT count(*) FROM pg_constraint WHERE contype='f' AND convalidated")" == 1 ]]
 # Verify host CNI enforcement from the actual copied PostgreSQL Pod to production.
 if gk -n integration exec "$db" -- pg_isready -h "$source_ip" -t 2 >/dev/null 2>&1; then echo 'Database Pod could reach source through host policy' >&2; exit 1; fi
 # Application connectivity must resolve the generated Service and reach the
 # sanitized copy, while original Pod IP and Service IP endpoints stay blocked.
-[[ "$(gk -n integration exec deployment/app -- psql -qAt -c 'SELECT count(*) FROM public.customers WHERE length(email)=64')" == 1 ]]
+[[ "$(gk -n integration exec deployment/app -- psql -v ON_ERROR_STOP=1 -qAt -c "$masked_query")" == 1 ]]
 for endpoint in "$source_ip" "$source_service_ip"; do
  if gk -n integration exec deployment/app -- pg_isready -h "$endpoint" -t 2 >/dev/null 2>&1; then echo 'Replicated application could reach the source database' >&2; exit 1; fi
  hk -n source-database exec deployment/app -- pg_isready -h "$endpoint" -t 2 >/dev/null
 done
 gk -n integration exec "$db" -- psql -U replicove -d application -qAt -c CHECKPOINT >/dev/null
-[[ "$(gk -n integration exec "$db" -- sh -ec '
+for original_marker in original-user@example.invalid excluded-user@example.invalid original-phone-010 'Original User Ten' 'Excluded User Twenty'; do
+ [[ "$(gk -n integration exec "$db" -- sh -ec '
 test -f "$1/PG_VERSION" || exit 3
 if grep -a -r -F -l -- "$2" "$1" >/dev/null; then
   printf FOUND
@@ -112,11 +118,14 @@ else
   result=$?
   test "$result" -eq 1 || exit "$result"
   printf CLEAN
-fi' probe /var/lib/postgresql/data/pgdata original-user@example.invalid)" == CLEAN ]]
+fi' probe /var/lib/postgresql/data/pgdata "$original_marker")" == CLEAN ]]
+done
 source_intact(){
  [[ "$(hk -n source-database get deployment source-db -o jsonpath='{.metadata.uid}')" == "$source_uid" ]]
  [[ "$(hk -n source-database exec deployment/source-db -c postgres -- psql -U fixture_admin -d application -qAt -c 'SELECT email FROM public.customers WHERE id=1')" == original-user@example.invalid ]]
  [[ "$(hk -n source-database exec deployment/source-db -c postgres -- psql -U fixture_admin -d application -qAt -c 'SELECT count(*) FROM public.customers')" == 2 ]]
+ [[ "$(hk -n source-database exec deployment/source-db -c postgres -- psql -U fixture_admin -d application -v ON_ERROR_STOP=1 -qAt -c "SELECT count(*) FROM public.customers WHERE (id=1 AND email='original-user@example.invalid' AND tenant_id=10 AND phone='original-phone-010' AND display_name='Original User Ten') OR (id=2 AND email='excluded-user@example.invalid' AND tenant_id=20 AND phone IS NULL AND display_name='Excluded User Twenty')")" == 2 ]]
+ [[ "$(hk -n source-database exec deployment/source-db -c postgres -- psql -U fixture_admin -d application -v ON_ERROR_STOP=1 -qAt -c "SELECT count(*) FROM public.orders o JOIN public.customers c ON o.customer_email=c.email WHERE o.id=c.id AND o.tenant_id=c.tenant_id")" == 2 ]]
 }
 source_intact
 if hk -n source-database exec deployment/source-db -c postgres -- psql -U replica_reader -d application -v ON_ERROR_STOP=1 -c "UPDATE public.customers SET email='modified'" >/dev/null 2>&1; then echo 'Source role has write privileges' >&2; exit 1; fi
@@ -142,5 +151,5 @@ while IFS= read -r pv; do [[ -z "$(hk get pv "$pv" --ignore-not-found -o name)" 
 [[ "$(hk -n replica-lab get pvc -o jsonpath='{.items}')" == '[]' ]]
 source_intact
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["default-off module and late opt-in","explicit read-only source account and RBAC","host TLS source connection","application blocked during raw staging","actual PostgreSQL schema/data restore","domain masking and validated foreign keys","raw staging removed before access","no original fixture rows in final data or WAL","host Calico egress isolation from copied database","application DNS and sanitized database connectivity","application denied source Pod and Service IPs while source remains reachable","source unchanged","operator restart retains sanitized database","in-place refresh denied","TTL-compatible owned PVC/PV/host-policy cleanup"]}
+{"result":"passed","scenarios":["default-off module and late opt-in","explicit read-only source account and RBAC","host TLS source connection","application blocked during raw staging","actual PostgreSQL schema/data restore","Token, Null and Constant masks with subset and validated foreign keys","raw staging removed before access","no original fixture rows in final data or WAL","host Calico egress isolation from copied database","application DNS and sanitized database connectivity","application denied source Pod and Service IPs while source remains reachable","source unchanged","operator restart retains sanitized database","in-place refresh denied","TTL-compatible owned PVC/PV/host-policy cleanup"]}
 JSON

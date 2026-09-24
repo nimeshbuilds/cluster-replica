@@ -8,6 +8,8 @@ Create a disposable Kubernetes cluster, install Replicove, and recreate a small 
 
 Prefer a one-command Helm installation? Start with the **[Helm quickstart](docs/getting-started/helm.md)**. Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
 
+Continue with **[ten executable scenarios](docs/scenarios/index.md)** covering selection, operators, existing targets, mirrors, PostgreSQL copies, one-command tests, chaos, pools, agents and observability. Their disposable Linux/Docker labs verify outcomes and cleanup against the published release.
+
 ## Before you start
 
 - A macOS or Linux machine with Bash, Git, `curl`, `shasum`, and `tar`.
@@ -19,7 +21,7 @@ The tool downloader installs checksum-verified kind, kubectl, vCluster, and Helm
 
 ## 1. Get the CLI and examples
 
-This path downloads a prebuilt release CLI; Go is not required. The clone supplies the example applications and lab tools.
+This path downloads a **prebuilt release CLI**; Go is not required. The clone supplies only the example applications and lab tools. For a standalone CLI installation without a clone, or to compile the matching release yourself, use **[Download or build the CLI](docs/getting-started/download.md)**.
 
 In **Terminal A**:
 
@@ -210,7 +212,7 @@ hk -n replicove-system logs deployment/replicove --tail=100
 | Credential output file already exists | Use a new output filename and update `gk` to point to it; the CLI does not overwrite files. |
 | Deletion is stuck | Check operator health and request conditions. Resolve the reported dependency; do not strip finalizers to conceal unfinished cleanup. |
 
-For a scripted verification instead of the interactive walkthrough, install Go 1.27.1+, make, and Python 3, then run `./hack/e2e-replication.sh` after step 1. This contributor test builds its own image. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The [v0.3.0-alpha.1 source passed all 16 CI checks at 93bcfbc](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Validation](docs/validation.md) separates source results from release-artifact checks. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
+For a scripted verification instead of the interactive walkthrough, install Go 1.27.1+, make, and Python 3, then run `./hack/e2e-replication.sh` after step 1. This contributor test builds its own image. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The historical [v0.3.0-alpha.1 source passed all 16 CI checks at 93bcfbc](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Validation](docs/validation.md) separates source results from release-artifact checks. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
 
 ## Next steps
 

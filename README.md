@@ -11,9 +11,9 @@
 
 **Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** It recreates the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-[Helm quickstart](docs/getting-started/helm.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
+[Download or build the CLI](docs/getting-started/download.md) · [Helm quickstart](docs/getting-started/helm.md) · [Ten executable scenarios](docs/scenarios/index.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-> **Experimental portable alpha.** Version `v0.3.0-alpha.1` adds test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces. [Validation](docs/validation.md) records exact source revisions and release-artifact checks. Production support and cloud certification are not available.
+> **Experimental portable alpha.** These instructions target `v0.3.0-alpha.2`, which fixes cleanup when guest-created Pods reference copied PVCs in replica-owned namespaces. All 16 exact-source CI jobs and all 11 release jobs passed; [validation](docs/validation.md#alpha2-release-qualification) records the release, download checks and separate scenario evidence. Test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces were introduced in v0.3.0-alpha.1. Production support and cloud certification are not available.
 
 ## Why Replicove?
 
@@ -44,17 +44,21 @@ Optional mirror, PostgreSQL, and chaos modules can be enabled through a values-p
 
 The diagnostics, test-runner/pool, PostgreSQL, chaos, MCP and dashboard paths have separate checks described in [validation](docs/validation.md). Test recipes are CLI documents, not another controller or a GitHub Action integration.
 
-**All 16 source CI jobs passed at [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553)** in [run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593): Kubernetes 1.35.8/1.36.4 core workflows, Helm/YAML installation, all four workload fixtures, three mirror upgrade paths, PostgreSQL, chaos, and test recipes. These are disposable functional results; exact-main and published-artifact checks remain separate release gates. See [scope and saved evidence](docs/validation.md), including the limits of the data and shared-worker tests.
+**v0.3.0-alpha.2 passed all 16 exact-source CI jobs** at [`afa15cb`](https://github.com/nimeshbuilds/replicove/commit/afa15cb1723ccb9d2a204b8aeafe88231e782d24) in [run 36045569511](https://github.com/nimeshbuilds/replicove/actions/runs/36045569511), followed by **all 11 release jobs** in [run 36049603331](https://github.com/nimeshbuilds/replicove/actions/runs/36049603331). The [validation record](docs/validation.md#alpha2-release-qualification) separates these gates from the ten guides' 16 released-artifact variants and preserves older results. These are disposable functional checks, with explicit limits for data, shared workers and cloud compatibility.
 
 ## Quick start
 
+**[Download a prebuilt CLI](docs/getting-started/download.md)** for macOS or Linux on amd64/arm64, with checksum verification and no Go installation. The same guide provides a matching source-build option. Releases also include the Helm chart and native YAML manifests.
+
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.3.0-alpha.1 \
+  --version 0.3.0-alpha.2 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
 **[Helm quickstart →](docs/getting-started/helm.md)** · **[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
+
+Try the **[ten executable scenarios →](docs/scenarios/index.md)** for complete disposable labs spanning every current feature family. They use pinned release artifacts, assert expected behavior, and verify cleanup. Each documented variant runs through the same entry point in the documentation scenario workflow.
 
 This command installs the versioned release artifacts. Use the [source build instructions](docs/development/local.md) when testing an unreleased revision. The chart installs all six CRDs, the operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. Release artifacts pin the operator image by digest.
 

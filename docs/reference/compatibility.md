@@ -37,7 +37,7 @@ Exact revisions, CI runs, and scope are linked on [project status](../project-st
 
 ## Additional adapters and interfaces
 
-Version v0.3.0-alpha.1 adds local preflight/provenance, test recipes, pool/admission, PostgreSQL 17, six bounded chaos types, stdio MCP and a local dashboard. The [validation record](../validation.md) identifies their source tests and fixture limits. Historical host-version results above must not be extended beyond their matching runs.
+Version v0.3.0-alpha.1 introduced local preflight/provenance, test recipes, pool/admission, PostgreSQL 17, six bounded chaos types, stdio MCP and a local dashboard. The [validation record](../validation.md) identifies their source tests and fixture limits. Historical host-version results above must not be extended beyond their matching runs.
 
 - PostgreSQL uses a single-database logical snapshot, new managed target, approved masks/explicit table filters and enforced host policy. No mirror combination, existing-target use, in-place refresh, arbitrary extension qualification, automatic tenant extraction or general anonymization claim.
 - Network/Job chaos requires managed runtimes with enforced host policies and rejects overlapping allow rules, including mirror/ready-database policies. PodDelete/ScaleZero permit other eligible owned targets. No privileged host/node fault presets.

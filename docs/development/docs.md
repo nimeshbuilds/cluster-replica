@@ -32,6 +32,8 @@ Open the URL MkDocs prints. Stop the preview with Ctrl-C. After editing source M
 | Installation manifests | Chart templates, then `make manifests` |
 | Branding | Existing `assets/brand` files and `docs/stylesheets/extra.css` |
 | Dependency versions | `docs/requirements.txt`, reviewed together with a successful strict build |
+| Executable scenario catalog and release pins | `examples/scenarios/catalog.json`; the runner and CI enumerate this same catalog |
+| Scenario walkthroughs | `docs/scenarios/`; describe the corresponding fixture's actual assertions and cleanup |
 
 `hack/docs.py prepare` stages only published documentation, copies brand assets and downloadable examples, rewrites repository-relative links, and builds the API/CLI references. Unpublished design proposals link back to GitHub instead of appearing as current feature documentation. `hack/docs.py check` checks the built site's local links, assets, and anchors.
 
@@ -40,6 +42,10 @@ Do not edit `.cache/docs-src` or the generated site. If a field or CLI flag chan
 ## Publication
 
 The documentation workflow builds and checks every pull request. Only a successful `main` build can deploy. The deploy job uses the `github-pages` environment and the minimal Pages/OIDC permissions; PR builds cannot deploy.
+
+The separate `Documentation scenarios` workflow runs every catalog variant through `./examples/scenarios/run.sh`, using checksum-verified published CLI/chart/manifests and the pinned image digest. It creates only disposable kind clusters. This is repository documentation verification, not a required GitHub Actions integration for users. Changing a tutorial means updating its fixture assertions too; a successful Markdown build alone does not qualify the scenario.
+
+When moving tutorials to another release, review all hashes and the image digest in `examples/scenarios/catalog.json`, update the pages, and run the full scenario matrix before publication. Preserve historical validation records; add a new sanitized aggregate evidence file and link its exact tested commit/run. Never publish live kubeconfigs, credentials or raw user data in evidence.
 
 The site URL includes `/replicove/`. Keep `site_url`, canonical/social metadata, sitemap, and local link checks consistent with that prefix. There is no custom-domain dependency. The repository homepage points at the deployed docs.
 

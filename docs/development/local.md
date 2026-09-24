@@ -1,5 +1,7 @@
 # Build and test
 
+To use Replicove, start with [prebuilt release downloads](../getting-started/download.md). That page also shows how to build a CLI from an exact release tag. The instructions below are for developing and testing the current source.
+
 Clone `main` and use the Go version pinned in `go.mod`. Current development uses Go 1.27.1. For docs, use Python 3.12 and the pinned documentation requirements. Real cluster tests require Docker.
 
 ```bash
@@ -85,7 +87,7 @@ The mirror suite first enables the module on a previously installed release whil
 
 ## Additional feature verification
 
-Version v0.3.0-alpha.1 adds the following test paths. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
+Version v0.3.0-alpha.1 introduced the following test paths. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
 
 Run the relevant local suites, then their live boundary checks:
 

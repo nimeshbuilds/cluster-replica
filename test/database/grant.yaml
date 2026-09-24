@@ -27,6 +27,8 @@ spec:
       masking:
         - {schema: public, table: customers, column: email, strategy: Token, domain: email}
         - {schema: public, table: orders, column: customer_email, strategy: Token, domain: email}
+        - {schema: public, table: customers, column: phone, strategy: 'Null'}
+        - {schema: public, table: customers, column: display_name, strategy: Constant, value: Integration Test Customer}
       relationships:
         - from: {schema: public, table: orders, column: customer_email}
           to: {schema: public, table: customers, column: email}

@@ -41,14 +41,19 @@ cleanup(){
 trap cleanup EXIT
 python3 hack/fetch-workload-charts.py
 WORKLOAD_CHARTS="$PWD/.cache/workload-charts" go test -count=1 -run TestWorkloadChartContracts ./test/workloads
-docker build --tag cluster-replica:e2e .
+if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then docker build --tag cluster-replica:e2e .; fi
 if kind get clusters | grep -Fxq "$cluster";then exit 1;fi
 created=true
 kind create cluster --name "$cluster" --image 'kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed' --kubeconfig "$KUBECONFIG" --wait 180s
-kind load docker-image cluster-replica:e2e --name "$cluster"
+if [[ -z "${REPLICOVE_IMAGE:-}" ]]; then kind load docker-image cluster-replica:e2e --name "$cluster"; fi
 hk create namespace source-dev
-make build
-bin/replicove install --image cluster-replica:e2e --values test/workloads/operator-values.yaml
+if [[ "${REPLICOVE_USE_RELEASE_CLI:-false}" != true ]]; then make build; fi
+if [[ -n "${REPLICOVE_CHART:-}" ]]; then
+ source test/e2e/helm.sh
+ replicove_helm_install test/workloads/operator-values.yaml
+else
+ bin/replicove install --image "${REPLICOVE_IMAGE:-cluster-replica:e2e}" --values test/workloads/operator-values.yaml
+fi
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 chart_path=".cache/workload-charts/$chart"
 if [[ "$workload" == policy ]];then chart_path=test/e2e/chart;fi

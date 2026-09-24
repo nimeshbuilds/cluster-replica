@@ -27,9 +27,9 @@ The [validation record](docs/validation.md) tracks local/API and disposable feat
 
 Before treating a profile as certified, finish immutable image-digest pins and provenance review, automated candidate schema/resource/RBAC comparison, and retained-profile upgrade/recovery tests. Existing live replicas must keep their resolved identity, guest version, TTL and desired values. Cleanup must remain possible without fetching a chart. The current chart checksum, contract tests, read-only upstream checker and live matrix are the foundation; [the maintenance guide](docs/maintaining-replicove.md) records the current manual process.
 
-## Next public alpha release
+## Release qualification
 
-The v0.2.0-alpha.2 baseline already publishes binaries, images, charts and native YAML. Release v0.3.0-alpha.1 only after its exact main revision passes all required CI jobs, followed by installation, upgrades and feature tests against its published artifacts. Record those distinct run links in validation. Separate signed attestations remain future work; OCI build metadata and checksums do not establish that claim.
+Every alpha requires its exact main revision to pass the complete source CI suite, followed by installation, upgrade and feature tests against its published binaries, images, charts and native YAML. The public scenario catalog is updated only to verified release assets; all documented variants must pass before their qualification is recorded. Keep those source, artifact and documentation-scenario run links distinct in validation. Separate signed attestations remain future work; OCI build metadata and checksums do not establish that claim.
 
 ## Additional adapters
 

@@ -2,9 +2,11 @@
 
 Replicove is a Go operator installed on your host cluster. It watches one destination namespace and keeps encrypted capture and access state in a separate, administrator-only namespace.
 
-The commands below use **v0.3.0-alpha.1**. Obtain matching CLI, chart, image and CRDs from [releases](https://github.com/nimeshbuilds/replicove/releases), or use a [source build](../development/local.md) for an unreleased revision. [Validation](../validation.md) records source tests separately from published-artifact checks. Public installation needs no GitHub login.
+The commands below use **v0.3.0-alpha.2**. Obtain matching CLI, chart, image and CRDs from [releases](https://github.com/nimeshbuilds/replicove/releases), or use a [source build](../development/local.md) for an unreleased revision. [Validation](../validation.md) records source tests separately from published-artifact checks. Public installation needs no GitHub login.
 
 ## Choose a path
+
+**[Download a prebuilt CLI or build from source](download.md).** The release includes macOS/Linux binaries for amd64 and arm64, a Helm chart, native YAML and checksums. The CLI can be installed without cloning the repository or installing Go.
 
 | Path | Use it when | Tools |
 | --- | --- | --- |
@@ -36,7 +38,7 @@ Use your administrator test-cluster context:
 
 ```bash
 helm --kube-context YOUR_TEST_CONTEXT upgrade --install replicove \
-  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.3.0-alpha.1 \
+  oci://ghcr.io/nimeshbuilds/charts/replicove --version 0.3.0-alpha.2 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 

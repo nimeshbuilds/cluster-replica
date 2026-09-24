@@ -1,0 +1,33 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: source-dev-a
+spec:
+  targetNamespace: test-a
+  sourceNamespaces: [source-dev]
+  resources:
+    - {group: '', kind: ConfigMap}
+    - {group: '', kind: Service}
+    - {group: '', kind: ServiceAccount}
+    - {group: apps, kind: Deployment}
+  maxTTL: 2h
+  maxConcurrentReplicas: 1
+  accessRoles: [viewer, admin]
+  maxAccessSeconds: 900
+---
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: source-dev-b
+spec:
+  targetNamespace: test-b
+  sourceNamespaces: [source-dev]
+  resources:
+    - {group: '', kind: ConfigMap}
+    - {group: '', kind: Service}
+    - {group: '', kind: ServiceAccount}
+    - {group: apps, kind: Deployment}
+  maxTTL: 2h
+  maxConcurrentReplicas: 1
+  accessRoles: [viewer, admin]
+  maxAccessSeconds: 900

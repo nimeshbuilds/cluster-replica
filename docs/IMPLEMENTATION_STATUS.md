@@ -2,6 +2,10 @@
 
 Requested scope: the full ClusterReplica product plan, researched product branding and a product icon. The user selected disposable CI clusters now and deferred cloud labs. This is a substantial portable implementation, not completion of every phase in the original plan.
 
+## v0.3.0-alpha.2 cleanup correction
+
+The implementation now allows cleanup to progress past an ordinary protected PVC when its inventoried guest namespace is also still owned. This lets namespace deletion remove guest-created volume consumers. Borrowed namespaces, unknown PVC finalizers and resource/controller dependency barriers remain protected. Source, exact-main, published-artifact and full scenario qualification are [pending verification](validation.md#owned-pvc-cleanup-regression-alpha2-verification-pending); the historical records below do not establish this regression fix.
+
 ## Implemented portable alpha
 
 | Area | Implementation evidence | Live qualification |

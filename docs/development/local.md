@@ -85,7 +85,7 @@ The mirror suite first enables the module on a previously installed release whil
 
 ## Additional feature verification
 
-Version v0.3.0-alpha.1 adds the following test paths. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
+Version v0.3.0-alpha.1 introduced the following test paths. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
 
 Run the relevant local suites, then their live boundary checks:
 

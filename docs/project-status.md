@@ -1,8 +1,8 @@
 # Replicove project status
 
-Replicove is experimental. Version **v0.3.0-alpha.1** extends the v0.2.0-alpha.2 baseline with test recipes, PostgreSQL, chaos and local interfaces. [Releases](https://github.com/nimeshbuilds/replicove/releases) distribute versioned images, charts, CLI binaries and native manifests after source and artifact gates pass. No version is a supported production release.
+Replicove is experimental. These instructions target **v0.3.0-alpha.2**, which fixes cleanup when an extra guest-created Pod still references a copied PVC in a replica-owned namespace. Its source, exact-main, published-artifact and full scenario qualification remain [pending verification](validation.md#owned-pvc-cleanup-regression-alpha2-verification-pending). Test recipes, PostgreSQL, chaos and local interfaces were introduced in v0.3.0-alpha.1. [Releases](https://github.com/nimeshbuilds/replicove/releases) distribute versioned images, charts, CLI binaries and native manifests after source and artifact gates pass. No version is a supported production release.
 
-**All 16 source CI jobs passed at `93bcfbc`** in [run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593). This includes both host minors, Helm/YAML, four workloads, three mirror upgrade paths, PostgreSQL, chaos and test recipes. [Validation and saved reports](validation.md) describe the exact scope. Exact-main and published-artifact verification remain separate release requirements.
+**Historical v0.3.0-alpha.1 evidence: all 16 source CI jobs passed at `93bcfbc`** in [run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593). This includes both host minors, Helm/YAML, four workloads, three mirror upgrade paths, PostgreSQL, chaos and test recipes. [Validation and saved reports](validation.md) describe the exact scope. Exact-main and published-artifact verification remain separate release requirements.
 
 ## Portable alpha
 
@@ -14,7 +14,7 @@ The installed operator uses explicit runtime resource/verb permissions. Chart co
 
 The optional mirror module uses the same image and Helm deployment. It installs the upstream snapshot controller/APIs when absent, or reuses qualified host infrastructure. `ReplicaMirror` and immutable `ReplicaMirrorRun` requests support explicit CSI volume-data grants, independent writable generations, latest-source sync, saved-revision reset, schedules, test leases, bounded retention, existing-runtime namespaces, guest access, and TTL cleanup. Follow the [mirror guide](guides/mirrors.md) and [versioned verification record](validation.md).
 
-Mirrors provide per-volume crash-consistent recovery points. They do not establish database consistency or atomic multi-volume state. Version v0.3.0-alpha.1 adds a separate scoped PostgreSQL adapter, stdio MCP and local dashboard; these are not part of the historical mirror qualification below.
+Mirrors provide per-volume crash-consistent recovery points. They do not establish database consistency or atomic multi-volume state. Version v0.3.0-alpha.1 introduced a separate scoped PostgreSQL adapter, stdio MCP and local dashboard; these are not part of the historical mirror qualification below.
 
 Mirroring can be [enabled later](guides/enable-mirroring.md) without reinstalling the operator. The 0.2.0-alpha.2 chart also excludes all bundled mirror infrastructure from application capture, including the source RoleBinding. The upgrade matrix starts with published 0.1.0-alpha.1 and 0.2.0-alpha.1 Helm installations and rendered 0.2.0-alpha.1 native YAML, preserves an active ordinary replica, and then exercises the mirror lifecycle. See [validation](validation.md) for recorded outcomes and the [feature map](features.md) for current scope.
 

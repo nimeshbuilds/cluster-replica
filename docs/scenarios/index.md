@@ -14,7 +14,7 @@ cd replicove
 ./examples/scenarios/run.sh 01
 ```
 
-Use the normal `main` checkout. The runner pins the published **v0.3.0-alpha.1** CLI, operator image, chart and native manifests; the scenario scripts themselves come from this checkout. It verifies downloaded asset checksums and uses the recorded operator image digest. Go is used for fixture helpers, not to silently replace the released CLI. Any existing `bin/replicove` is backed up and restored. Inspect the choices without starting a cluster:
+Use the normal `main` checkout. The runner pins the published CLI, operator image, chart and native manifests recorded in the [scenario catalog](https://github.com/nimeshbuilds/replicove/blob/main/examples/scenarios/catalog.json); the scenario scripts themselves come from this checkout. It verifies downloaded asset checksums and uses the recorded operator image digest. Go is used for fixture helpers, not to silently replace the released CLI. Any existing `bin/replicove` is backed up and restored. Inspect the choices without starting a cluster:
 
 ```bash
 ./examples/scenarios/run.sh --list
@@ -30,7 +30,7 @@ This runner deliberately accepts only the Linux amd64 qualification environment.
 | Scenario | Run from the repository root | Features exercised |
 | --- | --- | --- |
 | [01. Governed replica](01-governed-replica.md) | `./examples/scenarios/run.sh 01` | Helm/CLI installation, grants and host RBAC, selection and dependencies, approval, maps/patches, Secret modes, fresh PVCs, drift/refresh, access, restart, deletion and TTL |
-| [02. YAML and scoped access](02-yaml-access.md) | `./examples/scenarios/run.sh 02` | Native manifests, in-cluster key bootstrap/reapply, ClusterReplica and ReplicaAccess CRDs, TLS tunnel, viewer RBAC and revocation |
+| [02. YAML and scoped access](02-yaml-access.md) | `./examples/scenarios/run.sh 02` | Native manifests, in-cluster key bootstrap/reapply, ClusterReplica and ReplicaAccess CRDs, TLS tunnel, viewer/deployer RBAC and revocation |
 | [03. Operators and applications](03-operators-workloads.md) | `./examples/scenarios/run.sh 03` | Captured Helm inputs, CRDs/RBAC/webhooks, value overrides and real cert-manager/Spark/Trino/admission-policy behavior |
 | [04. Existing vCluster](04-existing-vcluster.md) | `./examples/scenarios/run.sh 04` | Explicit target registration, pinned guest identity, one-command install and upgrade, preservation of foreign resources and runtime |
 | [05. Storage mirrors and reset](05-mirror-resets.md) | `./examples/scenarios/run.sh 05` | Late enablement/upgrades, CSI copies, independent guest writes, Sync/Reset, saved revisions, scheduling, leases, existing-target mirror access, retention and cleanup |

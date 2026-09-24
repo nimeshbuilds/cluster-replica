@@ -1,6 +1,6 @@
 # Quickstart with YAML
 
-> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
+> **Versioned instructions:** these commands use v0.3.0-alpha.2. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 Install Replicove and create a replica using native Kubernetes manifests. The Replicove CLI and Helm CLI are not required. Replicove installs vCluster inside the host cluster for you.
 
@@ -34,7 +34,7 @@ Keep Terminal A open; subsequent commands use its variables. Stop if any command
 ## 2. Install the operator from manifests
 
 ```bash
-export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.3.0-alpha.1
+export REPLICOVE_RELEASE_URL=https://github.com/nimeshbuilds/replicove/releases/download/v0.3.0-alpha.2
 hk apply -f "$REPLICOVE_RELEASE_URL/replicove-crds.yaml"
 hk wait --for=condition=Established --timeout=60s \
   crd/clusterreplicas.replica.nimeshbuilds.dev \

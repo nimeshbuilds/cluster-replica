@@ -19,7 +19,7 @@ description: Replicove recreates selected Kubernetes operators, Helm components,
 </div>
 
 !!! info "Experimental portable alpha"
-    These docs describe v0.3.0-alpha.1. The validation record separates tested source behavior from published-artifact checks. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
+    These instructions target v0.3.0-alpha.2. Its cleanup regression and release qualification remain [pending verification](validation.md#owned-pvc-cleanup-regression-alpha2-verification-pending). Historical source results and published-artifact checks are recorded separately. Production and cloud certification remain future work. See [tested behavior and remaining work](project-status.md).
 
 <div class="feature-grid" markdown>
 <div markdown>

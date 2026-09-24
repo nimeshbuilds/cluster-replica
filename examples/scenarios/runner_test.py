@@ -273,11 +273,13 @@ class ExecutionContract(unittest.TestCase):
         (path / "replicove").write_bytes(b"pinned release")
         (path / "replicove").chmod(0o700)
 
-    def run_mock(self, report, code=0, leftover=False):
+    def run_mock(self, report, code=0, leftover=False, during_run=None):
         def execute(command, **kwargs):
             if command == runner.command_for(self.scenario, self.variant):
                 self.assertEqual(self.binary.read_bytes(), b"pinned release")
                 self.assertEqual(kwargs["env"]["REPLICOVE_IMAGE"], self.data["release"]["image"])
+                if during_run is not None:
+                    during_run()
                 if report is not None:
                     location = self.root / ".cache" / self.scenario["evidence"] / "run.fixture/artifacts/report.json"
                     location.parent.mkdir(parents=True)
@@ -314,6 +316,28 @@ class ExecutionContract(unittest.TestCase):
         self.assertEqual(self.run_mock(None, code=17), 17)
         self.assert_restored()
         self.assertEqual(self.receipt()["result"], "failed")
+
+    def test_existing_executable_link_is_restored_without_writing_target(self):
+        target = self.root / "external-cli"
+        self.binary.replace(target)
+        self.binary.symlink_to(target)
+        self.assertEqual(self.run_mock({"result": "passed"}, during_run=lambda: self.assertEqual(target.read_bytes(), b"user binary")), 0)
+        self.assertTrue(self.binary.is_symlink())
+        self.assertEqual(self.binary.readlink(), target)
+        self.assertEqual(target.read_bytes(), b"user binary")
+        self.assert_restored()
+
+    def test_bin_directory_link_is_rejected_before_downloads(self):
+        directory = self.root / "external-bin"
+        self.binary.parent.rename(directory)
+        self.binary.parent.symlink_to(directory, target_is_directory=True)
+        with mock.patch.object(runner, "preflight"), \
+             mock.patch.object(runner, "prepare_release") as prepare:
+            with self.assertRaisesRegex(RuntimeError, "directory symlink"):
+                runner.run(self.data, self.scenario, self.variant)
+        prepare.assert_not_called()
+        self.assertEqual((directory / "replicove").read_bytes(), b"user binary")
+        self.assertFalse((self.root / ".cache").exists())
 
     def test_missing_receipt_cannot_pass(self):
         with self.assertRaisesRegex(RuntimeError, "required assertion report"):

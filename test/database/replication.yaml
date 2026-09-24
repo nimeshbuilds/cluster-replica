@@ -17,7 +17,13 @@ patches:
             containers:
               - name: app
                 image: docker.io/library/postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
-                command: [sh, -ec, 'test "$(psql -qAt -c "SELECT count(*) FROM public.customers WHERE length(email)=64")" = 1; touch /tmp/verified; exec sleep 86400']
+                command:
+                  - sh
+                  - -ec
+                  - |
+                    test "$(psql -v ON_ERROR_STOP=1 -qAt -c "SELECT count(*) FROM public.customers WHERE id=1 AND tenant_id=10 AND email ~ '^[0-9a-f]{64}$' AND phone IS NULL AND display_name='Integration Test Customer'")" = 1
+                    touch /tmp/verified
+                    exec sleep 86400
                 readinessProbe: {exec: {command: [test, -f, /tmp/verified]}, periodSeconds: 2}
                 env:
                   - {name: PGHOST, valueFrom: {secretKeyRef: {name: test-database, key: host}}}

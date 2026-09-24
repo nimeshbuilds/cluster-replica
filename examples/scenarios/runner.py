@@ -135,6 +135,11 @@ def evidence_passed(report):
 
 def run(data, scenario, variant):
     preflight()
+    binary = ROOT / "bin/replicove"
+    if binary.parent.is_symlink():
+        raise RuntimeError("The lab requires a regular checkout bin directory; it will not follow a directory symlink.")
+    if binary.exists() and not binary.is_file():
+        raise RuntimeError("The existing bin/replicove must be a file or executable symlink.")
     os.umask(0o077)
     cache = ROOT / ".cache/scenarios"
     cache.mkdir(parents=True, exist_ok=True)
@@ -145,9 +150,8 @@ def run(data, scenario, variant):
         raise RuntimeError("Another lab owns .cache/scenarios/active.lock. Run one lab per checkout. After an interrupted process, check the recorded PID before removing this directory.")
     (lock / "pid").write_text(str(os.getpid()) + "\n")
     work = Path(tempfile.mkdtemp(prefix="run.", dir=cache))
-    binary = ROOT / "bin/replicove"
     backup = work / "previous-replicove"
-    had_binary = binary.exists()
+    had_binary = binary.exists() or binary.is_symlink()
     report = {"scenario": scenario["id"], "variant": variant, "release": data["release"]["version"], "image": data["release"]["image"], "result": "failed", "reports": []}
     result = 1
     try:
@@ -157,7 +161,9 @@ def run(data, scenario, variant):
             subprocess.run(["bash", helper], cwd=ROOT, check=True)
         binary.parent.mkdir(exist_ok=True)
         if had_binary:
-            shutil.copy2(binary, backup)
+            # Preserve the original inode/link itself. Copying onto an existing
+            # symlink or hardlink could transiently overwrite a system CLI.
+            binary.replace(backup)
         shutil.copy2(release_path / "replicove", binary)
         env = clean_environment(work, data["release"], release_path, scenario["variants"][variant])
         before_clusters = clusters(env)
@@ -185,9 +191,8 @@ def run(data, scenario, variant):
             report["result"] = "passed"
         return result
     finally:
-        if backup.exists():
-            shutil.copy2(backup, binary)
-            backup.unlink()
+        if backup.exists() or backup.is_symlink():
+            backup.replace(binary)
         elif not had_binary:
             binary.unlink(missing_ok=True)
         (work / "report.json").write_text(json.dumps(report, indent=2) + "\n")

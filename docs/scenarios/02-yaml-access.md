@@ -1,6 +1,6 @@
 # 02. Provision and connect using YAML
 
-Use this lab for a GitOps or Kubernetes-native workflow where the installation and requests are manifests. It installs the release's native manifests, lets the operator bring up vCluster, and uses a `ReplicaAccess` manifest to obtain a bounded viewer session.
+Use this lab for a GitOps or Kubernetes-native workflow where the installation and requests are manifests. It installs the release's native manifests, lets the operator bring up vCluster, and uses `ReplicaAccess` manifests to obtain bounded viewer and deployer sessions.
 
 ## Run
 
@@ -18,12 +18,13 @@ The lab harness prepares Docker/kind and downloads the release assets. Within th
 2. Apply the checked-in source Deployment, ConfigMap, source RBAC, `ReplicaGrant` and `ClusterReplica`. The operator provisions a persistent vCluster and recreates the application in guest namespace `integration`. Its ConfigMap contains `guest-yaml`, while the source retains `source`.
 3. Delete and rerun the completed bootstrap Job while encrypted replica state exists. The original key UID must remain unchanged. Reapplying an installation must not rotate away the key needed to read existing captures and cleanup records.
 4. Read the current replica UID and place it in a `ReplicaAccess` request for role `viewer` and 900 seconds. Wait for `Ready`, read only the Secret named in its status, and write the kubeconfig to the private fixture directory.
-5. Open a loopback `kubectl port-forward` to the runtime Service. Change only the kubeconfig server URL to the local tunnel; the CA and TLS server name continue to verify the guest. The session reads the replicated Deployment and ConfigMap, while `auth can-i create deployments` returns `no`.
-6. Delete the access request and verify that its credential Secret disappears. Delete the replica and wait for finalizers. The destination's owned runtime resources are removed; the source Deployment and protected state key remain until the whole disposable host is deleted.
+5. Open a loopback `kubectl port-forward` to the runtime Service. Change only the kubeconfig server URL to the local tunnel; the CA and TLS server name continue to verify the guest. The viewer reads the replicated Deployment and ConfigMap; deployment-write authorization returns `no`, and an actual ConfigMap creation must be forbidden. Delete that access request, verify its credential Secret disappears, and confirm the old credential can no longer read guest resources.
+6. Create a second YAML access request with role `deployer`. Its credential can create, update, read and delete a guest ConfigMap. Actual namespace and unrestricted ClusterRole creation attempts must be forbidden. The source configuration remains unchanged. Delete this session and verify its Secret removal and guest authorization revocation too.
+7. Delete the replica and wait for finalizers. The destination's owned runtime resources are removed; the source Deployment and protected state key remain until the whole disposable host is deleted.
 
 ## Expected result
 
-The command exits zero and prints the YAML evidence directory. `report.json` records installation, bootstrap/key reuse, runtime creation, configuration replication, source preservation, bounded access, revocation and owned cleanup. A connection that only works with disabled TLS verification would fail this workflow.
+The command exits zero and prints the YAML evidence directory. `report.json` records installation, bootstrap/key reuse, runtime creation, configuration replication, source preservation, viewer/deployer permission boundaries, live credential revocation and owned cleanup. A connection that only works with disabled TLS verification would fail this workflow. [Scenario 01](01-governed-replica.md) exercises an administrator session separately.
 
 The viewer session is an actual guest Kubernetes credential. Authorization to create `ReplicaAccess` on the host does not automatically authorize reading every Secret there. For a persistent installation, configure exact-session readers through `accessSubjects` or an administrator-owned exact-name RoleBinding. Keep guest administrative credentials out of requester permissions.
 

@@ -34,6 +34,16 @@ New full-workflow examples use `DeleteOwned`. Do not use the legacy `config/samp
 
 UID and operation checks stop deletion when a name has been reused or ownership changed. Unrelated host resources, source resources, and preexisting existing-target namespaces remain untouched.
 
+## Guest-created volume consumers
+
+**Version note:** the following cleanup progress change is planned for **v0.3.0-alpha.2** and is pending release verification. Published v0.3.0-alpha.1 can stall when a guest-created Pod, including a completed test Pod, still references a copied PVC: cleanup waits for the claim before requesting deletion of the owned namespace that would remove its consumer. The [validation record](../validation.md#owned-pvc-cleanup-regression-alpha2-verification-pending) records the failing regression scenarios.
+
+An exclusively owned guest namespace is part of the replica's disposable scope. Deleting that namespace also removes workloads users created there after replication, including extra Pods using its copied volumes. The forthcoming fix lets cleanup continue past a pending ordinary PVC only when its exact guest namespace is itself in protected ownership inventory, so namespace deletion can release those consumers. Cleanup still waits until all inventoried resources are absent and the supported host/PV checks finish. It does not remove Kubernetes PVC protection or force volume deletion.
+
+Existing-target namespaces borrowed from an administrator are different: Replicove did not create or inventory those namespaces and does not delete them. If a foreign Pod in such a namespace uses a replica-owned PVC, cleanup stays pending until that namespace's administrator removes or reconfigures the consumer. The same rule preserves unrelated resources after their original owner changes how they use the copied volume. Existing-target mirrors create their own generation namespaces and follow the owned-namespace contract within that scope.
+
+Experiment rollback, access revocation and data-adapter cleanup still precede ordinary guest cleanup. Pending namespaces, custom resources/controllers and PVCs with nonstandard finalizers retain their dependency ordering. Only ordinary Kubernetes PVC protection and foreground-deletion finalizers permit progress to owned-namespace deletion; UID or ownership-marker conflicts remain errors. A namespace is not a fallback for bypassing a known ownership conflict. Refresh continues to preserve namespaces and does not use teardown to discard guest experiments.
+
 ## Storage and external systems
 
 For supported bound volumes, cleanup requires `Delete` reclaim behavior and waits for the recorded PV UID to disappear. A Retain policy, blocked finalizer, or unavailable CSI controller can stop completion.

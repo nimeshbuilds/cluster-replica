@@ -292,6 +292,9 @@ hk -n replica-lab wait clusterreplica/borrowed --for=delete --timeout=120s
 hk -n replicove-system delete secret existing-runtime
 hk delete replicagrant existing-lab
 bin/replicove status full > "$work/artifacts/ready.json"
+# Retain only guest PVC identity/finalizers to diagnose storage cleanup across
+# runtime releases. No volume spec, configuration or credentials are emitted.
+gk -n integration get pvc scratch -o json | python3 -c 'import json,sys;o=json.load(sys.stdin);m=o["metadata"];json.dump({"kind":o["kind"],"namespace":m["namespace"],"name":m["name"],"uid":m["uid"],"finalizers":m.get("finalizers",[]),"phase":o.get("status",{}).get("phase")},sys.stdout)' > "$work/artifacts/guest-pvc-before-delete.json"
 # Stop the local proxy before deleting the guest. The access controller still
 # revokes both guest identities and their host credential Secrets.
 kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" || true;tunnel_pid=''

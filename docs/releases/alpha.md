@@ -6,6 +6,8 @@ helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
+Prebuilt CLI archives for Linux and macOS on amd64 and arm64 are attached below; each includes the executable, license and a quickstart for this release. Download the matching platform archive and verify it with `SHA256SUMS`. Go is only needed when building from the tagged source. The Helm chart and native CRD/operator manifests are separate assets; the operator image is published to GHCR.
+
 Use matching CLI, chart, image and CRDs from this release. The expanded lifecycle test covers selected dependencies, Secret Snapshot/Follow behavior, EmptyVolumes with independent guest writes, drift repair, pruning and complete storage cleanup. The release links the exact source commit and published-artifact verification run below. Use a source build for an unreleased revision.
 
 - **Reusable test recipes:** create a fresh managed replica or mirror, wait for readiness, obtain a bounded guest session, execute an explicit local command and verify cleanup. Metadata/provenance JSON and JUnit reports distinguish command failure from cleanup failure. Recipes are local documents; there is no dedicated GitHub Action product integration.

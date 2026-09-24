@@ -17,11 +17,11 @@ The portable alpha implements a declarative workflow for disposable Kubernetes e
 
 The original implementation checklists (#1–#5) are resolved with merged code and test evidence. The unfinished version-maintenance pipeline remains tracked in [#6](https://github.com/nimeshbuilds/replicove/issues/6).
 
-## Implemented next-candidate scope
+## Implemented v0.3.0-alpha.1 scope
 
-Current source targets **v0.3.0-alpha.1**. It adds read-only preflight and plan evidence; reusable test recipes with provenance/JUnit reports; destination pools and durable capacity admission; scoped PostgreSQL 17 copies with approved masks and table filters; six bounded chaos fault types; namespace-scoped stdio MCP; and a local read-only dashboard. All six CRDs share the operator, and database/chaos modules can be enabled later like mirrors. See the [feature map](docs/features.md) for limits.
+Version **v0.3.0-alpha.1** extends that workflow. It adds read-only preflight and plan evidence; reusable test recipes with provenance/JUnit reports; destination pools and durable capacity admission; scoped PostgreSQL 17 copies with approved masks and table filters; six bounded chaos fault types; namespace-scoped stdio MCP; and a local read-only dashboard. All six CRDs share the operator, and database/chaos modules can be enabled later like mirrors. See the [feature map](docs/features.md) for limits.
 
-Local checks have passed. The next gates are exact-revision disposable tests and published-artifact verification, not more feature claims. There is no dedicated GitHub Action integration. The MCP interface has no remote certificate/CA service, and PostgreSQL masks/subsets do not promise general anonymization or an inferred tenant boundary.
+The [validation record](docs/validation.md) tracks local/API and disposable feature tests by exact source revision. The release workflow also requires exact-main CI and published-artifact verification. There is no dedicated GitHub Action integration. The MCP interface has no remote certificate/CA service, and PostgreSQL masks/subsets do not promise general anonymization or an inferred tenant boundary.
 
 ## Runtime version maintenance
 
@@ -29,7 +29,7 @@ Before treating a profile as certified, finish immutable image-digest pins and p
 
 ## Next public alpha release
 
-The v0.2.0-alpha.2 baseline already publishes binaries, images, charts and native YAML. Release v0.3.0-alpha.1 only after its exact main revision passes all required CI jobs, followed by installation, upgrades and feature tests against its published artifacts. Update validation with those run links before changing pending claims. Separate signed attestations remain future work; OCI build metadata and checksums do not establish that claim.
+The v0.2.0-alpha.2 baseline already publishes binaries, images, charts and native YAML. Release v0.3.0-alpha.1 only after its exact main revision passes all required CI jobs, followed by installation, upgrades and feature tests against its published artifacts. Record those distinct run links in validation. Separate signed attestations remain future work; OCI build metadata and checksums do not establish that claim.
 
 ## Additional adapters
 

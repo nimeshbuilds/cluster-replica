@@ -1,10 +1,10 @@
 # Quick start: your first replica
 
-> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 Create a disposable Kubernetes cluster, install Replicove, and recreate a small application’s configuration and Helm component inside a vCluster. You will inspect the plan, connect to the replica, verify the copied resources, and remove the environment.
 
-> **Experimental alpha:** this guide targets the `v0.3.0-alpha.1` CLI and operator image after publication with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
+> **Experimental alpha:** this guide targets the `v0.3.0-alpha.1` CLI and operator image with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
 
 Prefer a one-command Helm installation? Start with the **[Helm quickstart](docs/getting-started/helm.md)**. Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
 
@@ -206,7 +206,7 @@ hk -n replicove-system logs deployment/replicove --tail=100
 | Credential output file already exists | Use a new output filename and update `gk` to point to it; the CLI does not overwrite files. |
 | Deletion is stuck | Check operator health and request conditions. Resolve the reported dependency; do not strip finalizers to conceal unfinished cleanup. |
 
-For a scripted verification instead of the interactive walkthrough, install Go 1.27.1+, make, and Python 3, then run `./hack/e2e-replication.sh` after step 1. This contributor test builds its own image. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The [integrated alpha passed all eight CI checks](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
+For a scripted verification instead of the interactive walkthrough, install Go 1.27.1+, make, and Python 3, then run `./hack/e2e-replication.sh` after step 1. This contributor test builds its own image. It creates and deletes its own separate kind cluster and exercises the broader lifecycle, including refresh, revocation, and TTL. It does not leave a demo cluster running. The [v0.3.0-alpha.1 source passed all 16 CI checks at 93bcfbc](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593), including this workflow on Kubernetes 1.35.8 and 1.36.4. [Validation](docs/validation.md) separates source results from release-artifact checks. [Current `main` CI](https://github.com/nimeshbuilds/replicove/actions/workflows/ci.yaml?query=branch%3Amain) reports checks for subsequent changes.
 
 ## Next steps
 
@@ -224,7 +224,7 @@ If you completed this CLI installation with mirroring disabled, [enable it later
 
 ## Extend the workflow
 
-The candidate adds optional features through the same operator and CLI. Start with [preflight and plan evidence](docs/guides/diagnostics.md), then use [test recipes](docs/guides/test-runs.md) to create an environment, run your command, write metadata/JUnit artifacts and verify cleanup. Recipes repeat a requested setup against a fresh capture; they do not replay exact historical source state.
+Version v0.3.0-alpha.1 adds optional features through the same operator and CLI. Start with [preflight and plan evidence](docs/guides/diagnostics.md), then use [test recipes](docs/guides/test-runs.md) to create an environment, run your command, write metadata/JUnit artifacts and verify cleanup. Recipes repeat a requested setup against a fresh capture; they do not replay exact historical source state.
 
 - [PostgreSQL 17 copies](docs/guides/postgresql.md): explicit source credentials and database grants, approved masks/table filters, and validated relationships before application/access startup.
 - [Bounded chaos](docs/guides/chaos.md): six fault types on owned test workloads with limits and rollback.
@@ -232,4 +232,4 @@ The candidate adds optional features through the same operator and CLI. Start wi
 - [Stdio MCP](docs/guides/agents-mcp.md): namespace-scoped caller authority, read-only by default; no remote identity/CA service.
 - [Local dashboard](docs/guides/dashboard.md): read-only metadata and lifecycle inspection.
 
-Database and chaos modules are disabled by default and can be [enabled later](docs/getting-started/installation.md#optional-modules). Check [validation](docs/validation.md) for candidate qualification before relying on a new path.
+Database and chaos modules are disabled by default and can be [enabled later](docs/getting-started/installation.md#optional-modules). Check [validation](docs/validation.md) for the tested revisions and scope.

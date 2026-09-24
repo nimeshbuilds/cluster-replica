@@ -24,7 +24,7 @@ For manual approval, the approved revision is runtime status data. Your approval
 
 ## Reusable local test recipes
 
-Use `replicove run -f recipe.yaml -- COMMAND...` when the CLI is available. A [TestRecipe](test-runs.md) creates a fresh managed replica or mirror, acquires bounded access and a mirror lease when needed, runs the explicit local command, and verifies access/fault/request cleanup. Optional report/JUnit artifacts contain metadata and source identities. The recipe is a local document, not a CRD, a command sandbox or an exact historical replay bundle.
+Use `replicove run -f recipe.yaml -- COMMAND...` when the CLI is available. A [TestRecipe](test-runs.md) creates a fresh managed replica or mirror, acquires bounded access and a mirror lease when needed, runs the explicit local command, and verifies access/fault/request cleanup. Automatic report/JUnit artifacts contain metadata and source identities; the output directory is configurable. The recipe is a local document, not a CRD, a command sandbox or an exact historical replay bundle.
 
 [Pool destinations](pools.md) allow an administrator to list separate namespace/grant pairs for concurrent managed runtimes. The runner chooses a readable member; the operator independently reserves capacity. The same commands work from a trusted CI runner, shell or agent. There is no dedicated GitHub Action product wrapper. A namespace-scoped [stdio MCP facade](agents-mcp.md) is optional and uses that process's Kubernetes identity.
 
@@ -65,6 +65,6 @@ Agents authenticate to the host Kubernetes API using their normal kubeconfig or 
 If the installation predates mirror enablement, apply the [late-enable procedure](enable-mirroring.md#cli-native-yaml-and-gitops-installations) to the installation's source of truth. Preserve native versus Helm ownership, render all optional RBAC, select snapshot ownership explicitly offline, and keep dynamic state out of pruning. Updating only the Deployment flags is insufficient.
 
 
-## Enabling candidate modules later
+## Enabling optional modules later
 
 PostgreSQL and chaos follow the same installation owner and immutable key rules as mirrors. Apply the complete current CRDs, image, reviewed values and optional RBAC; qualify the host CNI/storage/image prerequisites and administrator grants before submitting requests. `databases.enabled` and `chaos.enabled` default to false. Preserve controller-owned state and wait for finalizers before disabling either module. See [optional modules](../getting-started/installation.md#optional-modules).

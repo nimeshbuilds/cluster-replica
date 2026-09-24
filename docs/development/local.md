@@ -83,9 +83,9 @@ With Docker, run `./hack/fetch-e2e-tools.sh`, `./hack/fetch-helm.sh`, then `./ha
 The mirror suite first enables the module on a previously installed release while preserving a persistent ordinary replica. `REPLICOVE_MIRROR_BASE=current` starts with published 0.2.0-alpha.1; `previous` starts with published 0.1.0-alpha.1; `native` starts with rendered 0.2.0-alpha.1 YAML and tests bootstrap Job replacement. CI and release verification require all three. `enable-later.json` records transition checks separately from the mirror lifecycle's `report.json`.
 
 
-## Candidate feature verification
+## Additional feature verification
 
-Current source targets v0.3.0-alpha.1. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
+Version v0.3.0-alpha.1 adds the following test paths. Build the CLI and operator from the same revision, regenerate all six CRDs and native manifests, and use an explicit source-built image when testing before release publication. The operator runtime image supplies PostgreSQL 17 `pg_dump`; a bare operator binary needs that executable available when database copying is enabled.
 
 Run the relevant local suites, then their live boundary checks:
 

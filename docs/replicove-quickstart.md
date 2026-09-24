@@ -8,7 +8,7 @@ The supported workflow is portable Kubernetes desired state. Cloud identity exch
 
 ## Install and create
 
-This guide targets the v0.3.0-alpha.1 candidate, with qualification/publication pending. After publication, download its CLI from [releases](https://github.com/nimeshbuilds/replicove/releases); until then use `make build` and a matching source-built operator image. The published v0.2.0-alpha.2 baseline does not include the new candidate features. Use a disposable cluster. The [Helm quickstart](getting-started/helm.md) installs the operator with one command; the CLI installation below uses the same embedded chart:
+This guide uses v0.3.0-alpha.1. Download its matching CLI from [releases](https://github.com/nimeshbuilds/replicove/releases), or use `make build` and a matching source-built operator image for an unreleased revision. Use a disposable cluster. The [Helm quickstart](getting-started/helm.md) installs the operator with one command; the CLI installation below uses the same embedded chart:
 
 ```sh
 bin/replicove install --context YOUR_TEST_CONTEXT \
@@ -59,6 +59,6 @@ The CLI defaults to `vcluster-0.37.1-persistent`: a 1 GiB control-plane PVC usin
 See [implementation status](IMPLEMENTATION_STATUS.md) for remaining work and the user's decision to defer cloud labs.
 
 
-## Candidate extensions
+## Additional features
 
-For the v0.3.0-alpha.1 candidate, see [diagnostics and plan evidence](guides/diagnostics.md), [test recipes](guides/test-runs.md), [PostgreSQL masks and subsets](guides/postgresql.md), [bounded chaos](guides/chaos.md), [destination pools](guides/pools.md), [stdio MCP](guides/agents-mcp.md) and the [local read-only dashboard](guides/dashboard.md). Optional data/fault modules require explicit administrator setup and can be enabled later. [Validation](validation.md) records pending qualification separately from historical releases.
+For v0.3.0-alpha.1, see [diagnostics and plan evidence](guides/diagnostics.md), [test recipes](guides/test-runs.md), [PostgreSQL masks and subsets](guides/postgresql.md), [bounded chaos](guides/chaos.md), [destination pools](guides/pools.md), [stdio MCP](guides/agents-mcp.md) and the [local read-only dashboard](guides/dashboard.md). Optional data/fault modules require explicit administrator setup and can be enabled later. [Validation](validation.md) records tested source behavior and published-artifact checks separately.

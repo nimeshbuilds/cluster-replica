@@ -69,6 +69,8 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ inputs.version }}
           push: true
           tags: ghcr.io/nimeshbuilds/replicove:${{ steps.validate.outputs.version }}
           labels: |
@@ -127,7 +129,7 @@ jobs:
           sha256sum --check SHA256SUMS
           mkdir -p ../bin
           tar -xzf "replicove-$RELEASE_VERSION-linux-amd64.tar.gz" -C ../bin replicove
-          ../bin/replicove --version
+          test "$(../bin/replicove --version)" = "replicove version $RELEASE_VERSION"
           mkdir -p pulled
           for attempt in $(seq 1 60); do
             if ../.cache/e2e-tools/helm pull "$REPLICOVE_CHART" --version "$REPLICOVE_CHART_VERSION" --destination pulled; then break; fi
@@ -247,8 +249,9 @@ jobs:
           cd dist
           sha256sum --check SHA256SUMS
           tar -xzf "replicove-$RELEASE_VERSION-linux-arm64.tar.gz" replicove
-          ./replicove --version
+          test "$(./replicove --version)" = "replicove version $RELEASE_VERSION"
           docker run --rm "ghcr.io/nimeshbuilds/replicove@$RELEASE_IMAGE_DIGEST" --help
+          test "$(docker run --rm --entrypoint /replicove "ghcr.io/nimeshbuilds/replicove@$RELEASE_IMAGE_DIGEST" --version)" = "replicove version $RELEASE_VERSION"
 
   verify-yaml:
     needs: publish

@@ -1,4 +1,4 @@
-Replicove v0.3.0-alpha.1 adds reusable integration-test runs, scoped PostgreSQL 17 copies, bounded workload faults, better plan evidence and optional local interfaces. This is a release candidate: exact-main CI and published-artifact verification are pending. The published v0.2.0-alpha.2 baseline remains separate historical evidence.
+Replicove v0.3.0-alpha.1 adds reusable integration-test runs, scoped PostgreSQL 17 copies, bounded workload faults, better plan evidence and optional local interfaces. All 16 source CI jobs passed at `93bcfbc`, including the three mirror upgrade paths and new PostgreSQL, chaos and test-runner suites. The [validation record](https://nimeshbuilds.github.io/replicove/validation/) records that source evidence separately from exact-main and release-artifact verification.
 
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
@@ -6,7 +6,7 @@ helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
-This command requires candidate publication. Use a current source build until the release artifacts are available and verified.
+Use matching CLI, chart, image and CRDs from this release. Use a source build for an unreleased revision.
 
 - **Reusable test recipes:** create a fresh managed replica or mirror, wait for readiness, obtain a bounded guest session, execute an explicit local command and verify cleanup. Metadata/provenance JSON and JUnit reports distinguish command failure from cleanup failure. Recipes are local documents; there is no dedicated GitHub Action product integration.
 - **Preflight and plan evidence:** inspect caller/API checks, captured source identities, dependencies, transformations and observed omissions without exposing resource payloads. A report is not an atomic source snapshot or an importable historical replay.
@@ -21,6 +21,6 @@ Upgrade **all six CRDs** before Helm: ClusterReplica, ReplicaGrant, ReplicaAcces
 
 PostgreSQL copies are limited to new managed targets and cannot be combined with CSI mirrors, existing targets or in-place refresh. The pinned vCluster permits one managed runtime per host namespace; use separate pool destinations for concurrency. Managed mirror resets interrupt availability. CSI captures remain per-volume crash-consistent, with no atomic application or multi-volume guarantee.
 
-Release artifacts include Linux amd64/arm64 operator images, macOS/Linux amd64/arm64 CLI archives, digest-pinned OCI chart/native manifests and checksums. OCI build metadata is not a separate signed release attestation. The release must link its exact source commit and completed artifact-verification run before publication is considered qualified.
+Release artifacts include Linux amd64/arm64 operator images, macOS/Linux amd64/arm64 CLI archives, digest-pinned OCI chart/native manifests and checksums. OCI build metadata is not a separate signed release attestation. The release workflow creates the version tag only after the exact main revision and published-artifact verification pass. The release links its source commit and artifact-verification run.
 
 Read the [feature map](https://nimeshbuilds.github.io/replicove/features/), [installation and optional modules](https://nimeshbuilds.github.io/replicove/getting-started/installation/), [security model](https://nimeshbuilds.github.io/replicove/security/) and [validation record](https://nimeshbuilds.github.io/replicove/validation/). Cloud identity, broader data adapters, vCluster Platform, distribution certification and production support remain outside this experimental release.

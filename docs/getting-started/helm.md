@@ -1,6 +1,6 @@
 # Quickstart with Helm
 
-> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 Install Replicove with one Helm command on a disposable Kubernetes host. It works whether the host has no vCluster or already runs independently managed vClusters. The release chart, operator image, and CLI use public artifact distribution; no GitHub login is required after publication.
 

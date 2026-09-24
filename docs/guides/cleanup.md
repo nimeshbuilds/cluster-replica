@@ -27,9 +27,9 @@ New full-workflow examples use `DeleteOwned`. Do not use the legacy `config/samp
 
 1. Persist cleanup intent, stop issuing access and settle owned experiments. Roll back supported faults and verify physical Job Pods have stopped before removing their host isolation policies.
 2. Revoke session Secret permissions and guest identities; remove session credentials/state.
-3. Remove inventoried guest resources while the API is available. Database cleanup removes staging/final resources and waits for translated host Pods to disappear before removing their isolation policies.
+3. Remove inventoried guest resources while the API is available. Database cleanup removes staging/final resources and waits for their translated host Pods to disappear before removing database-specific isolation policies. The application egress guard remains in place.
 4. Remove the owned runtime's Helm release. Preserve an externally managed target runtime.
-5. Follow recorded owner-reference UIDs for host descendants and verify relevant PVC/PV deletion.
+5. Follow recorded owner-reference UIDs for host descendants and verify relevant PVC/PV deletion. Remove the database application egress guard only after the runtime and its host Pods are gone.
 6. Persist terminal status, remove encrypted captures, release the capacity reservation and finish the request finalizer.
 
 UID and operation checks stop deletion when a name has been reused or ownership changed. Unrelated host resources, source resources, and preexisting existing-target namespaces remain untouched.

@@ -6,12 +6,60 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	api "github.com/nimeshbuilds/cluster-replica/api/v1alpha1"
 )
+
+// A grep error is not evidence that a raw fixture value is absent. Use the same
+// fail-closed probe in hack/e2e-database.sh; this only inspects disposable data.
+const rawFixtureProbe = `test -f "$1/PG_VERSION" || exit 3
+if grep -a -r -F -l -- "$2" "$1" >/dev/null; then
+  printf FOUND
+else
+  result=$?
+  test "$result" -eq 1 || exit "$result"
+  printf CLEAN
+fi`
+
+func TestRawFixtureStorageProbe(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "PG_VERSION"), []byte("17\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "data"), []byte("raw-person@example.invalid"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	probe := func(root, value, path string) (string, error) {
+		cmd := exec.Command("sh", "-ec", rawFixtureProbe, "probe", root, value)
+		if path != "" {
+			cmd.Env = []string{"PATH=" + path}
+		}
+		out, err := cmd.Output()
+		return string(out), err
+	}
+	if out, err := probe(dir, "raw-person@example.invalid", ""); err != nil || out != "FOUND" {
+		t.Fatalf("matching data: %q %v", out, err)
+	}
+	if out, err := probe(dir, "absent-person@example.invalid", ""); err != nil || out != "CLEAN" {
+		t.Fatalf("absent data: %q %v", out, err)
+	}
+	if out, err := probe(t.TempDir(), "raw-person@example.invalid", ""); err == nil || out == "CLEAN" {
+		t.Fatal("missing database directory was reported clean")
+	}
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "grep"), []byte("#!/bin/sh\nexit 2\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := probe(dir, "raw-person@example.invalid", bin); err == nil || out == "CLEAN" {
+		t.Fatal("grep failure was reported clean")
+	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 2 {
+		t.Fatalf("grep error status was lost: %v", err)
+	}
+}
 
 // This fixture creates only disposable containers with no network or host mounts.
 // Run through examples/postgresql/test-disposable.sh on a Docker-enabled runner.
@@ -134,7 +182,7 @@ func TestPostgreSQLDisposable(t *testing.T) {
 	}
 	// Force WAL/data to disk; the final storage must never have held original rows.
 	sql(names[2], "CHECKPOINT;")
-	out, err := call(nil, "exec", names[2], "sh", "-c", "if grep -a -r -l 'raw-person@example.invalid' /var/lib/postgresql/data >/dev/null 2>&1; then printf FOUND; else printf CLEAN; fi")
+	out, err := call(nil, "exec", names[2], "sh", "-ec", rawFixtureProbe, "probe", "/var/lib/postgresql/data", "raw-person@example.invalid")
 	if err != nil || string(out) != "CLEAN" {
 		t.Fatal("original row found in final PostgreSQL storage")
 	}

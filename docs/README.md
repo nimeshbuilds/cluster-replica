@@ -22,4 +22,4 @@ The searchable site includes Helm, YAML, and CLI quickstarts, detailed feature g
 | Build and extend Replicove | [Local development](development/local.md) and [architecture](architecture.md) |
 | Update or preview the website | [Docs maintenance](development/docs.md) |
 
-The current v0.3.0-alpha.1 candidate adds features beyond the published v0.2.0-alpha.2 baseline; [validation](validation.md) identifies pending qualification. Historical [design proposals](design/cluster-replica-implementation-plan.md) include unimplemented ideas. Current guides and the status page distinguish those from implemented behavior.
+Version v0.3.0-alpha.1 adds features beyond v0.2.0-alpha.2; [validation](validation.md) records the 16-job source pass at `93bcfbc` separately from release-artifact verification. Historical [design proposals](design/cluster-replica-implementation-plan.md) include unimplemented ideas. Current guides and the status page distinguish those from implemented behavior.

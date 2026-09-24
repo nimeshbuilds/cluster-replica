@@ -1,6 +1,6 @@
 # Features and their limits
 
-This map describes the current source for **v0.3.0-alpha.1**, whose release qualification is pending. The published v0.2.0-alpha.2 baseline and its historical results do not include the new PostgreSQL, chaos, test-runner/pool, diagnostic or agent interfaces. Use a source build until candidate artifacts are published and verified. [Validation](validation.md) separates implementation from live evidence.
+This map describes **Replicove v0.3.0-alpha.1**. PostgreSQL, chaos, test recipes/pools, diagnostics and local agent interfaces extend the v0.2.0-alpha.2 baseline. All 16 source CI jobs passed at `93bcfbc`; [validation](validation.md) records the exact scope and saved reports separately from published-artifact verification.
 
 ## Installation and lifecycle
 
@@ -44,7 +44,7 @@ This map describes the current source for **v0.3.0-alpha.1**, whose release qual
 | Feature | What it does | Guide and limits |
 | --- | --- | --- |
 | Test recipes | `replicove run` creates a fresh replica or mirror, waits, obtains access, runs a local command and verifies cleanup | [Test runs](guides/test-runs.md); immutable TTL; no existing-target adoption; local command is not sandboxed |
-| Reports | Optional metadata/provenance JSON and JUnit artifacts distinguish execution and cleanup outcomes | [Test runs](guides/test-runs.md); no raw captures, credentials, logs or exact source replay |
+| Reports | Automatic metadata/provenance JSON and JUnit artifacts distinguish execution and cleanup outcomes | [Test runs](guides/test-runs.md); no raw captures, credentials, logs or exact source replay |
 | Faults | `PodDelete`, `ScaleZero`, `NetworkIsolation`, `CPUStress`, `MemoryStress`, `CustomJob` | [Chaos](guides/chaos.md); 1–8 simultaneous faults, one active experiment per replica, exact owned targets and bounded duration/resources |
 | Fault rollback | Durable journals, cancellation/expiry rollback and verified Job cleanup | [Chaos](guides/chaos.md); shared-worker restrictions, no privileged host/node faults; isolation/Jobs reject overlapping host allow policies |
 
@@ -63,6 +63,6 @@ This map describes the current source for **v0.3.0-alpha.1**, whose release qual
 - Automatic cloud identity exchange, generic external database/bucket/queue cloning, PITR, atomic multi-volume capture, and automatic relational tenant extraction.
 - A remote multi-user MCP gateway, Replicove certificate authority, per-user request ownership, or hosted dashboard.
 - Exact arbitrary-cluster cloning, independent host-kernel/worker isolation, vCluster Platform or distribution-specific certification.
-- Production support, large-scale recovery qualification, and live qualification of the new candidate paths. Existing disposable results apply only to their recorded revisions.
+- Production support and large-scale recovery qualification. Disposable results apply only to their recorded revisions, fixtures and host capabilities.
 
 The [implementation ledger](IMPLEMENTATION_STATUS.md), [project status](project-status.md) and [roadmap](../ROADMAP.md) track implementation and remaining gates separately.

@@ -2,7 +2,7 @@
 
 Replicove is a Go operator installed on your host cluster. It watches one destination namespace and keeps encrypted capture and access state in a separate, administrator-only namespace.
 
-Current source targets **v0.3.0-alpha.1**, with release qualification pending. The commands below require that candidate to be published and verified; until then use a [source build](../development/local.md). The [v0.2.0-alpha.2 release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2) remains the published baseline. Public installation needs no GitHub login.
+The commands below use **v0.3.0-alpha.1**. Obtain matching CLI, chart, image and CRDs from [releases](https://github.com/nimeshbuilds/replicove/releases), or use a [source build](../development/local.md) for an unreleased revision. [Validation](../validation.md) records source tests separately from published-artifact checks. Public installation needs no GitHub login.
 
 ## Choose a path
 
@@ -54,7 +54,7 @@ All modules use the same operator image and installation. Mirrors, PostgreSQL an
 | PostgreSQL 17 | `databases.enabled: true` | Explicit database grants, protected source credentials, reviewed PostgreSQL image, Delete StorageClass and enforced host NetworkPolicy; [database guide](../guides/postgresql.md) |
 | Chaos | `chaos.enabled: true` | Exact fault/target/resource grants; `chaos.networkPolicyEnforced: true` only after qualifying the host CNI for network/Job faults; [chaos guide](../guides/chaos.md) |
 
-Use matching CLI, image, chart and CRDs from the candidate source or verified release. Preserve reviewed custom values and explicitly choose the new image: an old saved `image.digest` overrides a new image tag. For Helm/CLI installations, upgrade the existing Helm release; for native installations, render/apply the complete updated manifests through their existing owner. Apply CRDs first, preserve namespaces and key/state, handle a completed bootstrap Job as described below, and wait for the operator rollout before submitting new feature requests.
+Use matching CLI, image, chart and CRDs from the same source revision or verified release. Preserve reviewed custom values and explicitly choose the new image: an old saved `image.digest` overrides a new image tag. For Helm/CLI installations, upgrade the existing Helm release; for native installations, render/apply the complete updated manifests through their existing owner. Apply CRDs first, preserve namespaces and key/state, handle a completed bootstrap Job as described below, and wait for the operator rollout before submitting new feature requests.
 
 Database copies require a new managed target and cannot run alongside CSI mirrors or use in-place refresh. Network/Job chaos faults reject overlapping host allow policies, including a mirror's or ready database's policy; PodDelete/ScaleZero have different prerequisites. Neither module turns shared workers into a sandbox for hostile code. Drain all affected requests before disabling a module or removing its RBAC.
 

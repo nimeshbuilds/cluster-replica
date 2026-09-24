@@ -1,12 +1,22 @@
 # Validation record
 
-## v0.3.0-alpha.1 candidate: qualification pending
+## v0.3.0-alpha.1 source qualification
 
-Current-source local `make check` passed, covering race-enabled Go tests, pinned chart contracts, real API-server integration, vet and builds. This is not evidence that the new live PostgreSQL, chaos, test-runner or concurrent-admission paths have passed. Their disposable fixtures are present; record exact revisions and CI results here after execution. Published-artifact verification must also pass before release.
+**All 16 jobs passed** at source revision [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553) in [CI run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593). The [sanitized aggregate record](validation/2026-09-24-features.json) preserves job links, PostgreSQL/chaos/runner reports, and all three mirror transition/lifecycle/queue reports. This is source-build PR evidence, not a published-release assertion. Verification includes race-enabled Go tests, pinned chart contracts, real API-server integration, vet and builds. Source CI is separate from the required exact-main and published-artifact release gates.
 
-The PostgreSQL Docker fixture tests actual dump/restore, masks, explicit table subsetting, relationships and source preservation. The kind fixture additionally tests application/access gating, enforced host isolation, late enablement, restart behavior and owned storage cleanup. Chaos and test-runner fixtures cover actual workload faults, rollback and run cleanup. See [testing boundaries](testing.md) for commands and scope. No local live results are claimed: Docker was unavailable in the development session.
+| Source job | Observed behavior | Scope |
+| --- | --- | --- |
+| Core and installation | Both host-minor workflows, original live vCluster lifecycle, Helm existing-target installation, native YAML and all four cert-manager/Spark/Trino/admission-policy fixtures passed | Same pinned runtime; small functional workloads, no scale or cloud certification |
+| Mirrors | All three current/native/previous paths passed 11 late-enable checks, 25 lifecycle scenarios and the explicit CapacityLimit queue/TTL assertion | CSI host-path and Calico; independent per-volume recovery points; no atomic multi-volume or database-consistency claim |
+| [PostgreSQL](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092764) | Actual PostgreSQL 17 dump/restore, masks and explicit table subsets, validated foreign keys, source read-only account/preservation, raw fixture value absent from final storage; 15 operator scenarios include late enablement, application/access staging gates, Calico isolation, restart, rejected refresh and owned cleanup | One generated database, new managed target, host-path storage; no general anonymization, private-CA or arbitrary-schema qualification; deletion tested, not a real database TTL wait |
+| [Chaos](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092601) | 16 scenarios covering late enablement, target/source denial, six fault types, restart/expiry rollback, host isolation/conflict checks, source preservation and parent cleanup | Bounded shared-worker workloads; no privileged host/node faults or production reliability claim |
+| [Test runner](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092788) | Fresh success, exit-17 failure, timeout and retain-on-failure runs; resolved ScaleZero rollback, JSON/JUnit outcomes, original TTL, credential revocation and owned cleanup | Managed ClusterReplica runs; mirror leases covered by local tests and the separate mirror suite, not this runner fixture |
 
-All earlier records below remain evidence for their named historical revisions and versions, not these new candidate features.
+These new live paths use a Kubernetes 1.36.4 kind host, vCluster 0.37.1 and guest Kubernetes 1.36.0. PostgreSQL and chaos use pinned Calico v3.32.2. The source PostgreSQL fixture explicitly selects TLS `require`; it does not qualify private-CA `verify-full` deployment. Local metadata/API tests cover preflight, plan provenance, pool rendering/admission, stdio MCP and the loopback dashboard. They do not certify a remote multi-user service.
+
+After this source run, both raw-data absence probes were strengthened to require `PG_VERSION` and distinguish grep errors from no matches. Local tests cover found/absent/error/missing-directory cases; the strengthened fixtures must pass the later exact-main and release suites. The `93bcfbc` report retains its original probe scope.
+
+The release workflow creates the version tag only after exact-main CI and published-artifact verification pass. The release notes link that separate artifact run. All earlier records below remain evidence for their named historical revisions and versions.
 
 ## Enabling mirrors after installation
 

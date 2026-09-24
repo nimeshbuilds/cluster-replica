@@ -1,10 +1,10 @@
 # Quickstart with YAML
 
-> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 Install Replicove and create a replica using native Kubernetes manifests. The Replicove CLI and Helm CLI are not required. Replicove installs vCluster inside the host cluster for you.
 
-This walkthrough uses a new disposable kind cluster and the candidate image after publication. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
+This walkthrough uses a new disposable kind cluster and the versioned alpha image. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
 
 ## 1. Create a disposable host
 

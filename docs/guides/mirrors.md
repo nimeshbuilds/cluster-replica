@@ -1,10 +1,10 @@
 # Workload mirrors and scheduled data resets
 
-> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 A `ReplicaMirror` creates an independent writable copy of selected workloads and their granted PVC data. Tests can change the copy. A manual or scheduled sync captures current source state and replaces the test generation. A reset to a retained revision reproduces that revision's configuration and volume recovery points. Access to a new generation starts only after readiness checks pass.
 
-This module was introduced in v0.2.0-alpha.1; v0.2.0-alpha.2 corrected infrastructure exclusions and qualified late enablement. The examples below target **v0.3.0-alpha.1** after publication. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
+This module was introduced in v0.2.0-alpha.1; v0.2.0-alpha.2 corrected infrastructure exclusions and qualified late enablement. The examples below target **v0.3.0-alpha.1**. Use the operator, CLI, CRDs and chart from the same release. The original v0.1.0-alpha.1 does not include it. Live compatibility evidence and remaining limits are recorded on the [validation page](../validation.md).
 
 ## Behavior
 

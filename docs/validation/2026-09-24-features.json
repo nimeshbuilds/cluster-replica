@@ -1,0 +1,335 @@
+{
+  "result": "passed",
+  "qualification": "source-build pull-request CI; separate exact-main and published-artifact release gates still required",
+  "ci": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593",
+  "sourceCommit": "93bcfbcd7246f7f7bc8449e3f12cf4ff61642553",
+  "targetChartVersion": "0.3.0-alpha.1",
+  "totalCIJobs": 16,
+  "hostKubernetes": [
+    "1.35.8",
+    "1.36.4"
+  ],
+  "featureFixtureHostKubernetes": "1.36.4",
+  "vCluster": "0.37.1",
+  "guestKubernetes": "1.36.0",
+  "networkFixture": "Calico v3.32.2",
+  "jobs": [
+    {
+      "name": "verify",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092403"
+    },
+    {
+      "name": "helm-existing",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092520"
+    },
+    {
+      "name": "workload-replication (trino)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092530"
+    },
+    {
+      "name": "workload-replication (policy)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092536"
+    },
+    {
+      "name": "workload-replication (spark)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092551"
+    },
+    {
+      "name": "workload-replication (cert-manager)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092552"
+    },
+    {
+      "name": "yaml-workflow",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092575"
+    },
+    {
+      "name": "live-vcluster",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092588"
+    },
+    {
+      "name": "chaos-workflow",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092601"
+    },
+    {
+      "name": "workload-mirrors (native)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092607"
+    },
+    {
+      "name": "replica-workflow (kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6e...",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092614"
+    },
+    {
+      "name": "replica-workflow (kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7...",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092619"
+    },
+    {
+      "name": "workload-mirrors (current)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092687"
+    },
+    {
+      "name": "workload-mirrors (previous)",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092755"
+    },
+    {
+      "name": "database-workflow",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092764"
+    },
+    {
+      "name": "test-runner-workflow",
+      "result": "success",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/35948951593/job/107473092788"
+    }
+  ],
+  "features": {
+    "postgresql": {
+      "result": "passed",
+      "scenarios": [
+        "default-off module and late opt-in",
+        "explicit read-only source account and RBAC",
+        "host TLS source connection",
+        "application blocked during raw staging",
+        "actual PostgreSQL schema/data restore",
+        "domain masking and validated foreign keys",
+        "raw staging removed before access",
+        "no original fixture rows in final data or WAL",
+        "host Calico egress isolation from copied database",
+        "application DNS and sanitized database connectivity",
+        "application denied source Pod and Service IPs while source remains reachable",
+        "source unchanged",
+        "operator restart retains sanitized database",
+        "in-place refresh denied",
+        "TTL-compatible owned PVC/PV/host-policy cleanup"
+      ]
+    },
+    "chaos": {
+      "result": "passed",
+      "scenarios": [
+        "late chaos enablement preserves existing request runtime and state key",
+        "source RBAC denial",
+        "scale outage",
+        "operator restart rollback",
+        "duration expiry",
+        "source UID rejection",
+        "protected namespace rejection",
+        "pod controller recovery",
+        "real host CNI isolation",
+        "source workload preservation",
+        "network recovery",
+        "additive policy conflict preservation",
+        "simultaneous CPU and memory stress",
+        "restricted custom Job",
+        "parent teardown waits for experiment cleanup",
+        "no host fault policy leak"
+      ]
+    },
+    "testRunner": {
+      "suite": "testrun",
+      "passed": [
+        "successful-command-and-chaos-rollback",
+        "command-failure-cleanup",
+        "timeout-cleanup",
+        "bounded-retention-and-explicit-delete",
+        "host-kubeconfig-unchanged",
+        "source-workload-unchanged",
+        "guest-credential-revocation",
+        "no-owned-pods-or-pvcs-remain"
+      ]
+    }
+  },
+  "mirrorPaths": [
+    {
+      "path": "current",
+      "enablement": {
+        "result": "passed",
+        "initialInstall": "current",
+        "initialVersion": "0.2.0-alpha.1",
+        "scenarios": [
+          "mirrors-initially-disabled",
+          "snapshot-components-added-on-upgrade",
+          "crds-updated-before-operator",
+          "installation-settings-preserved",
+          "encryption-key-preserved",
+          "destination-and-operator-uid-preserved",
+          "active-runtime-and-guest-uid-preserved",
+          "guest-experiment-and-source-preserved",
+          "original-ttl-preserved",
+          "existing-session-preserved",
+          "fresh-session-from-existing-state"
+        ]
+      },
+      "mirrorLifecycle": {
+        "result": "passed",
+        "scenarios": [
+          "helm-bundled-snapshot-controller",
+          "helm-upgrade-reuse",
+          "existing-snapshot-controller-reuse",
+          "reinstall-with-retained-snapshot-apis",
+          "real-csi-source-capture",
+          "guest-data-copy",
+          "independent-guest-writes",
+          "source-egress-denied",
+          "guest-dns-allowed",
+          "source-writes-forbidden",
+          "existing-runtime-mirror",
+          "existing-namespace-rbac",
+          "existing-mirror-ttl",
+          "cancelled-candidate-cleanup",
+          "cancelled-restored-namespace-cleanup",
+          "yaml-sync",
+          "operator-restart",
+          "idempotent-manual-sync",
+          "test-lease",
+          "one-runtime-per-host-namespace",
+          "latest-source-reset",
+          "saved-revision-reset",
+          "scheduled-reset",
+          "owned-volume-snapshot-cleanup",
+          "source-identity-and-data-preserved"
+        ]
+      },
+      "capacityQueue": {
+        "result": "passed",
+        "phase": "Queued",
+        "reason": "CapacityLimit",
+        "originalTTL": true
+      }
+    },
+    {
+      "path": "native",
+      "enablement": {
+        "result": "passed",
+        "initialInstall": "native",
+        "initialVersion": "0.2.0-alpha.1",
+        "scenarios": [
+          "mirrors-initially-disabled",
+          "snapshot-components-added-on-upgrade",
+          "crds-updated-before-operator",
+          "installation-settings-preserved",
+          "encryption-key-preserved",
+          "destination-and-operator-uid-preserved",
+          "active-runtime-and-guest-uid-preserved",
+          "guest-experiment-and-source-preserved",
+          "original-ttl-preserved",
+          "existing-session-preserved",
+          "fresh-session-from-existing-state"
+        ]
+      },
+      "mirrorLifecycle": {
+        "result": "passed",
+        "scenarios": [
+          "native-bundled-snapshot-controller",
+          "native-reapply-reuse",
+          "existing-snapshot-controller-reuse",
+          "native-controller-recreation-with-retained-snapshot-apis",
+          "real-csi-source-capture",
+          "guest-data-copy",
+          "independent-guest-writes",
+          "source-egress-denied",
+          "guest-dns-allowed",
+          "source-writes-forbidden",
+          "existing-runtime-mirror",
+          "existing-namespace-rbac",
+          "existing-mirror-ttl",
+          "cancelled-candidate-cleanup",
+          "cancelled-restored-namespace-cleanup",
+          "yaml-sync",
+          "operator-restart",
+          "idempotent-manual-sync",
+          "test-lease",
+          "one-runtime-per-host-namespace",
+          "latest-source-reset",
+          "saved-revision-reset",
+          "scheduled-reset",
+          "owned-volume-snapshot-cleanup",
+          "source-identity-and-data-preserved"
+        ]
+      },
+      "capacityQueue": {
+        "result": "passed",
+        "phase": "Queued",
+        "reason": "CapacityLimit",
+        "originalTTL": true
+      }
+    },
+    {
+      "path": "previous",
+      "enablement": {
+        "result": "passed",
+        "initialInstall": "previous",
+        "initialVersion": "0.1.0-alpha.1",
+        "scenarios": [
+          "mirrors-initially-disabled",
+          "snapshot-components-added-on-upgrade",
+          "crds-updated-before-operator",
+          "installation-settings-preserved",
+          "encryption-key-preserved",
+          "destination-and-operator-uid-preserved",
+          "active-runtime-and-guest-uid-preserved",
+          "guest-experiment-and-source-preserved",
+          "original-ttl-preserved",
+          "existing-session-preserved",
+          "fresh-session-from-existing-state"
+        ]
+      },
+      "mirrorLifecycle": {
+        "result": "passed",
+        "scenarios": [
+          "helm-bundled-snapshot-controller",
+          "helm-upgrade-reuse",
+          "existing-snapshot-controller-reuse",
+          "reinstall-with-retained-snapshot-apis",
+          "real-csi-source-capture",
+          "guest-data-copy",
+          "independent-guest-writes",
+          "source-egress-denied",
+          "guest-dns-allowed",
+          "source-writes-forbidden",
+          "existing-runtime-mirror",
+          "existing-namespace-rbac",
+          "existing-mirror-ttl",
+          "cancelled-candidate-cleanup",
+          "cancelled-restored-namespace-cleanup",
+          "yaml-sync",
+          "operator-restart",
+          "idempotent-manual-sync",
+          "test-lease",
+          "one-runtime-per-host-namespace",
+          "latest-source-reset",
+          "saved-revision-reset",
+          "scheduled-reset",
+          "owned-volume-snapshot-cleanup",
+          "source-identity-and-data-preserved"
+        ]
+      },
+      "capacityQueue": {
+        "result": "passed",
+        "phase": "Queued",
+        "reason": "CapacityLimit",
+        "originalTTL": true
+      }
+    }
+  ],
+  "limits": [
+    "Disposable functional fixtures, not production scale, cloud CSI, or distribution certification.",
+    "PostgreSQL uses generated data, explicit table subsets and masks, one new managed target, and TLS require; no private-CA or general anonymization claim.",
+    "Database cleanup fixture uses explicit deletion rather than waiting for a real database TTL expiry.",
+    "Source revision 93bcfbc used the original raw-string absence probe; a later fixture refinement requires PG_VERSION and distinguishes grep errors from clean absence.",
+    "Test-runner live fixture covers ClusterReplica success/failure/timeout/retention and ScaleZero; mirror leases are covered separately.",
+    "MCP, dashboard, preflight, pool rendering and grant admission have local/API/race coverage; no remote identity service is qualified."
+  ]
+}

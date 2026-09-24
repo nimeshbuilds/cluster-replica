@@ -104,7 +104,15 @@ for endpoint in "$source_ip" "$source_service_ip"; do
  hk -n source-database exec deployment/app -- pg_isready -h "$endpoint" -t 2 >/dev/null
 done
 gk -n integration exec "$db" -- psql -U replicove -d application -qAt -c CHECKPOINT >/dev/null
-[[ "$(gk -n integration exec "$db" -- sh -c "if grep -a -r -l 'original-user@example.invalid' /var/lib/postgresql/data >/dev/null 2>&1; then printf FOUND; else printf CLEAN; fi")" == CLEAN ]]
+[[ "$(gk -n integration exec "$db" -- sh -ec '
+test -f "$1/PG_VERSION" || exit 3
+if grep -a -r -F -l -- "$2" "$1" >/dev/null; then
+  printf FOUND
+else
+  result=$?
+  test "$result" -eq 1 || exit "$result"
+  printf CLEAN
+fi' probe /var/lib/postgresql/data/pgdata original-user@example.invalid)" == CLEAN ]]
 source_intact(){
  [[ "$(hk -n source-database get deployment source-db -o jsonpath='{.metadata.uid}')" == "$source_uid" ]]
  [[ "$(hk -n source-database exec deployment/source-db -c postgres -- psql -U fixture_admin -d application -qAt -c 'SELECT email FROM public.customers WHERE id=1')" == original-user@example.invalid ]]

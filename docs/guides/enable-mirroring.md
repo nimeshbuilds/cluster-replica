@@ -1,8 +1,8 @@
 # Enable mirroring on an existing installation
 
-> **Candidate documentation:** these commands target v0.3.0-alpha.1, whose release qualification is pending. They require published candidate artifacts. Until publication, build the current source; v0.2.0-alpha.2 remains the published baseline and lacks the new candidate features.
+> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
-You can add mirroring after installing Replicove. For a Helm installation, use an **in-place Helm upgrade** of the same release. Keep the existing encryption key, protected namespace, destination namespace, and custom values. There is no separate Replicove image to install: the current candidate includes the optional controller.
+You can add mirroring after installing Replicove. For a Helm installation, use an **in-place Helm upgrade** of the same release. Keep the existing encryption key, protected namespace, destination namespace, and custom values. There is no separate Replicove image to install: v0.3.0-alpha.1 includes the optional controller.
 
 Enabling the module adds permissions and, when needed, snapshot infrastructure. The operator rolls out; existing `ClusterReplica` requests and vCluster workloads remain in place. It does **not** automatically convert them into mirrors, copy any source data, or reset their guest changes. Creating a `ReplicaMirror` is a separate, explicitly granted action.
 
@@ -31,7 +31,7 @@ Use your existing protected backup process for state Secrets. Do not commit key 
 
 ## 1. Update the CRDs
 
-Use matching operator/chart/CRD/CLI versions. This example targets the **0.3.0-alpha.1** candidate after publication, including upgrades from 0.1.0-alpha.1:
+Use matching operator/chart/CRD/CLI versions. This example targets **0.3.0-alpha.1**, including upgrades from 0.1.0-alpha.1:
 
 ```bash
 helm show crds oci://ghcr.io/nimeshbuilds/charts/replicove \

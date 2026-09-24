@@ -13,7 +13,7 @@
 
 [Helm quickstart](docs/getting-started/helm.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
-> **Experimental portable alpha.** Current source targets `v0.3.0-alpha.1`; its release qualification is pending. The last published baseline is [`v0.2.0-alpha.2`](https://github.com/nimeshbuilds/replicove/releases/tag/v0.2.0-alpha.2). New features require a current source build until candidate artifacts are published and verified. Production support and cloud certification are not available.
+> **Experimental portable alpha.** Version `v0.3.0-alpha.1` adds test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces. [Validation](docs/validation.md) records exact source revisions and release-artifact checks. Production support and cloud certification are not available.
 
 ## Why Replicove?
 
@@ -42,9 +42,9 @@ Optional mirror, PostgreSQL, and chaos modules can be enabled through a values-p
 | Chaos | Six bounded fault types on owned test workloads, grant limits, durable rollback and cleanup |
 | Agents and local UI | Namespace-scoped stdio MCP, read-only by default, and a local read-only dashboard |
 
-The new diagnostics, test-runner/pool, PostgreSQL, chaos, MCP and dashboard paths are implemented in source; candidate qualification is tracked separately in [validation](docs/validation.md). Test recipes are CLI documents, not another controller or a GitHub Action integration.
+The diagnostics, test-runner/pool, PostgreSQL, chaos, MCP and dashboard paths have separate checks described in [validation](docs/validation.md). Test recipes are CLI documents, not another controller or a GitHub Action integration.
 
-The original integrated alpha’s [eight-job CI run](https://github.com/nimeshbuilds/replicove/actions/runs/35472630195) passed on commit `c2c5ea3`, including host Kubernetes 1.35.8 and 1.36.4, vCluster 0.37.1, and small cert-manager, Spark, Trino, and admission-policy scenarios. Those historical results do not qualify the new candidate features, production scale, or cloud platforms. See [project status and evidence](docs/project-status.md).
+**All 16 source CI jobs passed at [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553)** in [run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593): Kubernetes 1.35.8/1.36.4 core workflows, Helm/YAML installation, all four workload fixtures, three mirror upgrade paths, PostgreSQL, chaos, and test recipes. These are disposable functional results; exact-main and published-artifact checks remain separate release gates. See [scope and saved evidence](docs/validation.md), including the limits of the data and shared-worker tests.
 
 ## Quick start
 
@@ -56,9 +56,9 @@ helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
 
 **[Helm quickstart →](docs/getting-started/helm.md)** · **[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
 
-This command targets the candidate and requires its published artifacts; until publication, use the [source build instructions](docs/development/local.md). The chart installs all six CRDs, the operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. Release artifacts pin the operator image by digest.
+This command installs the versioned release artifacts. Use the [source build instructions](docs/development/local.md) when testing an unreleased revision. The chart installs all six CRDs, the operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. Release artifacts pin the operator image by digest.
 
-The guides walk through source permissions, replica creation, guest access, verification, and cleanup. Check [releases](https://github.com/nimeshbuilds/replicove/releases) for candidate publication and verification before downloading its CLI or manifests. The [developer docs](https://nimeshbuilds.github.io/replicove/) cover each feature and generate API/CLI references from code.
+The guides walk through source permissions, replica creation, guest access, verification, and cleanup. Check [releases](https://github.com/nimeshbuilds/replicove/releases) for versioned CLI/manifests and their artifact-verification evidence. The [developer docs](https://nimeshbuilds.github.io/replicove/) cover each feature and generate API/CLI references from code.
 
 The public name is Replicove. The Go module, prototype binary `cluster-replica`, and API group retain their original identifiers during the alpha so existing development workflows remain usable.
 

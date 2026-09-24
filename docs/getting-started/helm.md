@@ -4,6 +4,8 @@
 
 Install Replicove with one Helm command on a disposable Kubernetes host. It works whether the host has no vCluster or already runs independently managed vClusters. The release chart, operator image, and CLI use public artifact distribution; no GitHub login is required after publication.
 
+For a complete automated lab with outcome and cleanup checks, try [scenario 01](../scenarios/01-governed-replica.md) or browse [all ten scenarios](../scenarios/index.md).
+
 ## 1. Install
 
 Use a host administrator context and check it before installing:

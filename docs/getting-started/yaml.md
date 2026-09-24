@@ -4,6 +4,8 @@
 
 Install Replicove and create a replica using native Kubernetes manifests. The Replicove CLI and Helm CLI are not required. Replicove installs vCluster inside the host cluster for you.
 
+[Scenario 02](../scenarios/02-yaml-access.md) automates this lifecycle with expected-result and cleanup assertions. Browse [all ten executable scenarios](../scenarios/index.md) for the other feature families.
+
 This walkthrough uses a new disposable kind cluster and the versioned alpha image. You need macOS or Linux, Bash, Git, Python 3, curl, shasum, and a running Docker engine. The repository downloads checksum-verified kind and kubectl binaries. Use two terminals for the connection step.
 
 ## 1. Create a disposable host

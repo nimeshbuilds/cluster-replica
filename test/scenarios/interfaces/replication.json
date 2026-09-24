@@ -1,0 +1,6 @@
+{
+  "namespaces": ["source-dev"],
+  "namespaceMap": {"source-dev": "integration"},
+  "secrets": "None",
+  "data": "None"
+}

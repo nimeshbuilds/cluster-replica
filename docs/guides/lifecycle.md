@@ -9,7 +9,7 @@ kubectl -n replica-lab get clusterreplica demo -o yaml
 kubectl -n replica-lab get clusterreplica demo -o jsonpath='{.status.plan}'
 ```
 
-`status.plan` includes its revision, capture time, object/package counts, resource identities, and dependency references. It deliberately omits captured values and credentials. CLI `plan` and `status` currently print this same sanitized status object; they are not a full payload diff viewer.
+`status.plan` includes its revision, capture time, object/package counts, resource identities, and dependency references. It deliberately omits captured values and credentials. CLI `plan` explains this metadata, including selection reasons, mapped identities and dependency paths; `plan --json` emits the structured explanation. CLI `status` prints Kubernetes status JSON. Neither is a full payload diff viewer. See [plan evidence](diagnostics.md#inspect-the-captured-plan).
 
 `status.runtime` records the runtime release and exact profile/chart/guest version. `status.sourceVersion` and `status.targetVersion` record discovered Kubernetes versions. `status.conditions` provides the actionable reason/message when the workflow cannot continue.
 

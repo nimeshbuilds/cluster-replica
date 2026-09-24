@@ -280,6 +280,28 @@ hk -n replica-lab wait replicamirror/orders --for=delete --timeout=420s
 [[ "$source_pvc_uid" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.metadata.uid}')" ]]
 [[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
 [[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
+# Execute the published mirror TestRecipe as written. Its runner must acquire
+# and observe a test lease before executing the guest command, then revoke
+# access, release that lease and finish the mirror's finalizers.
+bin/replicove run -n replica-lab -f examples/testing/mirror.yaml --artifacts "$work/artifacts/mirror-runner"
+python3 - "$work/artifacts/mirror-runner" <<'PYRUNNER'
+import json,pathlib,sys,xml.etree.ElementTree as ET
+root=pathlib.Path(sys.argv[1]);r=json.loads((root/'report.json').read_text())
+assert r['setup']['status']=='Passed' and r['test']['status']=='Passed' and r['cleanup']['status']=='Verified',r
+assert r['request']['kind']=='ReplicaMirror' and r['request']['uid']
+assert r['replica']['kind']=='ClusterReplica' and r['replica']['uid']!=r['request']['uid']
+assert r['mirrorCapture']['uid'] and r['mirrorCapturedAt'] and r['planRevision']
+junit=ET.parse(root/'junit.xml').getroot()
+assert junit.attrib['tests']=='3'
+assert not junit.findall('.//failure') and not junit.findall('.//error') and not junit.findall('.//skipped')
+PYRUNNER
+[[ -z "$(hk -n replica-lab get clusterreplicas,replicamirrors,replicamirrorruns,replicaaccesses,pods,persistentvolumeclaims,networkpolicies -o name)" ]]
+[[ -z "$(hk -n source-dev get volumesnapshots -o name)" ]]
+[[ -z "$(hk get volumesnapshotcontents -o name)" ]]
+[[ "$source_pvc_uid" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.metadata.uid}')" ]]
+[[ "$source_pv" == "$(hk -n source-dev get pvc orders-data -o jsonpath='{.spec.volumeName}')" ]]
+[[ "$(hk -n source-dev exec deployment/orders -- cat /data/revision)" == host-B ]]
+
 # Reinstall after finalizers finish: retained APIs must not make auto mode
 # incorrectly assume that the removed snapshot controller is still running.
 state_key_uid=$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')
@@ -296,7 +318,7 @@ hk -n replicove-system rollout status deployment/replicove --timeout=180s
 hk -n replicove-system rollout status deployment/replicove-snapshot-controller --timeout=180s
 [[ "$state_key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 cat > "$work/artifacts/report.json" <<'JSON'
-{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","cancelled-restored-namespace-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","one-runtime-per-host-namespace","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved"]}
+{"result":"passed","scenarios":["helm-bundled-snapshot-controller","helm-upgrade-reuse","existing-snapshot-controller-reuse","reinstall-with-retained-snapshot-apis","real-csi-source-capture","guest-data-copy","independent-guest-writes","source-egress-denied","guest-dns-allowed","source-writes-forbidden","existing-runtime-mirror","existing-namespace-rbac","existing-mirror-ttl","cancelled-candidate-cleanup","cancelled-restored-namespace-cleanup","yaml-sync","operator-restart","idempotent-manual-sync","test-lease","one-runtime-per-host-namespace","latest-source-reset","saved-revision-reset","scheduled-reset","owned-volume-snapshot-cleanup","source-identity-and-data-preserved","published-mirror-test-recipe","runner-mirror-capture-and-lease","runner-json-and-junit","runner-access-and-storage-cleanup"]}
 JSON
 if [[ "$mirror_base" == native ]]; then
  python3 - "$work/artifacts/report.json" <<'PY'

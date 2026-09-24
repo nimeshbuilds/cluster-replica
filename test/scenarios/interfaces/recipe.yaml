@@ -1,0 +1,26 @@
+apiVersion: replicove.nimeshbuilds.dev/v1alpha1
+kind: TestRecipe
+namePrefix: interfaces-pool
+destinations:
+  - namespace: test-a
+    grant: source-dev-a
+  - namespace: test-b
+    grant: source-dev-b
+replica:
+  profile: vcluster-0.37.1-persistent
+  ttl: 45m
+  cleanupPolicy: DeleteOwned
+  approval: Automatic
+  replication:
+    namespaces: [source-dev]
+    namespaceMap: {source-dev: integration}
+    secrets: None
+    data: None
+execution:
+  command: [kubectl, -n, integration, rollout, status, deployment/echo, --timeout=120s]
+  timeout: 3m
+  role: admin
+  credentialSeconds: 900
+lifecycle:
+  readyTimeout: 15m
+  cleanupTimeout: 10m

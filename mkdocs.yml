@@ -69,6 +69,18 @@ nav:
       - Helm quickstart: getting-started/helm.md
       - YAML quickstart: getting-started/yaml.md
       - CLI quickstart: quickstart.md
+  - Tested scenarios:
+      - Choose a scenario: scenarios/index.md
+      - 01 · Governed replica: scenarios/01-governed-replica.md
+      - 02 · YAML and access: scenarios/02-yaml-access.md
+      - 03 · Operators and workloads: scenarios/03-operators-workloads.md
+      - 04 · Existing vCluster: scenarios/04-existing-vcluster.md
+      - 05 · Mirror and reset data: scenarios/05-mirror-resets.md
+      - 06 · PostgreSQL test data: scenarios/06-postgresql-data.md
+      - 07 · One-command tests: scenarios/07-one-command-tests.md
+      - 08 · Chaos experiments: scenarios/08-chaos-experiments.md
+      - 09 · Pools and capacity: scenarios/09-pools-capacity.md
+      - 10 · Agents and observability: scenarios/10-agents-observability.md
   - Feature guides:
       - Grants and permissions: guides/grants.md
       - Select and transform: guides/selection.md

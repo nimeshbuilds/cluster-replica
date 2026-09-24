@@ -11,7 +11,7 @@
 
 **Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** It recreates the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-[Helm quickstart](docs/getting-started/helm.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
+[Helm quickstart](docs/getting-started/helm.md) · [Ten executable scenarios](docs/scenarios/index.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
 > **Experimental portable alpha.** Version `v0.3.0-alpha.1` adds test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces. [Validation](docs/validation.md) records exact source revisions and release-artifact checks. Production support and cloud certification are not available.
 
@@ -55,6 +55,8 @@ helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
 ```
 
 **[Helm quickstart →](docs/getting-started/helm.md)** · **[CLI quickstart →](QUICKSTART.md)** · **[YAML quickstart →](docs/getting-started/yaml.md)**
+
+Try the **[ten executable scenarios →](docs/scenarios/index.md)** for complete disposable labs spanning every current feature family. They use pinned release artifacts, assert expected behavior, and verify cleanup. Each documented variant runs through the same entry point in the documentation scenario workflow.
 
 This command installs the versioned release artifacts. Use the [source build instructions](docs/development/local.md) when testing an unreleased revision. The chart installs all six CRDs, the operator, permissions, key, and destination namespace. Replicove provisions its pinned vCluster when you request a new replica, or uses an explicitly registered existing guest. A preinstalled vCluster is optional. Release artifacts pin the operator image by digest.
 

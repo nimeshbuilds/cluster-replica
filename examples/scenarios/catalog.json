@@ -1,0 +1,25 @@
+{
+  "release": {
+    "version": "v0.3.0-alpha.1",
+    "sourceCommit": "003b59a9ecdc2729034fa21e5d2a3478686ef704",
+    "image": "ghcr.io/nimeshbuilds/replicove@sha256:fa57593efc4fbfbfc1bf7539930fb3fa23799517b989aa69c27cfe0349edb817",
+    "assets": {
+      "replicove-v0.3.0-alpha.1-linux-amd64.tar.gz": "0fbc30cec5c55650ae4521babd63aac8efd7e983df64ee96208c44133fc28ab1",
+      "replicove-0.3.0-alpha.1.tgz": "f2ca2d9b8f5102299fa1ae011757f3ac09a759f12880c1010eaa0631b2a06c5b",
+      "replicove-crds.yaml": "4d10b3e28aed00804dceafbe40234671337d1eca88ba04913e0d59278dd26329",
+      "replicove-install.yaml": "bba152c21763c865e912ecb1ebeede1f1c1b5097d588721d456857986dcc49ef"
+    }
+  },
+  "scenarios": [
+    {"id":"01","title":"Create and refresh a governed replica","page":"01-governed-replica.md","script":"hack/e2e-replication.sh","evidence":"replication-e2e","variants":{"helm":{"REPLICOVE_INSTALLER":"helm"},"cli":{"REPLICOVE_INSTALLER":"cli"}}},
+    {"id":"02","title":"Provision and connect entirely with YAML","page":"02-yaml-access.md","script":"hack/e2e-yaml.sh","evidence":"yaml-e2e","variants":{"default":{}}},
+    {"id":"03","title":"Replicate operators and data workloads","page":"03-operators-workloads.md","script":"hack/e2e-workload.sh","evidence":"workload-e2e","argumentVariant":true,"variants":{"cert-manager":{},"spark":{},"trino":{},"policy":{}}},
+    {"id":"04","title":"Use an existing vCluster safely","page":"04-existing-vcluster.md","script":"hack/e2e-helm-existing.sh","evidence":"helm-existing-e2e","variants":{"default":{}}},
+    {"id":"05","title":"Mirror volume data and reset it","page":"05-mirror-resets.md","script":"hack/e2e-mirror.sh","evidence":"mirror-e2e","variants":{"current":{"REPLICOVE_MIRROR_BASE":"current"},"previous":{"REPLICOVE_MIRROR_BASE":"previous"},"native":{"REPLICOVE_MIRROR_BASE":"native"}}},
+    {"id":"06","title":"Create sanitized PostgreSQL test data","page":"06-postgresql-data.md","script":"hack/e2e-database.sh","evidence":"database-e2e","variants":{"default":{}}},
+    {"id":"07","title":"Run integration tests with one command","page":"07-one-command-tests.md","script":"hack/e2e-testrun.sh","evidence":"testrun-e2e","variants":{"default":{}}},
+    {"id":"08","title":"Exercise failure and recovery with chaos","page":"08-chaos-experiments.md","script":"hack/e2e-chaos.sh","evidence":"chaos-e2e","variants":{"default":{}}},
+    {"id":"09","title":"Share capacity across destination pools","page":"09-pools-capacity.md","script":"hack/e2e-interfaces.sh","evidence":"interfaces-e2e","variants":{"default":{}}},
+    {"id":"10","title":"Inspect and automate with agents","page":"10-agents-observability.md","script":"hack/e2e-interfaces.sh","evidence":"interfaces-e2e","variants":{"default":{}}}
+  ]
+}

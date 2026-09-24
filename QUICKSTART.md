@@ -8,6 +8,8 @@ Create a disposable Kubernetes cluster, install Replicove, and recreate a small 
 
 Prefer a one-command Helm installation? Start with the **[Helm quickstart](docs/getting-started/helm.md)**. Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
 
+Continue with **[ten executable scenarios](docs/scenarios/index.md)** covering selection, operators, existing targets, mirrors, PostgreSQL copies, one-command tests, chaos, pools, agents and observability. Their disposable Linux/Docker labs verify outcomes and cleanup against the published release.
+
 ## Before you start
 
 - A macOS or Linux machine with Bash, Git, `curl`, `shasum`, and `tar`.

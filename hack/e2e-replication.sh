@@ -22,7 +22,7 @@ cleanup(){
   hk -n replica-lab get pods,services,secrets,persistentvolumeclaims,deployments -o json | python3 test/e2e/inventory.py > "$work/artifacts/host-inventory.json" || true
   kind delete cluster --name "$cluster" || true
  fi
- rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/guest-access.kubeconfig" "$work/existing.kubeconfig"
+ rm -f "$work/host.kubeconfig" "$work/guest.kubeconfig" "$work/guest-access.kubeconfig" "$work/existing.kubeconfig" "$work/snapshot-before.json"
  echo "Sanitized replica evidence: $work/artifacts"
  exit "$result"
 }
@@ -63,14 +63,35 @@ expect_forbidden hk --as="$operator_identity" create namespace forbidden
 expect_forbidden hk --as="$operator_identity" -n replica-lab create role forbidden --verb='*' --resource='*'
 expect_forbidden hk --as="$operator_identity" -n replica-lab create rolebinding forbidden --clusterrole=cluster-admin --user=fixture-reader
 hk apply -f test/e2e/source.yaml
+hk apply -f test/e2e/scenario-source.yaml
+hk -n source-dev patch deployment echo --type strategic --patch-file test/e2e/scenario-echo-patch.yaml
 hk -n source-dev rollout status deployment/echo --timeout=180s
+hk -n source-dev wait pod/source-volume-probe --for=condition=Ready --timeout=180s
+[[ "$(hk -n source-dev exec source-volume-probe -- cat /data/source-marker)" == source-only ]]
+source_pvc_uid=$(hk -n source-dev get pvc scratch -o jsonpath='{.metadata.uid}')
+source_pv=$(hk -n source-dev get pvc scratch -o jsonpath='{.spec.volumeName}')
+source_pv_uid=$(hk get pv "$source_pv" -o jsonpath='{.metadata.uid}')
 go run ./test/e2e/seed test/e2e/chart source-dev fixture
 hk apply -f test/e2e/grant.yaml
 hk -n replica-lab create configmap unrelated-sentinel --from-literal=keep=yes
-bin/replicove create full --grant source-dev-lab --ttl 30m --manual --replication-file test/e2e/replication.yaml
+bin/replicove create full --grant source-dev-lab --ttl 30m --manual --replication-file test/e2e/scenario-replication.yaml
 hk -n replica-lab wait clusterreplica/full --for=jsonpath='{.status.phase}'=AwaitingApproval --timeout=120s
 [[ -z "$(hk -n replica-lab get deployment,statefulset -o name)" ]]
-bin/replicove plan full > "$work/artifacts/plan.json"
+bin/replicove plan full --json > "$work/artifacts/plan.json"
+python3 - "$work/artifacts/plan.json" <<'PY'
+import json,sys
+plan=json.load(open(sys.argv[1]))
+resources={(r['kind'],r['sourceName']):r for r in plan['resources']}
+for kind,name in [('Deployment','echo'),('Service','echo'),('ConfigMap','removable')]:
+ assert resources[(kind,name)]['selectionReason']=='selected', (kind,name)
+for kind,name in [('ConfigMap','settings'),('ServiceAccount','app'),('Secret','fixture-password'),('PersistentVolumeClaim','scratch')]:
+ assert resources[(kind,name)]['selectionReason']=='dependency', (kind,name)
+assert resources[('ConfigMap','chart-settings')]['selectionReason']=='helm'
+assert ('ConfigMap','excluded') not in resources and ('ConfigMap','unselected') not in resources
+assert plan['omitted']['explicitly-excluded'] >= 1 and plan['omitted']['not-selected'] >= 1
+assert all(r.get('sourceUID') and r.get('sourceVersion') for r in plan['resources'] if r['selectionReason']!='helm')
+assert all(r['namespace']=='integration' for r in plan['resources'])
+PY
 bin/replicove approve full
 hk -n replica-lab wait clusterreplica/full --for=condition=Ready --timeout=420s
 bin/replicove connect full --role admin --output "$work/guest.kubeconfig" > "$work/artifacts/connect.txt" 2>&1 &
@@ -80,6 +101,37 @@ for i in $(seq 1 180);do if [[ -f "$work/guest.kubeconfig" ]];then break;fi;slee
 gk -n integration rollout status deployment/echo --timeout=180s
 [[ "$(gk -n integration get configmap settings -o jsonpath='{.data.mode}')" == guest ]]
 [[ "$(gk -n integration get configmap chart-settings -o jsonpath='{.data.message}')" == guest-chart ]]
+[[ "$(gk -n integration get configmap removable -o jsonpath='{.data.message}')" == initially-selected ]]
+[[ -z "$(gk -n integration get configmap excluded unselected --ignore-not-found -o name)" ]]
+[[ "$(gk -n integration get pvc scratch -o jsonpath='{.spec.storageClassName}')" == standard ]]
+# EmptyVolumes must allocate independent storage even when its source is bound
+# and populated. The probe's explicit executable and output contain no secrets.
+cat <<'YAML' | gk apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: empty-volume-probe
+  namespace: integration
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  containers:
+    - name: probe
+      image: registry.k8s.io/e2e-test-images/busybox:1.37.0-1
+      command: [sh, -c, 'test ! -e /data/source-marker && printf guest-only > /data/guest-marker && sync']
+      resources:
+        requests: {cpu: 5m, memory: 8Mi}
+        limits: {cpu: 50m, memory: 32Mi}
+      volumeMounts:
+        - {name: scratch, mountPath: /data}
+  volumes:
+    - name: scratch
+      persistentVolumeClaim:
+        claimName: scratch
+YAML
+gk -n integration wait pod/empty-volume-probe --for=jsonpath='{.status.phase}'=Succeeded --timeout=120s
+hk -n source-dev exec source-volume-probe -- sh -c 'test "$(cat /data/source-marker)" = source-only && test ! -e /data/guest-marker'
+hk get pv -o json | python3 -c 'import json,sys;items=[{"name":p["metadata"]["name"],"uid":p["metadata"]["uid"]} for p in json.load(sys.stdin)["items"] if p.get("spec",{}).get("claimRef",{}).get("namespace")=="replica-lab"];assert len(items)>=2;json.dump(items,sys.stdout)' > "$work/artifacts/owned-pvs.json"
 # Secret contents are compared in memory and are never printed or uploaded.
 hk -n source-dev get secret fixture-password -o json | python3 -c 'import json,subprocess,sys;source=json.load(sys.stdin);guest=json.loads(subprocess.check_output(["kubectl","--kubeconfig",sys.argv[1],"-n","integration","get","secret","fixture-password","-o","json"]));assert source["data"]==guest["data"]' "$work/guest.kubeconfig"
 gk -n integration run probe --image=registry.k8s.io/e2e-test-images/busybox:1.37.0-1 --restart=Never --command -- sh -c 'wget -qO- http://echo:8080/hostname'
@@ -113,13 +165,25 @@ done
 [[ "$(gk get namespace kube-system -o jsonpath='{.metadata.uid}')" == "$guest_cluster_uid" ]]
 [[ "$(gk -n integration get deployment echo -o jsonpath='{.metadata.uid}')" == "$guest_workload_uid" ]]
 # Snapshot refresh changes only source-owned fields and preserves added fields.
+drift_before=$(hk -n replica-lab get clusterreplica full -o jsonpath='{.status.driftCount}')
+gk -n integration patch configmap settings --type merge -p '{"data":{"mode":"guest-experiment"}}'
+for i in $(seq 1 45);do
+ drift=$(hk -n replica-lab get clusterreplica full -o jsonpath='{.status.driftCount}')
+ if [[ "${drift:-0}" -gt "${drift_before:-0}" ]];then break;fi
+ sleep 2
+done
+[[ "$i" -lt 45 ]]
+[[ "$(gk -n integration get configmap settings -o jsonpath='{.data.mode}')" == guest-experiment ]]
+hk -n source-dev delete configmap removable
 hk -n source-dev patch configmap settings --type merge -p '{"data":{"extra":"refreshed"}}'
 bin/replicove refresh full
 hk -n replica-lab wait clusterreplica/full --for=jsonpath='{.status.phase}'=AwaitingApproval --timeout=120s
 bin/replicove approve full
 hk -n replica-lab wait clusterreplica/full --for=condition=Ready --timeout=180s
 [[ "$(gk -n integration get configmap settings -o jsonpath='{.data.extra}')" == refreshed ]]
+[[ "$(gk -n integration get configmap settings -o jsonpath='{.data.mode}')" == guest ]]
 [[ "$(gk -n integration get configmap settings -o jsonpath='{.metadata.annotations.experiment}')" == keep ]]
+[[ -z "$(gk -n integration get configmap removable --ignore-not-found -o name)" ]]
 # Follow mode updates a granted Secret without refreshing workloads.
 hk -n source-dev patch secret fixture-password --type merge -p '{"stringData":{"password":"ci-rotated-value"}}' > /dev/null
 for i in $(seq 1 60);do
@@ -171,6 +235,8 @@ spec:
   sourceNamespaces: [source-dev]
   resources:
     - {group: "", kind: ConfigMap}
+  secrets:
+    - {namespace: source-dev, name: fixture-password}
   existingTargets:
     - name: retained
       kubeconfigSecret: {namespace: replicove-system, name: existing-runtime}
@@ -189,20 +255,46 @@ hk -n replica-lab wait clusterreplica/conflicting --for=delete --timeout=120s
 [[ "$(gk -n retained get configmap settings -o jsonpath='{.metadata.uid}')" == "$foreign_uid" ]]
 cat > "$work/existing-selection.yaml" <<YAML
 namespaceMap: {source-dev: retained}
+secrets: Snapshot
 include:
-  - names: [chart-settings]
+  - names: [chart-settings, fixture-password]
 YAML
 bin/replicove create borrowed --grant existing-lab --existing retained --ttl 15m --replication-file "$work/existing-selection.yaml"
 hk -n replica-lab wait clusterreplica/borrowed --for=condition=Ready --timeout=120s
 [[ "$(gk -n retained get configmap chart-settings -o jsonpath='{.data.message}')" == source-chart ]]
+# An explicit Snapshot session stays at its captured Secret until refresh.
+# Observe Follow in the other request first, proving at least one later source
+# rotation was processed. Secret payloads stay in a private non-artifact file.
+gk -n retained get secret fixture-password -o json > "$work/snapshot-before.json"
+hk -n source-dev get secret fixture-password -o json | python3 -c 'import json,sys;assert json.load(sys.stdin)["data"]==json.load(open(sys.argv[1]))["data"]' "$work/snapshot-before.json"
+hk -n source-dev patch secret fixture-password --type merge -p '{"stringData":{"password":"ci-snapshot-rotation"}}' > /dev/null
+for i in $(seq 1 60);do
+ if hk -n source-dev get secret fixture-password -o json | python3 -c 'import json,subprocess,sys;source=json.load(sys.stdin);guest=json.loads(subprocess.check_output(["kubectl","--kubeconfig",sys.argv[1],"-n","integration","get","secret","fixture-password","-o","json"]));sys.exit(0 if source["data"]==guest["data"] else 1)' "$work/guest.kubeconfig";then break;fi
+ sleep 2
+done
+[[ "$i" -lt 60 ]]
+gk -n retained get secret fixture-password -o json | python3 -c 'import json,sys;assert json.load(sys.stdin)["data"]==json.load(open(sys.argv[1]))["data"]' "$work/snapshot-before.json"
+snapshot_revision=$(hk -n replica-lab get clusterreplica borrowed -o jsonpath='{.status.plan.revision}')
+bin/replicove refresh borrowed
+for i in $(seq 1 60);do
+ if hk -n replica-lab get clusterreplica borrowed -o json | python3 -c 'import json,sys;s=json.load(sys.stdin)["status"];p=s["plan"];sys.exit(0 if s["phase"]=="Ready" and p["revision"]!=sys.argv[1] and p.get("appliedCount")==p["objectCount"] else 1)' "$snapshot_revision";then break;fi
+ sleep 2
+done
+[[ "$i" -lt 60 ]]
+hk -n source-dev get secret fixture-password -o json | python3 -c 'import json,subprocess,sys;source=json.load(sys.stdin);guest=json.loads(subprocess.check_output(["kubectl","--kubeconfig",sys.argv[1],"-n","retained","get","secret","fixture-password","-o","json"]));assert source["data"]==guest["data"]' "$work/guest.kubeconfig"
+rm -f "$work/snapshot-before.json"
 bin/replicove delete borrowed
 hk -n replica-lab wait clusterreplica/borrowed --for=delete --timeout=120s
 [[ -z "$(gk -n retained get configmap chart-settings --ignore-not-found -o name)" ]]
+[[ -z "$(gk -n retained get secret fixture-password --ignore-not-found -o name)" ]]
 [[ "$(gk -n retained get configmap settings -o jsonpath='{.metadata.uid}')" == "$foreign_uid" ]]
 [[ "$(hk -n replica-lab get statefulset "$runtime_uid" -o jsonpath='{.metadata.uid}')" == "$external_runtime_uid" ]]
 hk -n replicove-system delete secret existing-runtime
 hk delete replicagrant existing-lab
 bin/replicove status full > "$work/artifacts/ready.json"
+# Retain only guest PVC identity/finalizers to diagnose storage cleanup across
+# runtime releases. No volume spec, configuration or credentials are emitted.
+gk -n integration get pvc scratch -o json | python3 -c 'import json,sys;o=json.load(sys.stdin);m=o["metadata"];json.dump({"kind":o["kind"],"namespace":m["namespace"],"name":m["name"],"uid":m["uid"],"finalizers":m.get("finalizers",[]),"phase":o.get("status",{}).get("phase")},sys.stdout)' > "$work/artifacts/guest-pvc-before-delete.json"
 # Stop the local proxy before deleting the guest. The access controller still
 # revokes both guest identities and their host credential Secrets.
 kill "$tunnel_pid" 2>/dev/null || true;wait "$tunnel_pid" || true;tunnel_pid=''
@@ -213,17 +305,26 @@ if hk --as=replica-developer -n replica-lab auth can-i get "secret/$viewer_secre
 [[ -z "$(hk -n replica-lab get rolebinding "$viewer_secret" --ignore-not-found -o name)" ]]
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove,replicove.nimeshbuilds.dev/state-kind!=capacity -o name)" ]]
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
+hk get pv -o json | python3 -c 'import json,sys;remaining={p["metadata"]["uid"] for p in json.load(sys.stdin)["items"]};owned={p["uid"] for p in json.load(open(sys.argv[1]))};assert not remaining.intersection(owned),"owned PV remains after finalizer completion"' "$work/artifacts/owned-pvs.json"
+[[ "$(hk -n source-dev get pvc scratch -o jsonpath='{.metadata.uid}')" == "$source_pvc_uid" ]]
+[[ "$(hk get pv "$source_pv" -o jsonpath='{.metadata.uid}')" == "$source_pv_uid" ]]
+hk -n source-dev exec source-volume-probe -- sh -c 'test "$(cat /data/source-marker)" = source-only && test ! -e /data/guest-marker'
 hk -n replica-lab get configmap unrelated-sentinel >/dev/null
 hk -n source-dev get deployment echo >/dev/null
 # Exercise actual full-workflow TTL and persistent control-plane PVC cleanup.
-bin/replicove create ttl --grant source-dev-lab --ttl 5m --replication-file test/e2e/replication.yaml
+bin/replicove create ttl --grant source-dev-lab --ttl 5m --replication-file test/e2e/scenario-replication.yaml
 hk -n replica-lab wait clusterreplica/ttl --for=condition=Ready --timeout=180s
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-before.json"
+hk get pv -o json | python3 -c 'import json,sys;items=[{"name":p["metadata"]["name"],"uid":p["metadata"]["uid"]} for p in json.load(sys.stdin)["items"] if p.get("spec",{}).get("claimRef",{}).get("namespace")=="replica-lab"];assert len(items)>=2;json.dump(items,sys.stdout)' > "$work/artifacts/ttl-owned-pvs.json"
 hk -n replica-lab wait clusterreplica/ttl --for=jsonpath='{.status.phase}'=Expired --timeout=420s
 hk -n replica-lab annotate clusterreplica ttl e2e-after-expiry=yes
 sleep 15
 [[ -z "$(hk -n replica-lab get pods,services,secrets,persistentvolumeclaims -o name)" ]]
 [[ -z "$(hk -n replicove-system get secret -l app.kubernetes.io/managed-by=replicove,replicove.nimeshbuilds.dev/state-kind!=capacity -o name)" ]]
+hk get pv -o json | python3 -c 'import json,sys;remaining={p["metadata"]["uid"] for p in json.load(sys.stdin)["items"]};owned={p["uid"] for p in json.load(open(sys.argv[1]))};assert not remaining.intersection(owned),"owned PV remains after TTL cleanup"' "$work/artifacts/ttl-owned-pvs.json"
+[[ "$(hk -n source-dev get pvc scratch -o jsonpath='{.metadata.uid}')" == "$source_pvc_uid" ]]
+[[ "$(hk get pv "$source_pv" -o jsonpath='{.metadata.uid}')" == "$source_pv_uid" ]]
+hk -n source-dev exec source-volume-probe -- sh -c 'test "$(cat /data/source-marker)" = source-only && test ! -e /data/guest-marker'
 hk -n replica-lab get clusterreplica ttl -o json > "$work/artifacts/ttl-after.json"
 if [[ "${REPLICOVE_INSTALLER:-cli}" == helm ]]; then
  bin/replicove delete ttl
@@ -236,5 +337,5 @@ if [[ "${REPLICOVE_INSTALLER:-cli}" == helm ]]; then
  [[ "$key_uid" == "$(hk -n replicove-system get secret replicove-state-key -o jsonpath='{.metadata.uid}')" ]]
 fi
 cat > "$work/artifacts/report.json" <<JSON
-{"result":"passed","scenarios":["${REPLICOVE_INSTALLER:-cli}-installer","operator-namespace-rbac","escalation-bind-denied","manual-plan","real-vcluster","source-helm-reconstruction","secret-snapshot-follow","namespace-mapping","overrides","guest-workload-service","restart","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","control-plane-pvc-cleanup","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
+{"result":"passed","scenarios":["${REPLICOVE_INSTALLER:-cli}-installer","operator-namespace-rbac","escalation-bind-denied","manual-plan","name-label-expression-selection","exclude-and-unselected-omissions","dependency-only-config-serviceaccount-secret-pvc","metadata-only-plan-provenance","real-vcluster","source-helm-reconstruction","secret-snapshot-holds-until-refresh","secret-follow-rotation","namespace-mapping","overrides","empty-volume-storage-class-map","independent-guest-volume-write","guest-workload-service","restart","guest-drift-preserved-until-refresh","refresh-prunes-removed-source-object","explicit-refresh","viewer-rbac","access-revocation","owned-cleanup","source-preservation","durable-control-plane-reschedule","full-workflow-ttl","application-and-control-plane-pv-cleanup","source-volume-identity-data-preserved","existing-target-preservation","existing-target-conflict","tunnel-reconnect","exact-secret-reader-rbac"]}
 JSON

@@ -45,10 +45,10 @@ kubectl -n replica-lab wait clusterreplica/yaml-demo \
 
 The fixture creates a source echo application, a dummy Secret, bounded source permissions, and a one-hour `ClusterReplica`. Replicove provisions a persistent vCluster and recreates the selection in guest namespace `integration`. A 1 GiB control-plane PVC uses the host's default StorageClass. Source volume contents are not copied.
 
-To connect locally, download and extract your platform’s `replicove` CLI archive from the [alpha release](https://github.com/nimeshbuilds/replicove/releases/tag/v0.3.0-alpha.2) into your working directory. Keep this command running in the same host context:
+To connect locally, [download the prebuilt CLI or build the matching release](download.md), then keep this command running in the same host context:
 
 ```bash
-./replicove -n replica-lab connect yaml-demo --role viewer \
+replicove -n replica-lab connect yaml-demo --role viewer \
   --output "$PWD/replicove-guest.kubeconfig"
 ```
 

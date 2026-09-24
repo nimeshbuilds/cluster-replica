@@ -6,6 +6,7 @@ The searchable site includes Helm, YAML, and CLI quickstarts, detailed feature g
 
 | Start here | Guide |
 | --- | --- |
+| Get a prebuilt CLI or compile a matching release | [Download or build](getting-started/download.md) |
 | Install and create using native manifests | [YAML quickstart](getting-started/yaml.md) |
 | Create with the CLI and managed tunnel | [CLI quickstart](../QUICKSTART.md) |
 | Try ten feature workflows in disposable clusters | [Executable scenarios](scenarios/index.md) |

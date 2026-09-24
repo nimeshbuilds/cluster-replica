@@ -74,9 +74,12 @@ CGO_ENABLED=0 go build -trimpath \
   -ldflags="-s -w -X main.version=$REPLICOVE_RELEASE" \
   -o bin/replicove ./cmd/replicove
 ./bin/replicove --version
+mkdir -p "$HOME/.local/bin"
+install -m 755 bin/replicove "$HOME/.local/bin/replicove"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-This creates a normal local branch at the release tag. Building this CLI does not build an operator container or install anything in a cluster. To develop unreleased changes on `main`, build both components and run the checks in [Build and test](../development/local.md); do not label a modified build as the published release.
+This creates a normal local branch at the release tag and installs your compiled CLI into `~/.local/bin`. It does not build an operator container or install anything in a cluster. To develop unreleased changes on `main`, build both components and run the checks in [Build and test](../development/local.md); do not label a modified build as the published release.
 
 ## Continue
 

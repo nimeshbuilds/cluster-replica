@@ -28,7 +28,7 @@ The other complete paths start from Helm 0.1.0-alpha.1 and native YAML 0.2.0-alp
 5. Exercise idempotent manual Sync, saved-revision Reset, scheduled capture/reset, suspension/resumption, lease-protected activation/replacement and candidate cancellation. Fresh Sync captures later source data; Reset uses a retained capture. Managed replacement waits for the lease, retires the previous owned runtime and creates its successor. Queued capacity consumes the original TTL instead of extending it.
 6. Register a supported existing runtime and exercise a mirror there. Owned generation namespaces and namespaced guest access remain separate from preexisting resources. Cancellation cleans prepared resources, and a real existing-mirror TTL removes owned generations and access while preserving the external runtime.
 7. Delete mirrors and verify owned restored volumes and capture objects disappear. Source PVC/PV identities and data remain. Snapshot-controller upgrade/reuse and reinstall with retained APIs are checked without creating duplicate controllers.
-8. Run the published `examples/testing/mirror.yaml` through `replicove run`. It creates a fresh mirror for a local test command, obtains an acknowledged test lease and bounded guest access, then verifies cleanup. The JSON/JUnit results must record the mirror capture and lease as well as successful setup, execution and cleanup.
+8. Run the published `examples/testing/mirror.yaml` through `replicove run`. It creates a fresh mirror for a local test command, obtains an acknowledged test lease and bounded guest access, then verifies cleanup. The JSON result identifies the mirror capture, active child and captured plan; JSON/JUnit must report successful setup, execution and cleanup.
 
 ## Expected result
 

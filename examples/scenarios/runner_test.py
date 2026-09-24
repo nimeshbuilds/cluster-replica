@@ -344,6 +344,36 @@ class ExecutionContract(unittest.TestCase):
         self.assertEqual(self.binary.read_bytes(), b"user binary")
         self.assertFalse((self.root / ".cache").exists())
 
+    def test_existing_lab_lock_prevents_artifact_or_binary_changes(self):
+        lock = self.root / ".cache/scenarios/active.lock"
+        lock.mkdir(parents=True)
+        (lock / "pid").write_text("1234\n")
+        with mock.patch.object(runner, "preflight"), \
+             mock.patch.object(runner, "prepare_release") as prepare:
+            with self.assertRaisesRegex(RuntimeError, "Another lab owns"):
+                runner.run(self.data, self.scenario, self.variant)
+        prepare.assert_not_called()
+        self.assertEqual((lock / "pid").read_text(), "1234\n")
+        self.assertEqual(self.binary.read_bytes(), b"user binary")
+
+
+class EvidenceContract(unittest.TestCase):
+    def test_supported_report_formats_require_success_without_partial_failures(self):
+        for report, expected in [
+            ({"result": "passed", "scenarios": ["fixture"]}, True),
+            ({"result": "failed", "passed": ["partial"], "ownedCleanup": True}, False),
+            ({"passed": ["fixture"]}, True),
+            ({"passed": ["partial"], "failed": ["cleanup"]}, False),
+            ({"passed": []}, False),
+            ({"passed": "not a list"}, False),
+            ({"scenario": "yaml", "ownedCleanup": True, "sourcePreserved": True}, True),
+            ({"scenario": "yaml", "ownedCleanup": True, "sourcePreserved": False}, False),
+            ({"sourcePreserved": True}, False),
+            ({}, False),
+        ]:
+            with self.subTest(report=report):
+                self.assertIs(runner.evidence_passed(report), expected)
+
 
 if __name__ == "__main__":
     unittest.main()

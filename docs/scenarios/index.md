@@ -6,7 +6,7 @@ The walkthrough and its test are the same checked-in program: [`examples/scenari
 
 ## Prepare once
 
-Use a **Linux amd64 machine and Linux amd64 Docker engine**, with Docker running, Bash, Git, curl, Python 3, OpenSSL, make, and Go **1.27.1** as declared in [`go.mod`](https://github.com/nimeshbuilds/replicove/blob/main/go.mod). Normal Unix utilities, including tar and gzip, must be available. The runner fetches the pinned Kubernetes, kind and Helm helper tools. Network access is needed for GitHub, GHCR, Kubernetes images, and the fixture dependencies.
+Use a **Linux amd64 machine and Linux amd64 Docker engine**, with Docker running, Bash, Git, curl, Python 3, OpenSSL, make, and Go **1.27.1** as declared in [`go.mod`](https://github.com/nimeshbuilds/replicove/blob/main/go.mod). Normal Unix utilities, including tar, gzip, `sha256sum` and `shasum`, must be available. The runner fetches the pinned Kubernetes, kind and Helm helper tools. Network access is needed for GitHub, GHCR, Kubernetes images, and the fixture dependencies.
 
 ```bash
 git clone https://github.com/nimeshbuilds/replicove.git
@@ -69,7 +69,7 @@ The runner writes a receipt under `.cache/scenarios/run.*/report.json`, includin
 
 The test verifies Replicove's owned-resource cleanup **before** the final kind-host deletion. Deleting the disposable host alone would not prove Replicove cleanup. Operator infrastructure, the state encryption key, and an empty capacity ledger intentionally survive individual replica removal. The final host deletion removes the complete lab, including those retained installation resources. Temporary kubeconfigs and tunnels are removed by the fixture's exit handler. Keep the printed evidence private; review it before sharing.
 
-If a lab fails, start with its operator log and request conditions. Check Docker availability, image-download errors, Pending Pods, port conflicts and storage/CNI startup. Re-running creates a new uniquely named host; it does not repair an existing live cluster. If the process was forcibly killed before its exit handler ran, identify the exact lab cluster with `kind get clusters` and remove only that named disposable cluster. Do not remove Replicove finalizers to force a passing outcome. See [troubleshooting](../guides/troubleshooting.md) and [cleanup](../guides/cleanup.md).
+If a lab fails, start with its operator log and request conditions. Check Docker availability, image-download errors, Pending Pods, port conflicts and storage/CNI startup. Re-running creates a new uniquely named host; it does not repair an existing live cluster. If the process was forcibly killed before its exit handler ran, identify the exact lab cluster with `.cache/e2e-tools/kind get clusters` and remove only that named disposable cluster. A stale `.cache/scenarios/active.lock` may remain: check its recorded PID and confirm that lab has stopped before removing the lock. Do not remove Replicove finalizers to force a passing outcome. See [troubleshooting](../guides/troubleshooting.md) and [cleanup](../guides/cleanup.md).
 
 ## Coverage and boundaries
 

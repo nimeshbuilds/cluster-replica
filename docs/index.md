@@ -12,6 +12,7 @@ description: Replicove recreates selected Kubernetes operators, Helm components,
 <p class="lede">Recreate selected operators, Helm components, and configuration in a disposable vCluster. Give your integration tests, developers, and agents a familiar environment—with a lifetime you control.</p>
 
 [Install with Helm](getting-started/helm.md){ .md-button .md-button--primary }
+[Download or build the CLI](getting-started/download.md){ .md-button }
 [Use YAML](getting-started/yaml.md){ .md-button }
 [Start with the CLI](../QUICKSTART.md){ .md-button }
 [Try the ten scenarios](scenarios/index.md){ .md-button }

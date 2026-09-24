@@ -66,6 +66,7 @@ nav:
   - Feature map: features.md
   - Getting started:
       - Installation: getting-started/installation.md
+      - Download or build the CLI: getting-started/download.md
       - Helm quickstart: getting-started/helm.md
       - YAML quickstart: getting-started/yaml.md
       - CLI quickstart: quickstart.md

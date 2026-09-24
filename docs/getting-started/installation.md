@@ -6,6 +6,8 @@ The commands below use **v0.3.0-alpha.2**. Obtain matching CLI, chart, image and
 
 ## Choose a path
 
+**[Download a prebuilt CLI or build from source](download.md).** The release includes macOS/Linux binaries for amd64 and arm64, a Helm chart, native YAML and checksums. The CLI can be installed without cloning the repository or installing Go.
+
 | Path | Use it when | Tools |
 | --- | --- | --- |
 | [Helm quickstart](helm.md) | You want a single-command operator installation | Helm and kubectl on an existing disposable host |

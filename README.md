@@ -11,7 +11,7 @@
 
 **Replicove is an open-source Kubernetes operator for building disposable integration-test environments with [vCluster](https://www.vcluster.com/).** It recreates the selected operators, configuration, and dependencies your application needs inside a virtual cluster, using a declarative `ClusterReplica` request.
 
-[Helm quickstart](docs/getting-started/helm.md) · [Ten executable scenarios](docs/scenarios/index.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
+[Download or build the CLI](docs/getting-started/download.md) · [Helm quickstart](docs/getting-started/helm.md) · [Ten executable scenarios](docs/scenarios/index.md) · [Documentation](https://nimeshbuilds.github.io/replicove/) · [Project status](docs/project-status.md) · [Roadmap](ROADMAP.md) · [Contribute](CONTRIBUTING.md)
 
 > **Experimental portable alpha.** These instructions target `v0.3.0-alpha.2`, which fixes cleanup when guest-created Pods reference copied PVCs in replica-owned namespaces. Its release qualification is pending; [validation](docs/validation.md) tracks the regression and separates historical results from current checks. Test recipes, scoped PostgreSQL copies, bounded chaos and local agent/UI interfaces were introduced in v0.3.0-alpha.1. Production support and cloud certification are not available.
 
@@ -47,6 +47,8 @@ The diagnostics, test-runner/pool, PostgreSQL, chaos, MCP and dashboard paths ha
 **Historical v0.3.0-alpha.1 evidence: all 16 source CI jobs passed at [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553)** in [run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593): Kubernetes 1.35.8/1.36.4 core workflows, Helm/YAML installation, all four workload fixtures, three mirror upgrade paths, PostgreSQL, chaos, and test recipes. These are disposable functional results; exact-main and published-artifact checks remain separate release gates. See [scope and saved evidence](docs/validation.md), including the limits of the data and shared-worker tests.
 
 ## Quick start
+
+**[Download a prebuilt CLI](docs/getting-started/download.md)** for macOS or Linux on amd64/arm64, with checksum verification and no Go installation. The same guide provides a matching source-build option. Releases also include the Helm chart and native YAML manifests.
 
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \

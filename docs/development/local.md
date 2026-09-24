@@ -1,5 +1,7 @@
 # Build and test
 
+To use Replicove, start with [prebuilt release downloads](../getting-started/download.md). That page also shows how to build a CLI from an exact release tag. The instructions below are for developing and testing the current source.
+
 Clone `main` and use the Go version pinned in `go.mod`. Current development uses Go 1.27.1. For docs, use Python 3.12 and the pinned documentation requirements. Real cluster tests require Docker.
 
 ```bash

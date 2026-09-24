@@ -21,6 +21,8 @@ The tool downloader installs checksum-verified kind, kubectl, vCluster, and Helm
 
 ## 1. Get the CLI and examples
 
+This path downloads a **prebuilt release CLI**; Go is not required. The clone supplies only the example applications and lab tools. For a standalone CLI installation without a clone, or to compile the matching release yourself, use **[Download or build the CLI](docs/getting-started/download.md)**.
+
 In **Terminal A**:
 
 ```bash
@@ -41,7 +43,9 @@ asset="replicove-$REPLICOVE_RELEASE-$os-$arch.tar.gz"
 mkdir -p .cache/release bin
 curl -fL "https://github.com/nimeshbuilds/replicove/releases/download/$REPLICOVE_RELEASE/$asset" -o ".cache/release/$asset"
 curl -fL "https://github.com/nimeshbuilds/replicove/releases/download/$REPLICOVE_RELEASE/SHA256SUMS" -o .cache/release/SHA256SUMS
-(cd .cache/release && awk -v asset="$asset" '$2 == asset' SHA256SUMS | shasum -a 256 --check -)
+awk -v asset="$asset" '$2 == asset { print; seen++ } END { if (seen != 1) exit 1 }' \
+  .cache/release/SHA256SUMS > .cache/release/selected.sha256
+(cd .cache/release && shasum -a 256 --check selected.sha256)
 tar -xzf ".cache/release/$asset" -C bin replicove
 ./bin/replicove --version
 docker info >/dev/null

@@ -92,15 +92,16 @@ runtime=$(hk -n replica-lab get clusterreplica yaml-demo -o jsonpath='{.status.r
 hk -n replica-lab port-forward "service/$runtime" 18443:443 --address 127.0.0.1 > "$work/forward.log" 2>&1 &
 forward_pid=$!
 gk config set-cluster replicove --server=https://127.0.0.1:18443 >/dev/null
-for i in $(seq 1 60); do
- if gk --request-timeout=2s -n integration get deployment echo >/dev/null 2>&1; then break; fi
+viewer_ready=false
+for attempt in $(seq 1 60); do
+ if gk --request-timeout=2s -n integration get deployment echo >/dev/null 2>&1; then viewer_ready=true; break; fi
  sleep 1
 done
-[[ "$i" -lt 60 ]]
+[[ "$viewer_ready" == true ]]
 [[ "$(gk -n integration get configmap settings -o jsonpath='{.data.mode}')" == guest-yaml ]]
 [[ "$(hk -n source-dev get configmap settings -o jsonpath='{.data.mode}')" == source ]]
 [[ "$(gk -n integration auth can-i create deployments)" == no ]]
-expect_guest_forbidden gk -n integration create configmap viewer-write-probe --from-literal=mode=denied
+expect_guest_forbidden gk --request-timeout=5s -n integration create configmap viewer-write-probe --from-literal=mode=denied
 hk -n replica-lab delete replicaaccess yaml-session --wait=true --timeout=180s
 [[ -z "$(hk -n replica-lab get secret "$credential" --ignore-not-found -o name)" ]]
 wait_guest_revocation gk --request-timeout=5s -n integration get configmap settings
@@ -130,8 +131,8 @@ done
 dk -n integration create configmap deployer-probe --from-literal=mode=created
 dk -n integration patch configmap deployer-probe --type merge -p '{"data":{"mode":"updated"}}'
 [[ "$(dk -n integration get configmap deployer-probe -o jsonpath='{.data.mode}')" == updated ]]
-expect_guest_forbidden dk create namespace deployer-namespace-probe
-expect_guest_forbidden dk create clusterrole deployer-escalation --verb='*' --resource='*'
+expect_guest_forbidden dk --request-timeout=5s create namespace deployer-namespace-probe
+expect_guest_forbidden dk --request-timeout=5s create clusterrole deployer-escalation --verb='*' --resource='*'
 dk -n integration delete configmap deployer-probe --wait=true
 [[ "$(hk -n source-dev get configmap settings -o jsonpath='{.data.mode}')" == source ]]
 hk -n replica-lab delete replicaaccess yaml-deployer --wait=true --timeout=180s

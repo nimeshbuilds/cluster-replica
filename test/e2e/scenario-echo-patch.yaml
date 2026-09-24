@@ -1,0 +1,17 @@
+# Strategic merge patch for the source Deployment. The source PVC becomes a
+# dependency of this root; its data must not be copied by EmptyVolumes.
+metadata:
+  labels:
+    replicove.test/scenario: governed
+    replicove.test/tier: frontend
+spec:
+  template:
+    spec:
+      containers:
+        - name: echo
+          volumeMounts:
+            - {name: scratch, mountPath: /scratch}
+      volumes:
+        - name: scratch
+          persistentVolumeClaim:
+            claimName: scratch

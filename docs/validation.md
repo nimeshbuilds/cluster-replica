@@ -1,5 +1,13 @@
 # Validation record
 
+## Owned PVC cleanup regression: alpha.2 verification pending
+
+The expanded governed-replica lab exposed an untested cleanup case in published **v0.3.0-alpha.1**. At fixture revision [`1466f64`](https://github.com/nimeshbuilds/replicove/commit/1466f6462299543aff20db572f98a8c4f516fce3), both the [CLI variant](https://github.com/nimeshbuilds/replicove/actions/runs/36035987682/job/107756280891) and [Helm variant](https://github.com/nimeshbuilds/replicove/actions/runs/36035987682/job/107756280937) failed their owned-cleanup wait. A guest-created completed probe still referenced the copied PVC; serial cleanup waited for that claim before requesting deletion of the owned guest namespace, leaving its consumer in place.
+
+The planned **v0.3.0-alpha.2** fix permits progress past a pending ordinary PVC only when its guest namespace is also inventoried as owned. Borrowed existing namespaces and their foreign consumers remain protected, ownership conflicts remain blocking, and custom-resource/controller dependencies retain their cleanup order. These behavior and regression tests are still awaiting source, exact-main and published-artifact qualification. The ten-scenario collection must subsequently pass all 16 documented variants using the newly published pinned release before being reported as verified.
+
+This failure does not rewrite earlier passing records: those fixtures did not exercise this additional volume-consumer case. Their exact revision, tested behavior and limits remain below. See [cleanup behavior and recovery](guides/cleanup.md#guest-created-volume-consumers) for the current alpha.1 limitation and intended fix.
+
 ## v0.3.0-alpha.1 source qualification
 
 **All 16 jobs passed** at source revision [`93bcfbc`](https://github.com/nimeshbuilds/replicove/commit/93bcfbcd7246f7f7bc8449e3f12cf4ff61642553) in [CI run 35948951593](https://github.com/nimeshbuilds/replicove/actions/runs/35948951593). The [sanitized aggregate record](validation/2026-09-24-features.json) preserves job links, PostgreSQL/chaos/runner reports, and all three mirror transition/lifecycle/queue reports. This is source-build PR evidence, not a published-release assertion. Verification includes race-enabled Go tests, pinned chart contracts, real API-server integration, vet and builds. Source CI is separate from the required exact-main and published-artifact release gates.

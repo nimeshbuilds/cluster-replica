@@ -1,12 +1,12 @@
-Replicove v0.3.0-alpha.1 adds reusable integration-test runs, scoped PostgreSQL 17 copies, bounded workload faults, better plan evidence and optional local interfaces. All 16 source CI jobs passed at `93bcfbc`, including the three mirror upgrade paths and new PostgreSQL, chaos and test-runner suites. The [validation record](https://nimeshbuilds.github.io/replicove/validation/) records that source evidence separately from exact-main and release-artifact verification.
+Replicove v0.3.0-alpha.2 fixes cleanup of copied PVCs in replica-owned guest namespaces. A guest-created Pod can keep a PVC protected after its deletion is requested; cleanup now also starts deletion of the owned namespace so those consumers can drain. Existing borrowed namespaces and their unrelated resources remain protected. Custom-resource and controller cleanup keeps its dependency order, and all deletions still require the recorded object identity and ownership markers.
 
 ```bash
 helm upgrade --install replicove oci://ghcr.io/nimeshbuilds/charts/replicove \
-  --version 0.3.0-alpha.1 \
+  --version 0.3.0-alpha.2 \
   --namespace replicove-system --create-namespace --wait --timeout 3m
 ```
 
-Use matching CLI, chart, image and CRDs from this release. Use a source build for an unreleased revision.
+Use matching CLI, chart, image and CRDs from this release. The expanded lifecycle test covers selected dependencies, Secret Snapshot/Follow behavior, EmptyVolumes with independent guest writes, drift repair, pruning and complete storage cleanup. The release links the exact source commit and published-artifact verification run below. Use a source build for an unreleased revision.
 
 - **Reusable test recipes:** create a fresh managed replica or mirror, wait for readiness, obtain a bounded guest session, execute an explicit local command and verify cleanup. Metadata/provenance JSON and JUnit reports distinguish command failure from cleanup failure. Recipes are local documents; there is no dedicated GitHub Action product integration.
 - **Preflight and plan evidence:** inspect caller/API checks, captured source identities, dependencies, transformations and observed omissions without exposing resource payloads. A report is not an atomic source snapshot or an importable historical replay.

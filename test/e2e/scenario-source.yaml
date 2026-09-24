@@ -1,0 +1,70 @@
+# Additional inputs for the governed-replica scenario. This StorageClass uses
+# kind's local-path provisioner and belongs only in the disposable fixture.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: scenario-source
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: scratch
+  namespace: source-dev
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: scenario-source
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: removable
+  namespace: source-dev
+  labels:
+    replicove.test/selection: explicit-root
+data:
+  message: initially-selected
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: excluded
+  namespace: source-dev
+  labels:
+    replicove.test/selection: explicit-root
+data:
+  message: excluded-even-though-label-matches
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: unselected
+  namespace: source-dev
+data:
+  message: granted-but-not-selected-or-referenced
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: source-volume-probe
+  namespace: source-dev
+spec:
+  automountServiceAccountToken: false
+  containers:
+    - name: probe
+      image: registry.k8s.io/e2e-test-images/busybox:1.37.0-1
+      command: [sh, -c, 'printf source-only > /data/source-marker; sync; sleep 86400']
+      resources:
+        requests: {cpu: 5m, memory: 8Mi}
+        limits: {cpu: 50m, memory: 32Mi}
+      volumeMounts:
+        - {name: scratch, mountPath: /data}
+  volumes:
+    - name: scratch
+      persistentVolumeClaim:
+        claimName: scratch

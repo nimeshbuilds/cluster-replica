@@ -500,14 +500,8 @@ func (w *Engine) cleanup(ctx context.Context, obj *api.ClusterReplica, st *state
 			if err != nil {
 				return w.report(ctx, obj, "Deleting", err, false)
 			}
-			for i := len(st.Entries) - 1; i >= 0; i-- {
-				done, err := w.deleteEntry(ctx, conn, st, &st.Entries[i])
-				if err != nil {
-					return w.report(ctx, obj, "Deleting", err, false)
-				}
-				if !done {
-					return w.report(ctx, obj, "Deleting", nil, false)
-				}
+			if done, err := w.cleanupGuestEntries(ctx, conn, st); err != nil || !done {
+				return w.report(ctx, obj, "Deleting", err, false)
 			}
 		}
 		st.GuestCleaned = true

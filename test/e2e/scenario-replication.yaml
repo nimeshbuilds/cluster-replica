@@ -1,0 +1,46 @@
+namespaces: [source-dev]
+namespaceMap:
+  source-dev: integration
+include:
+  - groups: [apps]
+    kinds: [Deployment]
+    names: [echo]
+    labelSelector:
+      matchLabels:
+        replicove.test/scenario: governed
+      matchExpressions:
+        - key: replicove.test/tier
+          operator: In
+          values: [frontend]
+  - groups: [""]
+    kinds: [Service]
+    names: [echo]
+  - groups: [""]
+    kinds: [ConfigMap]
+    labelSelector:
+      matchLabels:
+        replicove.test/selection: explicit-root
+exclude:
+  - groups: [""]
+    kinds: [ConfigMap]
+    names: [excluded]
+secrets: Follow
+data: EmptyVolumes
+storageClassMap:
+  scenario-source: standard
+helmReleases:
+  - namespace: source-dev
+    name: fixture
+helmOverrides:
+  - namespace: source-dev
+    name: fixture
+    values:
+      message: guest-chart
+patches:
+  - apiVersion: v1
+    kind: ConfigMap
+    namespace: source-dev
+    name: settings
+    patch:
+      data:
+        mode: guest

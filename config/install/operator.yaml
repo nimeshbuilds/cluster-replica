@@ -62,7 +62,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: bootstrap
-          image: "ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1"
+          image: "ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.2"
           imagePullPolicy: IfNotPresent
           args:
             - --bootstrap-state-key
@@ -115,7 +115,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: operator
-          image: "ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1"
+          image: "ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.2"
           imagePullPolicy: IfNotPresent
           args:
             - --watch-namespace=replica-lab

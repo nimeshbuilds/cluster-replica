@@ -1,0 +1,39 @@
+namespaces: [application]
+namespaceMap:
+  application: application-test
+include:
+  - kinds: [Deployment, Service, ConfigMap]
+exclude:
+  - kinds: [Deployment, Service]
+    names: [postgres]
+secrets: None
+data: None
+databases:
+  - name: test-database
+    grant: application-db
+    namespace: application-test
+# Patch your captured application's database env to reference this synthesized
+# Secret. It has keys host, port, database, username, password. For example:
+patches:
+  - apiVersion: apps/v1
+    kind: Deployment
+    namespace: application
+    name: app
+    patch:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: app
+                image: replace-with-your-application-image
+                env:
+                  - name: PGHOST
+                    valueFrom: {secretKeyRef: {name: test-database, key: host}}
+                  - name: PGPORT
+                    valueFrom: {secretKeyRef: {name: test-database, key: port}}
+                  - name: PGDATABASE
+                    valueFrom: {secretKeyRef: {name: test-database, key: database}}
+                  - name: PGUSER
+                    valueFrom: {secretKeyRef: {name: test-database, key: username}}
+                  - name: PGPASSWORD
+                    valueFrom: {secretKeyRef: {name: test-database, key: password}}

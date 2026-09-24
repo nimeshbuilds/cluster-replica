@@ -1,0 +1,27 @@
+namespaces: [source-database]
+namespaceMap: {source-database: integration}
+include: [{kinds: [Deployment], names: [app]}]
+secrets: None
+data: None
+databases:
+  - {name: test-database, grant: fixture-db, namespace: integration}
+patches:
+  - apiVersion: apps/v1
+    kind: Deployment
+    namespace: source-database
+    name: app
+    patch:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: app
+                image: docker.io/library/postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+                command: [sh, -ec, 'test "$(psql -qAt -c "SELECT count(*) FROM public.customers WHERE length(email)=64")" = 1; touch /tmp/verified; exec sleep 86400']
+                readinessProbe: {exec: {command: [test, -f, /tmp/verified]}, periodSeconds: 2}
+                env:
+                  - {name: PGHOST, valueFrom: {secretKeyRef: {name: test-database, key: host}}}
+                  - {name: PGPORT, valueFrom: {secretKeyRef: {name: test-database, key: port}}}
+                  - {name: PGDATABASE, valueFrom: {secretKeyRef: {name: test-database, key: database}}}
+                  - {name: PGUSER, valueFrom: {secretKeyRef: {name: test-database, key: username}}}
+                  - {name: PGPASSWORD, valueFrom: {secretKeyRef: {name: test-database, key: password}}}

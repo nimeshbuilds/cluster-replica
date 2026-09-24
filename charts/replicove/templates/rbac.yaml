@@ -83,6 +83,19 @@ rules:
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas/status, replicaaccesses/status, clusterreplicas/finalizers, replicaaccesses/finalizers]
     verbs: [get, update, patch]
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaexperiments]
+    verbs: [get, list, watch, update, patch, delete]
+  {{- if .Values.chaos.enabled }}
+  - apiGroups: [replica.nimeshbuilds.dev]
+    resources: [replicaexperiments/status, replicaexperiments/finalizers]
+    verbs: [get, update, patch]
+  {{- end }}
+  {{- if or .Values.chaos.enabled .Values.databases.enabled }}
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, create, update, patch, delete]
+  {{- end }}
   {{- if .Values.mirrors.enabled }}
   - apiGroups: [replica.nimeshbuilds.dev]
     resources: [clusterreplicas, replicamirrors, replicamirrorruns]
@@ -138,6 +151,11 @@ rules:
   - apiGroups: [snapshot.storage.k8s.io]
     resources: [volumesnapshotcontents]
     verbs: [get, create, delete]
+  - apiGroups: [storage.k8s.io]
+    resources: [storageclasses]
+    verbs: [get]
+  {{- end }}
+  {{- if and .Values.databases.enabled (not .Values.mirrors.enabled) }}
   - apiGroups: [storage.k8s.io]
     resources: [storageclasses]
     verbs: [get]

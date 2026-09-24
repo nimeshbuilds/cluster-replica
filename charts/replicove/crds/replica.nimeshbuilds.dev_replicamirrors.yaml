@@ -144,6 +144,28 @@ spec:
                         - None
                         - EmptyVolumes
                         type: string
+                      databases:
+                        items:
+                          description: DatabaseCopy requests one fresh logical snapshot
+                            of an explicitly granted database.
+                          properties:
+                            grant:
+                              type: string
+                            name:
+                              description: Name becomes the application Service and
+                                credential Secret name.
+                              type: string
+                            namespace:
+                              description: Namespace is the mapped guest application
+                                namespace, not a source namespace.
+                              type: string
+                          required:
+                          - grant
+                          - name
+                          - namespace
+                          type: object
+                        maxItems: 4
+                        type: array
                       exclude:
                         items:
                           properties:

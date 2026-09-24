@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+  namespace: source-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: echo}
+  template:
+    metadata:
+      labels: {app: echo}
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: echo
+          image: registry.k8s.io/e2e-test-images/busybox:1.37.0-1
+          command: [sh, -c, 'mkdir -p /tmp/www; echo source-intact > /tmp/www/index.html; exec httpd -f -p 8080 -h /tmp/www']
+          ports: [{containerPort: 8080}]
+          readinessProbe:
+            httpGet: {path: /, port: 8080}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 32Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo
+  namespace: source-dev
+spec:
+  selector: {app: echo}
+  ports: [{port: 8080, targetPort: 8080}]

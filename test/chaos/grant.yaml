@@ -1,0 +1,23 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: chaos-lab
+spec:
+  targetNamespace: replica-lab
+  sourceNamespaces: [source-dev]
+  resources:
+    - {group: '', kind: Service}
+    - {group: '', kind: ServiceAccount}
+    - {group: '', kind: ConfigMap}
+    - {group: apps, kind: Deployment}
+  maxTTL: 1h
+  accessRoles: [admin]
+  maxAccessSeconds: 3600
+  chaos:
+    namespaces: [integration]
+    kinds: [PodDelete, ScaleZero, NetworkIsolation, CPUStress, MemoryStress, CustomJob]
+    maxDurationSeconds: 300
+    images:
+      - docker.io/library/python@sha256:79e7a9b9ff1cbceff819f856fb374477792a5967759d94df266de7b7b4120e6f
+    maxCPUMilli: 500
+    maxMemoryMiB: 256

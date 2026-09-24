@@ -1,0 +1,7 @@
+namespaces: [source-dev]
+include:
+  - kinds: [Deployment, Service, ServiceAccount, ConfigMap]
+namespaceMap:
+  source-dev: integration
+secrets: None
+data: None

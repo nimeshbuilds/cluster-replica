@@ -1,7 +1,7 @@
 # Install into an administrator-only namespace, separate from destinationNamespace.
 image:
   repository: ghcr.io/nimeshbuilds/replicove
-  tag: "0.2.0-alpha.2"
+  tag: "0.3.0-alpha.1"
   # When set, digest takes precedence over tag (sha256: followed by 64 hex digits).
   digest: ""
   pullPolicy: IfNotPresent
@@ -43,3 +43,18 @@ resources:
     memory: 256Mi
   limits:
     memory: 1Gi
+
+# Host-enforced totals, including control plane and all synced guest Pods/PVCs.
+# Limits are retained on uninstall; remove explicitly only after cleanup.
+capacity:
+  enabled: false
+  hard: {}
+  # Optional LimitRange container defaults. Leave empty to require explicit requests.
+  defaultContainer: {}
+
+# Optional modules share the operator and immutable state key.
+chaos:
+  enabled: false
+  networkPolicyEnforced: false
+databases:
+  enabled: false

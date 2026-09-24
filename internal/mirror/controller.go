@@ -78,6 +78,9 @@ func (r *Reconciler) authorize(m *api.ReplicaMirror, g *api.ReplicaGrant) (polic
 	if m.Spec.Template.Replication == nil || m.Spec.Template.Replication.Secrets == "Follow" {
 		return scope, problem("InvalidMirrorTemplate", "Use explicit replication and pinned, non-Follow Secrets. Each selected volume requires a separate data-capture grant.")
 	}
+	if len(m.Spec.Template.Replication.Databases) > 0 {
+		return scope, problem("DatabaseCopyUnsupported", "PostgreSQL logical copies require a fresh ClusterReplica; CSI mirrors cannot include database copies.")
+	}
 	if m.Spec.Consistency != "" && m.Spec.Consistency != "CrashConsistent" {
 		return scope, problem("ConsistencyUnsupported", "This CSI adapter provides per-volume crash consistency only.")
 	}

@@ -66,6 +66,13 @@ spec:
             - --mirrors=true
             - --mirror-network-policy-enforced={{ .Values.mirrors.networkPolicyEnforced }}
             {{- end }}
+            {{- if .Values.chaos.enabled }}
+            - --chaos=true
+            - --chaos-network-policy-enforced={{ .Values.chaos.networkPolicyEnforced }}
+            {{- end }}
+            {{- if .Values.databases.enabled }}
+            - --databases=true
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

@@ -180,3 +180,71 @@ jobs:
           path: .cache/mirror-e2e/run.*/artifacts/
           include-hidden-files: true
           retention-days: 7
+
+  chaos-workflow:
+    if: ${{ !inputs.mirror_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          ./hack/fetch-e2e-tools.sh
+          ./hack/fetch-helm.sh
+          ./hack/e2e-chaos.sh
+      - if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: chaos-workflow
+          path: .cache/chaos-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7
+
+  database-workflow:
+    if: ${{ !inputs.mirror_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify PostgreSQL copy and sanitation with actual databases
+        run: ./examples/postgresql/test-disposable.sh
+      - run: |
+          ./hack/fetch-e2e-tools.sh
+          ./hack/fetch-helm.sh
+          ./hack/e2e-database.sh
+      - if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: database-workflow
+          path: .cache/database-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7
+
+  test-runner-workflow:
+    if: ${{ !inputs.mirror_only }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: |
+          ./hack/fetch-e2e-tools.sh
+          ./hack/fetch-helm.sh
+          ./hack/e2e-testrun.sh
+      - if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: test-runner-workflow
+          path: .cache/testrun-e2e/run.*/artifacts/
+          include-hidden-files: true
+          retention-days: 7

@@ -54,6 +54,8 @@ def prepare():
     # Publish fixture downloads without credentials or private build artifacts.
     shutil.copytree(ROOT / 'examples/yaml', STAGE / 'examples/yaml')
     shutil.copytree(ROOT / 'examples/mirror', STAGE / 'examples/mirror')
+    for module in ('chaos', 'postgresql', 'testing'):
+        shutil.copytree(ROOT / 'examples' / module, STAGE / 'examples' / module)
 
     def rewrite_link(target, source, destination):
         parts = urlsplit(target)
@@ -130,10 +132,11 @@ def generate_api():
              'API group: `replica.nimeshbuilds.dev/v1alpha1`.', '',
              'Use `kubectl explain clusterreplica.spec --recursive`, `kubectl explain replicagrant.spec --recursive`, '
              '`kubectl explain replicaaccess.spec --recursive`, `kubectl explain replicamirror.spec --recursive`, '
-             'or `kubectl explain replicamirrorrun.spec --recursive` against an installed cluster. '
+             '`kubectl explain replicamirrorrun.spec --recursive`, or `kubectl explain replicaexperiment.spec --recursive` against an installed cluster. '
              'Required means required within its containing object, not that an optional parent must exist.', '',
              'The schema is only one validation layer. Read [grants](../guides/grants.md), '
-             '[selection](../guides/selection.md), [access](../guides/access.md), [mirrors](../guides/mirrors.md), and '
+             '[selection](../guides/selection.md), [access](../guides/access.md), [mirrors](../guides/mirrors.md), '
+             '[chaos](../guides/chaos.md), [PostgreSQL](../guides/postgresql.md), and '
              '[compatibility](compatibility.md) for controller-enforced policy and lifecycle rules.', '']
     count = 0
     for path in sorted((ROOT / 'config/crd').glob('*.yaml')):
@@ -192,7 +195,7 @@ def generate_cli():
              'Generated from the complete command tree of the built `bin/replicove`; '
              '[start with the CLI walkthrough](../quickstart.md) or use the [YAML API](../getting-started/yaml.md).', '',
              'Global flags select the **host** kubeconfig, context, and granted destination namespace. '
-             'The default destination is `replica-lab`. `plan` and `status` print sanitized status, '
+             'The default destination is `replica-lab`. `plan` explains the metadata-only capture; `status` prints sanitized status, '
              'not secret payloads or a full rendered diff. `install` is an initial Helm installation; '
              'follow the [upgrade guide](../getting-started/installation.md#upgrades-and-removal) for an existing installation.', '',
              'The credential commands refuse to overwrite an existing output file. `access` uses an existing '

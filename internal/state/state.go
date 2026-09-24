@@ -38,6 +38,8 @@ var (
 )
 
 type Object struct {
+	SelectionReason string         `json:"selectionReason,omitempty"`
+	Transformations []string       `json:"transformations,omitempty"`
 	ID              string         `json:"id"`
 	APIVersion      string         `json:"apiVersion"`
 	Kind            string         `json:"kind"`
@@ -67,13 +69,15 @@ type Package struct {
 }
 
 type Plan struct {
-	Revision      string    `json:"revision"`
-	CapturedAt    time.Time `json:"capturedAt"`
-	SourceVersion string    `json:"sourceVersion"`
-	Objects       []Object  `json:"objects"`
-	Packages      []Package `json:"packages,omitempty"`
-	Order         []string  `json:"order"`
-	Notes         []string  `json:"notes,omitempty"`
+	ExternalDependencies []string         `json:"externalDependencies,omitempty"`
+	Omitted              map[string]int32 `json:"omitted,omitempty"`
+	Revision             string           `json:"revision"`
+	CapturedAt           time.Time        `json:"capturedAt"`
+	SourceVersion        string           `json:"sourceVersion"`
+	Objects              []Object         `json:"objects"`
+	Packages             []Package        `json:"packages,omitempty"`
+	Order                []string         `json:"order"`
+	Notes                []string         `json:"notes,omitempty"`
 }
 
 type Entry struct {
@@ -97,8 +101,11 @@ type Volume struct {
 }
 
 type State struct {
-	Mirror    *Mirror    `json:"mirror,omitempty"`
-	MirrorRun *MirrorRun `json:"mirrorRun,omitempty"`
+	Capacity   *Capacity   `json:"capacity,omitempty"`
+	Databases  []Database  `json:"databases,omitempty"`
+	Experiment *Experiment `json:"experiment,omitempty"`
+	Mirror     *Mirror     `json:"mirror,omitempty"`
+	MirrorRun  *MirrorRun  `json:"mirrorRun,omitempty"`
 	// Nonempty only on controller-prepared generation children. Their plan is pinned.
 	MirrorRunUID          string   `json:"mirrorRunUID,omitempty"`
 	Volumes               []Volume `json:"volumes,omitempty"`

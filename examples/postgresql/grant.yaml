@@ -1,0 +1,33 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaGrant
+metadata:
+  name: postgres-lab
+spec:
+  targetNamespace: replica-lab
+  sourceNamespaces: [application]
+  resources:
+    - {group: apps, kind: Deployment}
+    - {group: "", kind: Service}
+    - {group: "", kind: ConfigMap}
+  databases:
+    - name: application-db
+      sourceNamespace: application
+      host: postgres.application.svc
+      port: 5432
+      database: application
+      credentialsSecret:
+        namespace: replicove-system
+        name: application-database-reader
+      sslMode: verify-full
+      image: docker.io/library/postgres:17-bookworm@sha256:639ab7ceb90e13123085b741fb31ef493fba25463002f6da665352e7b534b652
+      storageClass: standard
+      maxBytes: 536870912
+      timeoutSeconds: 300
+      networkPolicyEnforced: true
+      masking:
+        - {schema: public, table: customers, column: email, strategy: Token, domain: email}
+        - {schema: public, table: orders, column: customer_email, strategy: Token, domain: email}
+        - {schema: public, table: customers, column: phone, strategy: "Null"}
+      relationships:
+        - from: {schema: public, table: orders, column: customer_email}
+          to: {schema: public, table: customers, column: email}

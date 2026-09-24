@@ -1,0 +1,35 @@
+# Requires an enabled mirror module, qualified CSI/CNI and mirror-lab grant.
+apiVersion: replicove.nimeshbuilds.dev/v1alpha1
+kind: TestRecipe
+namePrefix: orders-test
+mirror:
+  template:
+    profile: vcluster-0.37.1-persistent
+    ttl: 2h
+    cleanupPolicy: DeleteOwned
+    approval: Automatic
+    grantRef: mirror-lab
+    target:
+      provider: helm
+    replication:
+      namespaces: [source-dev]
+      namespaceMap:
+        source-dev: orders
+      include:
+        - kinds: [Deployment]
+          names: [orders]
+      secrets: None
+  volumes:
+    - namespace: source-dev
+      name: orders-data
+  consistency: CrashConsistent
+  retainRevisions: 1
+execution:
+  command: [kubectl, --namespace, orders, rollout, status, deployment/orders, --timeout=60s]
+  timeout: 10m
+  role: viewer
+  credentialSeconds: 900
+lifecycle:
+  readyTimeout: 30m
+  cleanupTimeout: 20m
+  keepOnFailure: true

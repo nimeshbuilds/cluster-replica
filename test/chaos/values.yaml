@@ -1,0 +1,12 @@
+chaos:
+  enabled: true
+  networkPolicyEnforced: true
+sources:
+  - namespace: source-dev
+    rules:
+      - apiGroups: [""]
+        resources: [services, serviceaccounts, configmaps]
+        verbs: [get, list]
+      - apiGroups: [apps]
+        resources: [deployments]
+        verbs: [get, list]

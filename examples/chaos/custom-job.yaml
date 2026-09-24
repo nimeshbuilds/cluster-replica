@@ -1,0 +1,17 @@
+apiVersion: replica.nimeshbuilds.dev/v1alpha1
+kind: ReplicaExperiment
+metadata:
+  name: custom-fault
+  namespace: replica-lab
+spec:
+  replicaRef:
+    name: demo
+    uid: REPLACE_WITH_REPLICA_UID
+  durationSeconds: 60
+  faults:
+    - kind: CustomJob
+      namespace: integration
+      image: docker.io/library/python@sha256:79e7a9b9ff1cbceff819f856fb374477792a5967759d94df266de7b7b4120e6f
+      command: [python3, -c, 'import time; time.sleep(45)']
+      cpuMilli: 100
+      memoryMiB: 32

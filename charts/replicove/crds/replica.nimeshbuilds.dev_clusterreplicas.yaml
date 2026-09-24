@@ -119,6 +119,28 @@ spec:
                     - None
                     - EmptyVolumes
                     type: string
+                  databases:
+                    items:
+                      description: DatabaseCopy requests one fresh logical snapshot
+                        of an explicitly granted database.
+                      properties:
+                        grant:
+                          type: string
+                        name:
+                          description: Name becomes the application Service and credential
+                            Secret name.
+                          type: string
+                        namespace:
+                          description: Namespace is the mapped guest application namespace,
+                            not a source namespace.
+                          type: string
+                      required:
+                      - grant
+                      - name
+                      - namespace
+                      type: object
+                    maxItems: 4
+                    type: array
                   exclude:
                     items:
                       properties:
@@ -450,6 +472,13 @@ spec:
                   objectCount:
                     format: int32
                     type: integer
+                  omitted:
+                    additionalProperties:
+                      format: int32
+                      type: integer
+                    description: Counts describe objects observed within granted reads,
+                      not a full cluster census.
+                    type: object
                   packageCount:
                     format: int32
                     type: integer
@@ -468,8 +497,22 @@ spec:
                           type: string
                         namespace:
                           type: string
+                        selectionReason:
+                          type: string
+                        sourceName:
+                          type: string
                         sourceNamespace:
                           type: string
+                        sourceUID:
+                          type: string
+                        sourceVersion:
+                          type: string
+                        transformations:
+                          description: Transformation categories contain no source
+                            or destination field values.
+                          items:
+                            type: string
+                          type: array
                       required:
                       - apiVersion
                       - kind

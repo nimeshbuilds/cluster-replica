@@ -1,0 +1,490 @@
+{
+  "recordedAt": "2026-09-24",
+  "scope": "Source-built cleanup-fix PR evidence from disposable kind CI. This is not exact-main, published-artifact or released ten-scenario qualification.",
+  "pullRequest": "https://github.com/nimeshbuilds/replicove/pull/17",
+  "sourceCommit": "3edb5db856df0d30c631f98a851334e9f265e121",
+  "mergedMainCommit": "aa996fc1eb92446581833ad2e3baef09381cd2a2",
+  "sourceCI": {
+    "id": 36039203779,
+    "name": "CI",
+    "head_sha": "3edb5db856df0d30c631f98a851334e9f265e121",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779",
+    "run_attempt": 1,
+    "completedJobCount": 16,
+    "jobs": [
+      {
+        "name": "live-vcluster",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838475",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-replication (cert-manager)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838543",
+        "conclusion": "success"
+      },
+      {
+        "name": "chaos-workflow",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838552",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-replication (spark)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838554",
+        "conclusion": "success"
+      },
+      {
+        "name": "replica-workflow (Kubernetes 1.36.4, Helm)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838574",
+        "conclusion": "success"
+      },
+      {
+        "name": "replica-workflow (Kubernetes 1.35.8, CLI)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838585",
+        "conclusion": "success"
+      },
+      {
+        "name": "helm-existing",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838594",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-mirrors (current)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838674",
+        "conclusion": "success"
+      },
+      {
+        "name": "test-runner-workflow",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838709",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-mirrors (previous)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838747",
+        "conclusion": "success"
+      },
+      {
+        "name": "verify",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838781",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-replication (policy)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838792",
+        "conclusion": "success"
+      },
+      {
+        "name": "yaml-workflow",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838814",
+        "conclusion": "success"
+      },
+      {
+        "name": "database-workflow",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838816",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-replication (trino)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838884",
+        "conclusion": "success"
+      },
+      {
+        "name": "workload-mirrors (native)",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838887",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "strictDocumentation": {
+    "id": 36039203845,
+    "name": "Documentation",
+    "head_sha": "3edb5db856df0d30c631f98a851334e9f265e121",
+    "event": "pull_request",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203845",
+    "run_attempt": 1,
+    "jobs": [
+      {
+        "name": "build",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203845/job/107766837974",
+        "conclusion": "success"
+      },
+      {
+        "name": "deploy",
+        "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203845/job/107767167229",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "replicaWorkflows": [
+    {
+      "hostKubernetes": "v1.36.4",
+      "installer": "helm",
+      "guestKubernetes": "v1.36.0",
+      "jobURL": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838574",
+      "artifact": {
+        "id": 10826493158,
+        "name": "replica-workflow-0",
+        "digest": "sha256:92195cbd907a3431caaaa6545cff8e08c01570cb7bc4a35ecee61336b7d7546a",
+        "archive_download_url": "https://api.github.com/repos/nimeshbuilds/replicove/actions/artifacts/10826493158/zip"
+      },
+      "runtime": {
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "result": "passed",
+      "assertionCount": 33,
+      "assertions": [
+        {
+          "name": "helm-installer",
+          "outcome": "passed"
+        },
+        {
+          "name": "operator-namespace-rbac",
+          "outcome": "passed"
+        },
+        {
+          "name": "escalation-bind-denied",
+          "outcome": "passed"
+        },
+        {
+          "name": "manual-plan",
+          "outcome": "passed"
+        },
+        {
+          "name": "name-label-expression-selection",
+          "outcome": "passed"
+        },
+        {
+          "name": "exclude-and-unselected-omissions",
+          "outcome": "passed"
+        },
+        {
+          "name": "dependency-only-config-serviceaccount-secret-pvc",
+          "outcome": "passed"
+        },
+        {
+          "name": "metadata-only-plan-provenance",
+          "outcome": "passed"
+        },
+        {
+          "name": "real-vcluster",
+          "outcome": "passed"
+        },
+        {
+          "name": "source-helm-reconstruction",
+          "outcome": "passed"
+        },
+        {
+          "name": "secret-snapshot-holds-until-refresh",
+          "outcome": "passed"
+        },
+        {
+          "name": "secret-follow-rotation",
+          "outcome": "passed"
+        },
+        {
+          "name": "namespace-mapping",
+          "outcome": "passed"
+        },
+        {
+          "name": "overrides",
+          "outcome": "passed"
+        },
+        {
+          "name": "empty-volume-storage-class-map",
+          "outcome": "passed"
+        },
+        {
+          "name": "independent-guest-volume-write",
+          "outcome": "passed"
+        },
+        {
+          "name": "guest-workload-service",
+          "outcome": "passed"
+        },
+        {
+          "name": "restart",
+          "outcome": "passed"
+        },
+        {
+          "name": "guest-drift-preserved-until-refresh",
+          "outcome": "passed"
+        },
+        {
+          "name": "refresh-prunes-removed-source-object",
+          "outcome": "passed"
+        },
+        {
+          "name": "explicit-refresh",
+          "outcome": "passed"
+        },
+        {
+          "name": "viewer-rbac",
+          "outcome": "passed"
+        },
+        {
+          "name": "access-revocation",
+          "outcome": "passed"
+        },
+        {
+          "name": "owned-cleanup",
+          "outcome": "passed"
+        },
+        {
+          "name": "source-preservation",
+          "outcome": "passed"
+        },
+        {
+          "name": "durable-control-plane-reschedule",
+          "outcome": "passed"
+        },
+        {
+          "name": "full-workflow-ttl",
+          "outcome": "passed"
+        },
+        {
+          "name": "application-and-control-plane-pv-cleanup",
+          "outcome": "passed"
+        },
+        {
+          "name": "source-volume-identity-data-preserved",
+          "outcome": "passed"
+        },
+        {
+          "name": "existing-target-preservation",
+          "outcome": "passed"
+        },
+        {
+          "name": "existing-target-conflict",
+          "outcome": "passed"
+        },
+        {
+          "name": "tunnel-reconnect",
+          "outcome": "passed"
+        },
+        {
+          "name": "exact-secret-reader-rbac",
+          "outcome": "passed"
+        }
+      ],
+      "guestClaimBeforeCleanup": {
+        "phase": "Bound",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ]
+      },
+      "storageCleanup": {
+        "explicitDeletionInventoriedPVCount": 2,
+        "ttlInventoriedPVCount": 2,
+        "recordedPVAbsenceAssertions": "passed",
+        "sourceVolumeIdentityAndDataPreservation": "passed"
+      },
+      "ttl": {
+        "requestedSeconds": 300,
+        "createdAt": "2026-09-24T18:16:56Z",
+        "expiresAt": "2026-09-24T18:21:56Z",
+        "finalPhase": "Expired",
+        "expiredConditionAt": "2026-09-24T18:22:02Z"
+      }
+    },
+    {
+      "hostKubernetes": "v1.35.8",
+      "installer": "cli",
+      "guestKubernetes": "v1.36.0",
+      "jobURL": "https://github.com/nimeshbuilds/replicove/actions/runs/36039203779/job/107766838585",
+      "artifact": {
+        "id": 10825599618,
+        "name": "replica-workflow-1",
+        "digest": "sha256:57f0a0b1d1e35df979dc78bb0ad47a9f5483d09ae86a2615188a86af7b75bd78",
+        "archive_download_url": "https://api.github.com/repos/nimeshbuilds/replicove/actions/artifacts/10825599618/zip"
+      },
+      "runtime": {
+        "profile": "vcluster-0.37.1-persistent",
+        "chartVersion": "0.37.1",
+        "chartSHA256": "afb57fb5f2e3088519ffa9112fa0bfc3543bc3465f86f7e7e655ba30aea0d969",
+        "guestKubernetesVersion": "v1.36.0"
+      },
+      "result": "passed",
+      "assertionCount": 33,
+      "assertions": [
+        {
+          "name": "cli-installer",
+          "outcome": "passed"
+        },
+        {
+          "name": "operator-namespace-rbac",
+          "outcome": "passed"
+        },
+        {
+          "name": "escalation-bind-denied",
+          "outcome": "passed"
+        },
+        {
+          "name": "manual-plan",
+          "outcome": "passed"
+        },
+        {
+          "name": "name-label-expression-selection",
+          "outcome": "passed"
+        },
+        {
+          "name": "exclude-and-unselected-omissions",
+          "outcome": "passed"
+        },
+        {
+          "name": "dependency-only-config-serviceaccount-secret-pvc",
+          "outcome": "passed"
+        },
+        {
+          "name": "metadata-only-plan-provenance",
+          "outcome": "passed"
+        },
+        {
+          "name": "real-vcluster",
+          "outcome": "passed"
+        },
+        {
+          "name": "source-helm-reconstruction",
+          "outcome": "passed"
+        },
+        {
+          "name": "secret-snapshot-holds-until-refresh",
+          "outcome": "passed"
+        },
+        {
+          "name": "secret-follow-rotation",
+          "outcome": "passed"
+        },
+        {
+          "name": "namespace-mapping",
+          "outcome": "passed"
+        },
+        {
+          "name": "overrides",
+          "outcome": "passed"
+        },
+        {
+          "name": "empty-volume-storage-class-map",
+          "outcome": "passed"
+        },
+        {
+          "name": "independent-guest-volume-write",
+          "outcome": "passed"
+        },
+        {
+          "name": "guest-workload-service",
+          "outcome": "passed"
+        },
+        {
+          "name": "restart",
+          "outcome": "passed"
+        },
+        {
+          "name": "guest-drift-preserved-until-refresh",
+          "outcome": "passed"
+        },
+        {
+          "name": "refresh-prunes-removed-source-object",
+          "outcome": "passed"
+        },
+        {
+          "name": "explicit-refresh",
+          "outcome": "passed"
+        },
+        {
+          "name": "viewer-rbac",
+          "outcome": "passed"
+        },
+        {
+          "name": "access-revocation",
+          "outcome": "passed"
+        },
+        {
+          "name": "owned-cleanup",
+          "outcome": "passed"
+        },
+        {
+          "name": "source-preservation",
+          "outcome": "passed"
+        },
+        {
+          "name": "durable-control-plane-reschedule",
+          "outcome": "passed"
+        },
+        {
+          "name": "full-workflow-ttl",
+          "outcome": "passed"
+        },
+        {
+          "name": "application-and-control-plane-pv-cleanup",
+          "outcome": "passed"
+        },
+        {
+          "name": "source-volume-identity-data-preserved",
+          "outcome": "passed"
+        },
+        {
+          "name": "existing-target-preservation",
+          "outcome": "passed"
+        },
+        {
+          "name": "existing-target-conflict",
+          "outcome": "passed"
+        },
+        {
+          "name": "tunnel-reconnect",
+          "outcome": "passed"
+        },
+        {
+          "name": "exact-secret-reader-rbac",
+          "outcome": "passed"
+        }
+      ],
+      "guestClaimBeforeCleanup": {
+        "phase": "Bound",
+        "finalizers": [
+          "kubernetes.io/pvc-protection"
+        ]
+      },
+      "storageCleanup": {
+        "explicitDeletionInventoriedPVCount": 2,
+        "ttlInventoriedPVCount": 2,
+        "recordedPVAbsenceAssertions": "passed",
+        "sourceVolumeIdentityAndDataPreservation": "passed"
+      },
+      "ttl": {
+        "requestedSeconds": 300,
+        "createdAt": "2026-09-24T18:16:46Z",
+        "expiresAt": "2026-09-24T18:21:46Z",
+        "finalPhase": "Expired",
+        "expiredConditionAt": "2026-09-24T18:21:52Z"
+      }
+    }
+  ],
+  "subsequentGatesAtRecording": {
+    "exactMainCI": {
+      "commit": "aa996fc1eb92446581833ad2e3baef09381cd2a2",
+      "url": "https://github.com/nimeshbuilds/replicove/actions/runs/36042461247",
+      "status": "in_progress",
+      "conclusion": null
+    },
+    "publishedAlpha2Artifacts": "pending",
+    "releasedScenarioVariants": {
+      "expectedCount": 16,
+      "status": "pending"
+    }
+  },
+  "limits": [
+    "All 16 source jobs succeeded; detailed assertion preservation here is limited to the two expanded core workflow reports.",
+    "Each core fixture verifies recorded application/control-plane PV disappearance after explicit deletion and a real five-minute TTL before deleting its kind host.",
+    "The observed claim finalizer was kubernetes.io/pvc-protection. Unknown finalizers and pre-existing guest namespaces retain their cleanup barriers; arbitrary CSI/provider behavior is not qualified.",
+    "Later PostgreSQL Null/Constant scenario additions and live pool/MCP/dashboard scenario fixtures are not claimed as part of this source revision.",
+    "No cloud identity, external data erasure, distribution certification or production-scale claim."
+  ]
+}

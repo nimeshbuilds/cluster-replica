@@ -1,10 +1,10 @@
 # Quick start: your first replica
 
-> **Versioned instructions:** these commands use v0.3.0-alpha.1. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
+> **Versioned instructions:** these commands use v0.3.0-alpha.2. Use matching CLI, chart, image and CRDs from that release. Check the release and validation record for source and published-artifact evidence; use a source build when testing an unreleased revision.
 
 Create a disposable Kubernetes cluster, install Replicove, and recreate a small application’s configuration and Helm component inside a vCluster. You will inspect the plan, connect to the replica, verify the copied resources, and remove the environment.
 
-> **Experimental alpha:** this guide targets the `v0.3.0-alpha.1` CLI and operator image with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
+> **Experimental alpha:** this guide targets the `v0.3.0-alpha.2` CLI and operator image with the repository’s disposable fixtures. Replicove installs vCluster for you when you approve the replica; you do not need an existing vCluster.
 
 Prefer a one-command Helm installation? Start with the **[Helm quickstart](docs/getting-started/helm.md)**. Prefer native manifests? Use the **[YAML quickstart](docs/getting-started/yaml.md)** for installation, replication, access, and cleanup without the Replicove or Helm CLI. See the **[developer docs](https://nimeshbuilds.github.io/replicove/)** for feature guides and API references.
 
@@ -19,6 +19,8 @@ The tool downloader installs checksum-verified kind, kubectl, vCluster, and Helm
 
 ## 1. Get the CLI and examples
 
+This path downloads a prebuilt release CLI; Go is not required. The clone supplies the example applications and lab tools.
+
 In **Terminal A**:
 
 ```bash
@@ -28,7 +30,7 @@ cd replicove-demo
 ./hack/fetch-e2e-tools.sh
 ./hack/fetch-helm.sh
 export PATH="$PWD/.cache/e2e-tools:$PATH"
-export REPLICOVE_RELEASE=v0.3.0-alpha.1
+export REPLICOVE_RELEASE=v0.3.0-alpha.2
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
 case "$(uname -m)" in
   x86_64) arch=amd64 ;;
@@ -39,13 +41,15 @@ asset="replicove-$REPLICOVE_RELEASE-$os-$arch.tar.gz"
 mkdir -p .cache/release bin
 curl -fL "https://github.com/nimeshbuilds/replicove/releases/download/$REPLICOVE_RELEASE/$asset" -o ".cache/release/$asset"
 curl -fL "https://github.com/nimeshbuilds/replicove/releases/download/$REPLICOVE_RELEASE/SHA256SUMS" -o .cache/release/SHA256SUMS
-(cd .cache/release && awk -v asset="$asset" '$2 == asset' SHA256SUMS | shasum -a 256 --check -)
+awk -v asset="$asset" '$2 == asset { print; seen++ } END { if (seen != 1) exit 1 }' \
+  .cache/release/SHA256SUMS > .cache/release/selected.sha256
+(cd .cache/release && shasum -a 256 --check selected.sha256)
 tar -xzf ".cache/release/$asset" -C bin replicove
 ./bin/replicove --version
 docker info >/dev/null
 ```
 
-You stay on the normal `main` branch. The CLI reports `v0.3.0-alpha.1`; the operator image is pulled automatically from GHCR. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
+You stay on the normal `main` branch. The CLI reports `v0.3.0-alpha.2`; the operator image is pulled automatically from GHCR. The Kubernetes and vCluster versions used by the demo remain pinned in the repository.
 
 <details>
 <summary>Already cloned the repository or followed the older guide?</summary>
@@ -90,7 +94,7 @@ Wait for the node to report `Ready`. `hk` always targets the host, `rk` manages 
 
 ```bash
 hk create namespace source-dev
-rk install --image ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1 --values test/e2e/replicove-values.yaml
+rk install --image ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.2 --values test/e2e/replicove-values.yaml
 hk -n replicove-system rollout status deployment/replicove --timeout=180s
 
 hk apply -f test/e2e/source.yaml
@@ -198,7 +202,7 @@ hk -n replicove-system logs deployment/replicove --tail=100
 | --- | --- |
 | `bin/replicove` or a fixture is missing | Run from the repository root. `git branch --show-current` should print `main`; follow the existing-checkout instructions in step 1 to update and download. |
 | Docker is unreachable | Start your Docker engine, confirm `docker info`, and rerun the failed step. |
-| Operator `ImagePullBackOff` | Check node access to `ghcr.io` and confirm the image is `ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.1`. |
+| Operator `ImagePullBackOff` | Check node access to `ghcr.io` and confirm the image is `ghcr.io/nimeshbuilds/replicove:0.3.0-alpha.2`. |
 | `AwaitingApproval` | Read `rk plan demo`, then approve that plan with `rk approve demo`. |
 | A PVC is `Pending` | Check `hk get storageclass` and the pod/PVC events. The persistent profile needs a functioning default StorageClass. |
 | `Blocked` | Read the request’s condition reason. Grant, ownership, capability, and capture limits are intentional checks. |
@@ -224,7 +228,7 @@ If you completed this CLI installation with mirroring disabled, [enable it later
 
 ## Extend the workflow
 
-Version v0.3.0-alpha.1 adds optional features through the same operator and CLI. Start with [preflight and plan evidence](docs/guides/diagnostics.md), then use [test recipes](docs/guides/test-runs.md) to create an environment, run your command, write metadata/JUnit artifacts and verify cleanup. Recipes repeat a requested setup against a fresh capture; they do not replay exact historical source state.
+Version v0.3.0-alpha.1 introduced optional features through the same operator and CLI. Start with [preflight and plan evidence](docs/guides/diagnostics.md), then use [test recipes](docs/guides/test-runs.md) to create an environment, run your command, write metadata/JUnit artifacts and verify cleanup. Recipes repeat a requested setup against a fresh capture; they do not replay exact historical source state.
 
 - [PostgreSQL 17 copies](docs/guides/postgresql.md): explicit source credentials and database grants, approved masks/table filters, and validated relationships before application/access startup.
 - [Bounded chaos](docs/guides/chaos.md): six fault types on owned test workloads with limits and rollback.

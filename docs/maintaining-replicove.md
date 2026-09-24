@@ -15,12 +15,13 @@ Dependabot already groups Kubernetes/controller-runtime/Helm module updates and 
 
 ## Publish an alpha
 
-1. Commit a new `Chart.yaml` version/appVersion and default image tag, update quickstart/release links and `docs/releases/alpha.md`, then run `make generate` and `make docs`.
+1. Commit a new `Chart.yaml` version/appVersion and default image tag, update `docs/releases/alpha.md` and the relevant feature guides, then run `make generate` and `make docs`. Mark unreleased behavior clearly. Prepare the matching public quickstart/scenario version changes, but keep their qualification claims pending until the release assets and those exact commands are verified.
 2. Merge after CI passes; wait for the exact merged `main` commit to pass all CI jobs too. The workflow enforces that commit gate.
 3. Dispatch **Publish alpha release** from `main` with the new committed version, such as `v0.3.0-alpha.2`. It publishes only explicit alpha tags and refuses an existing operator tag or release. It never moves `latest`.
 4. The workflow builds Linux amd64/arm64 images with source/version/revision labels and OCI SBOM/provenance metadata. It packages a digest-pinned chart and YAML plus four macOS/Linux CLI archives and checksums. The OCI chart is published at `ghcr.io/nimeshbuilds/charts/replicove`.
 5. For the first publication of each GHCR package, set its visibility to **Public** in GitHub package settings. Repository visibility alone does not make a new package public. Anonymous verification waits for this setup and fails if access remains private.
-6. Fresh runners pull without registry login, verify platforms, source commit and checksums, exercise real Helm installation with new/existing vClusters, and start both Linux arm64 binaries. Only then is the GitHub prerelease created with its test-run link.
+6. Fresh runners pull without registry login and verify platforms, source commit and checksums. They exercise Helm installation with new/existing vClusters, native YAML, all three mirror upgrade paths, PostgreSQL, chaos and test recipes, and start both Linux arm64 binaries. Only then is the GitHub prerelease created with its test-run link.
+7. Pin `examples/scenarios/catalog.json` to the public version, source commit, immutable image digest and verified CLI/chart/YAML asset checksums. Run all 16 documented variants through `examples/scenarios/run.sh`, including any strengthened feature assertions. Update matching quickstart commands, the validation record and sanitized evidence after those runs pass; build the docs strictly before publishing the collection. Source-built results do not substitute for this released-artifact run.
 
 For local packaging, run `./hack/fetch-helm.sh` then `./hack/release-artifacts.sh vVERSION`. Output goes into a new, empty `dist/vVERSION/` directory. Set `RELEASE_IMAGE_DIGEST` to the verified published image digest when preparing distributable chart/YAML artifacts. The release workflow supplies it automatically.
 

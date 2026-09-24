@@ -8,6 +8,7 @@ The searchable site includes Helm, YAML, and CLI quickstarts, detailed feature g
 | --- | --- |
 | Install and create using native manifests | [YAML quickstart](getting-started/yaml.md) |
 | Create with the CLI and managed tunnel | [CLI quickstart](../QUICKSTART.md) |
+| Try ten feature workflows in disposable clusters | [Executable scenarios](scenarios/index.md) |
 | Choose an installation method | [Installation](getting-started/installation.md) |
 | Create writable data copies with scheduled resets | [Workload mirrors](guides/mirrors.md) |
 | Add mirrors after installing Replicove | [Enable mirroring later](guides/enable-mirroring.md) |
